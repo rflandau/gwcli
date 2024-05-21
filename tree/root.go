@@ -7,6 +7,7 @@ package tree
 import (
 	"gwcli/tree/search"
 	"gwcli/tree/systems"
+	"gwcli/tree/tools"
 	"os"
 
 	"github.com/spf13/cobra"
@@ -32,6 +33,8 @@ func Execute() {
 	// add direct descendents, which will each add their descendents
 	rootCmd.AddCommand(systems.NewSystemsCmd())
 	rootCmd.AddCommand(search.NewSearchCmd())
+	rootCmd.AddCommand(tools.NewCmd())
+
 	err := rootCmd.Execute()
 	if err != nil {
 		os.Exit(1)
