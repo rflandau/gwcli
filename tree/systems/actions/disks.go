@@ -2,22 +2,22 @@ package actions
 
 import (
 	"fmt"
+	"gwcli/treeutils"
 
 	"github.com/spf13/cobra"
 )
 
 func NewDiskCmd() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:     "hardware",
-		Short:   "Display information about the hardware underlying the instance",
+		Use:     "disks",
+		Short:   "Display information about the disks underlying the instance",
 		Long:    "...",
-		Aliases: []string{"hw"},
+		Aliases: []string{"disk"},
+		GroupID: treeutils.ActionID,
+		//PreRun: ,
 		Run: func(cmd *cobra.Command, args []string) {
-			fmt.Println("hardware called") // TODO
+			fmt.Println("action called") // TODO
 		},
 	}
-
-	// associate subcommands
-
 	return cmd
 }
