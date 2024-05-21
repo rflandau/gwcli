@@ -7,7 +7,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
-func NewSystemsCmd() *cobra.Command {
+func GenerateTree() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:     "systems",
 		Short:   "Systems & Health submenu",

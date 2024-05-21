@@ -31,9 +31,9 @@ func Execute() {
 	// construct the tree
 
 	// add direct descendents, which will each add their descendents
-	rootCmd.AddCommand(systems.NewSystemsCmd())
-	rootCmd.AddCommand(search.NewSearchCmd())
-	rootCmd.AddCommand(tools.NewCmd())
+	rootCmd.AddCommand(systems.GenerateTree())
+	rootCmd.AddCommand(search.GenerateTree())
+	rootCmd.AddCommand(tools.GenerateTree())
 
 	err := rootCmd.Execute()
 	if err != nil {

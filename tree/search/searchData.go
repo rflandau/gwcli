@@ -7,7 +7,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
-func NewSearchCmd() *cobra.Command {
+func GenerateTree() *cobra.Command {
 	cmd := &cobra.Command{Use: "search",
 		Short:   "Search & Data submenu",
 		Long:    `Actions associated to performing, previewing searches and managing, manipulating data`,
