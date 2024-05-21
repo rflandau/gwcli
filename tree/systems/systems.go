@@ -17,20 +17,3 @@ var (
 func GenerateTree() *cobra.Command {
 	return treeutils.GenerateNav(use, short, long, aliases, actions.NewHardwareCmd())
 }
-
-/*
-func(cmd *cobra.Command, args []string) {
-			fmt.Printf("PreRun cmd: '%#v'\n", cmd)
-			noInteractive, err := cmd.Flags().GetBool("no-interactive")
-			fmt.Println("noInteractive mode is", noInteractive)
-			if err != nil {
-				panic(err)
-			}
-			if noInteractive == false {
-				fmt.Println("noInteractive mode is", noInteractive)
-				cmd.Run = func(cmd *cobra.Command, args []string) {
-					fmt.Println("systems called") // TODO
-				}
-			}
-		}
-*/
