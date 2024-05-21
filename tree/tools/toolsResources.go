@@ -1,23 +1,18 @@
 package tools
 
 import (
-	"fmt"
+	"gwcli/treeutils"
 
 	"github.com/spf13/cobra"
 )
 
+var (
+	use     string   = "tools"
+	short   string   = "Tools & Resources submenu"
+	long    string   = "Actions associated to tooling and assets/resources"
+	aliases []string = []string{"resources"}
+)
+
 func GenerateTree() *cobra.Command {
-	cmd := &cobra.Command{
-		Use:     "tools",
-		Short:   "Tools & Resources submenu",
-		Long:    `Actions associated to tooling and assets/resources`,
-		Aliases: []string{"resources"},
-		Run: func(cmd *cobra.Command, args []string) {
-			fmt.Println("tools called") // TODO
-		},
-	}
-
-	// associate subcommands
-
-	return cmd
+	return treeutils.GenerateNav(use, short, long, aliases)
 }
