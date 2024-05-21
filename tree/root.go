@@ -24,35 +24,24 @@ func GenerateFlags(root *cobra.Command) {
 	root.PersistentFlags().Bool("no-interactive", false, "Disallows gwcli from entering interactive mode and prints context help instead.\nRecommended for use in scripts to avoid hanging on a malformed command")
 }
 
+var (
+	use   string = "gwcli"
+	short string = "Gravwell CLI Client"
+	long  string = "gwcli is a CLI client for interacting with your Gravwell instance directly from your terminal.\n" +
+		"It can be used non-interactively in your scripts or interactively via the built-in TUI.\n" +
+		"To invoke the TUI, simply call `gwcli`."
+)
+
 // Execute adds all child commands to the root command and sets flags appropriately.
 func Execute() {
-	var rootCmd = &cobra.Command{
-		Use:   "gwcli",
-		Short: "Gravwell CLI Client",
-		Long: "gwcli is a CLI client for interacting with your Gravwell instance directly from your terminal.\n" +
-			"It can be used non-interactively in your scripts or interactively via the built-in TUI.\n" +
-			"To invoke the TUI, simply call `gwcli`.",
-		PersistentPreRunE: EnforceLogin,
-		Run:               treeutils.NavRun,
-	}
+	rootCmd := treeutils.GenerateNav(use, short, long, []string{}, systems.GenerateTree(), search.GenerateTree(), tools.GenerateTree())
+	rootCmd.PersistentPreRunE = EnforceLogin
 
 	// associate flags
 	GenerateFlags(rootCmd)
 
-	// set up nav and action groups
-	rootCmd.AddGroup(&cobra.Group{ID: treeutils.NavID, Title: "Navigation"})
-	rootCmd.AddGroup(&cobra.Group{ID: treeutils.ActionID, Title: "Actions"})
-
-	// add root to nav group
-	rootCmd.GroupID = treeutils.NavID
-
-	// add direct descendents, which will each add their descendents
-	rootCmd.AddCommand(systems.GenerateTree())
-	rootCmd.AddCommand(search.GenerateTree())
-	rootCmd.AddCommand(tools.GenerateTree())
-
+	// TODO move this into a testing package
 	if !rootCmd.AllChildCommandsHaveGroup() {
-		// TODO move this into a testing package
 		panic("some children missing a group")
 	}
 
