@@ -1,6 +1,7 @@
 package mother
 
 import (
+	"fmt"
 	"gwcli/treeutils"
 	"strings"
 
@@ -55,7 +56,7 @@ func New(root *nav) Mother {
 	if err != nil {
 		panic(err)
 	}
-	m.log.SetLevel(log.DEBUG)
+	m.log.SetLevel(log.DEBUG) // TODO make the logger terse by default
 
 	// text input
 	m.ti = textinput.New()
@@ -179,7 +180,10 @@ func (m Mother) View() string {
 //#endregion
 
 /**
- * processInput consumes and clears the text on the prompt, determining what action to take and modifying the model accordingly.
+ * processInput consumes and clears the text on the prompt, determines what
+ * action to take, modifies the model accordingly, and outputs the state of the
+ * prompt as a newline.
+ * ! Be sure each path that clears the prompt also outputs it via tea.Println
  */
 func processInput(m *Mother) tea.Cmd {
 	var given string = m.ti.Value()
@@ -188,11 +192,14 @@ func processInput(m *Mother) tea.Cmd {
 	if m.ti.Err != nil {
 		return nil
 	}
-	m.ti.Reset() // empty out the input
+
+	priorL := m.promptString() // save off prompt string to output as history
+	m.ti.Reset()               // empty out the input
+
 	// check for a builtin command
 	builtinFunc, ok := builtins[given]
 	if ok {
-		return builtinFunc(m)
+		return tea.Sequence(tea.Println(priorL), builtinFunc(m))
 	}
 	// if we do not find a built in, test for a valid invocation
 	var invocation *cobra.Command = nil
@@ -205,29 +212,26 @@ func processInput(m *Mother) tea.Cmd {
 			m.log.Debugf("Match, invoking %s", invocation.Name())
 			break
 		}
-		//m.log.Printf("\n", given, c.Name()) // DEBUG
 	}
 
 	// check if we found a match
 	if invocation == nil {
 		// user request unhandlable
 		//m.inputErr = fmt.Errorf("%s has no child '%s'", m.PWD.Name(), given)
-		return nil
+		return tea.Println(priorL)
 	}
 
 	// split on action or nav
 	if isAction(invocation) {
 		// hand off control to child
-		//m.log.Printf("Found local command %v\n", invocation.Name())
 		//m.mode = handoff
 		// TODO each time a command is called, it should be instantiated fresh so old data does not garble the new call
-		//m.activeCommand = invocation.CommandPath()
-		return nil
+		//m.activeCommand = invocation.CommandPath() // TODO
+		return tea.Println(priorL)
 	} else { // nav
 		// navigate to child
-		m.log.Debug("Replacing PWD")
 		m.pwd = invocation
-		return nil
+		return tea.Println(priorL)
 	}
 }
 
@@ -245,6 +249,15 @@ func navParent(m *Mother) tea.Cmd {
 
 func ContextHelp(m *Mother) tea.Cmd {
 	return TeaCmdContextHelp(m.pwd)
+}
+
+//#endregion
+
+//#region helper functions
+
+/* Returns a composition resembling the full prompt. */
+func (m *Mother) promptString() string {
+	return fmt.Sprintf("%s> %s", m.pwd.CommandPath(), m.ti.Value())
 }
 
 //#endregion
