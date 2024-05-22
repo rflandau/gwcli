@@ -81,7 +81,7 @@ func Execute() {
 			return
 		}
 		// invoke mother
-		interactive := tea.NewProgram(mother.New(rootCmd))
+		interactive := tea.NewProgram(mother.New(rootCmd, nil))
 		if _, err := interactive.Run(); err != nil {
 			panic(err)
 		}

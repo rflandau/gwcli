@@ -30,7 +30,7 @@ var builtins = map[string](func(*Mother) tea.Cmd){
 
 /* tea.Model implementation, carrying all data required for interactive use */
 type Mother struct {
-	mode
+	mode mode
 
 	// tree references
 	root *nav
@@ -39,6 +39,7 @@ type Mother struct {
 	style struct {
 		nav    lipgloss.Style
 		action lipgloss.Style
+		error  lipgloss.Style
 	}
 
 	ti textinput.Model
@@ -47,7 +48,7 @@ type Mother struct {
 }
 
 /* Generate a Mother instance to operate on the Cobra command tree */
-func New(root *nav) Mother {
+func New(root *nav, r *lipgloss.Renderer) Mother {
 	var err error
 	m := Mother{root: root, pwd: root, mode: prompting}
 
@@ -65,8 +66,13 @@ func New(root *nav) Mother {
 	m.ti.Width = tiWidth
 
 	// stylesheet
-	m.style.nav = treeutils.NavStyle
-	m.style.action = treeutils.ActionStyle
+	if r != nil { // given renderer
+		// TODO
+	} else { // auto-selected renderer
+		m.style.nav = treeutils.NavStyle
+		m.style.action = treeutils.ActionStyle
+		m.style.error = lipgloss.NewStyle().Foreground(lipgloss.Color("#CC444")).Bold(true)
+	}
 
 	return m
 }
@@ -127,18 +133,7 @@ func (m Mother) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, ContextHelp(&m)
 		}
 		if msg.Type == tea.KeyEnter { // submit
-			//m.log.Printf("User hit enter, parsing data '%v'\n", m.ti.Value())
-
-			// on enter, clear any error text, process the data in the text
-			// input, and manipulate model accordingly
-
-			//m.inputErr = nil
-			m.log.Debugf("Mother's old pwd is %s", m.pwd.Name())
 			cmd := processInput(&m)
-			/*if m.inputErr != nil {
-				m.log.Printf("%v\n", m.inputErr)
-			}*/
-			m.log.Debugf("Mother's new pwd is %s", m.pwd.Name())
 			return m, cmd
 		}
 	}
@@ -167,10 +162,9 @@ func (m Mother) View() string {
 	s := strings.Builder{}
 	s.WriteString(CommandPath(&m) + m.ti.View()) // prompt
 	if m.ti.Err != nil {
-		// TODO
 		// write out previous error and clear it
 		s.WriteString("\n")
-		//s.WriteString(m.ss.ErrorText.Render(m.ti.Err.Error()))
+		s.WriteString(m.style.error.Render(m.ti.Err.Error()))
 		m.ti.Err = nil
 		// this will be cleared from view automagically on next key input
 	}
