@@ -5,12 +5,15 @@
 package tree
 
 import (
+	"gwcli/mother"
 	"gwcli/tree/search"
 	"gwcli/tree/systems"
 	"gwcli/tree/tools"
 	"gwcli/treeutils"
 	"os"
 	"time"
+
+	tea "github.com/charmbracelet/bubbletea"
 
 	"github.com/spf13/cobra"
 )
@@ -26,8 +29,8 @@ func GenerateFlags(root *cobra.Command) {
 	root.PersistentFlags().Bool("no-interactive", false, "Disallows gwcli from entering interactive mode and prints context help instead.\nRecommended for use in scripts to avoid hanging on a malformed command")
 	root.PersistentFlags().StringP("username", "u", "", "login credential")
 	root.PersistentFlags().StringP("password", "p", "", "login credential")
-	root.MarkFlagsRequiredTogether("username", "password") // tie username+password together
-	root.PersistentFlags().Bool("no-color", false, "Disables colourized output")
+	root.MarkFlagsRequiredTogether("username", "password")                       // tie username+password together
+	root.PersistentFlags().Bool("no-color", false, "Disables colourized output") // TODO via lipgloss.NoColor
 }
 
 const ( // usage
@@ -66,6 +69,23 @@ func Execute() {
 	// configure Windows mouse trap
 	cobra.MousetrapHelpText = mousetrapText
 	cobra.MousetrapDisplayDuration = mousetrapDuration
+
+	// configure root's Run to launch Mother
+	rootCmd.Run = func(cmd *cobra.Command, args []string) {
+		noInteractive, err := cmd.Flags().GetBool("no-interactive")
+		if err != nil {
+			panic(err)
+		}
+		if noInteractive {
+			cmd.Help()
+			return
+		}
+		// invoke mother
+		interactive := tea.NewProgram(mother.New(rootCmd))
+		if _, err := interactive.Run(); err != nil {
+			panic(err)
+		}
+	}
 
 	err := rootCmd.Execute()
 	if err != nil {
