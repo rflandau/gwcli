@@ -3,13 +3,14 @@ package treeutils
 import (
 	"fmt"
 
+	"github.com/charmbracelet/lipgloss"
 	"github.com/spf13/cobra"
 )
 
 /** Creates and returns a Nav (tree node) that can now be assigned subcommands*/
 func GenerateNav(use, short, long string, aliases []string, subCmds ...*cobra.Command) *cobra.Command {
 	cmd := &cobra.Command{
-		Use:     use,
+		Use:     NavStyle.Render(use),
 		Short:   short,
 		Long:    long,
 		Aliases: aliases,
@@ -46,6 +47,15 @@ var NavRun = func(cmd *cobra.Command, args []string) {
 		fmt.Printf("Initializing Mother... (NYI)\n") // TODO initialize Mother here
 	}
 }
+
+//#endregion
+
+//#region lipgloss styling
+
+var (
+	ActionStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("#FFAAAA")).Italic(true)
+	NavStyle    = lipgloss.NewStyle().Foreground(lipgloss.Color("#AAAAFF"))
+)
 
 //#endregion
 
