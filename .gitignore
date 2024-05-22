@@ -20,4 +20,9 @@
 # Go workspace file
 go.work
 
+# binary and logging
 gwcli
+*.log
+
+# delve files
+__debug_*
