@@ -22,7 +22,12 @@ func EnforceLogin(cmd *cobra.Command, args []string) error {
 
 /** Generate Flags populates all root-relevant flags (ergo global and root-local flags) */
 func GenerateFlags(root *cobra.Command) {
+	// global flags
 	root.PersistentFlags().Bool("no-interactive", false, "Disallows gwcli from entering interactive mode and prints context help instead.\nRecommended for use in scripts to avoid hanging on a malformed command")
+	root.PersistentFlags().StringP("username", "u", "", "login credential")
+	root.PersistentFlags().StringP("password", "p", "", "login credential")
+	root.MarkFlagsRequiredTogether("username", "password") // tie username+password together
+	root.PersistentFlags().Bool("no-color", false, "Disables colourized output")
 }
 
 const ( // usage
@@ -48,6 +53,7 @@ const ( // mousetrap
 func Execute() {
 	rootCmd := treeutils.GenerateNav(use, short, long, []string{}, systems.GenerateTree(), search.GenerateTree(), tools.GenerateTree())
 	rootCmd.PersistentPreRunE = EnforceLogin
+	rootCmd.Version = "prototype"
 
 	// associate flags
 	GenerateFlags(rootCmd)
