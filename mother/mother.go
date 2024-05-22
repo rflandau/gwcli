@@ -275,11 +275,32 @@ func quit(*Mother) tea.Cmd {
 
 /* Returns a tea.Println Cmd containing the context help for the given command */
 func TeaCmdContextHelp(c *cobra.Command) tea.Cmd {
+	// generate a list of all available Navs and Actions with their associated shorts
+	var s strings.Builder
+
+	children := c.Commands()
+	for _, child := range children {
+		// handle special commands
+		if child.Name() == "help" || child.Name() == "completion" {
+			continue
+		}
+		var name string
+		if isAction(child) {
+			name = treeutils.ActionStyle.Render(child.Name())
+		} else {
+			name = treeutils.NavStyle.Render(child.Name())
+		}
+		s.WriteString(fmt.Sprintf("%s - %s\n", name, child.Short))
+	}
+
+	/* Old form using Cobra's standard help template
 	// redirect output so we can pass it to bubble tea
 	var s strings.Builder
 	c.SetOut(&s) // TODO do this on mother's invocation?
 	c.Usage()    // TODO do not print flags?
+	*/
 
+	// TODO store the string within mother somewhere so we can lazy-compile all strings
 	return tea.Println(s.String())
 }
 
