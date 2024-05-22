@@ -48,7 +48,7 @@ type Mother struct {
 }
 
 // internal new command to allow tests to pass in a renderer
-func new(root *nav, r *lipgloss.Renderer) Mother {
+func new(root *nav, _ *lipgloss.Renderer) Mother {
 	var err error
 	m := Mother{root: root, pwd: root, mode: prompting}
 
@@ -66,13 +66,13 @@ func new(root *nav, r *lipgloss.Renderer) Mother {
 	m.ti.Width = tiWidth
 
 	// stylesheet
-	if r != nil { // given renderer
+	/*if r != nil { // given renderer
 		// TODO
-	} else { // auto-selected renderer
-		m.style.nav = treeutils.NavStyle
-		m.style.action = treeutils.ActionStyle
-		m.style.error = lipgloss.NewStyle().Foreground(lipgloss.Color("#CC444")).Bold(true)
-	}
+	} else { */ // auto-selected renderer
+	m.style.nav = treeutils.NavStyle
+	m.style.action = treeutils.ActionStyle
+	m.style.error = lipgloss.NewStyle().Foreground(lipgloss.Color("#CC444")).Bold(true)
+	//}
 
 	return m
 }
