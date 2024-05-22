@@ -57,7 +57,7 @@ var NavRun = func(cmd *cobra.Command, args []string) {
  * it is intelligent enough to automatically adjust or disable color depending on the given environment.
  */
 var (
-	ActionStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("#FFAAAA")).Italic(true)
+	ActionStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("#FFAAAA")) //.Italic(true)
 	NavStyle    = lipgloss.NewStyle().Foreground(lipgloss.Color("#AAAAFF"))
 )
 
