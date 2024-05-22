@@ -36,4 +36,13 @@ func TestFieldsPopulated(t *testing.T) {
 	if m.style.error.Render("text") != lipgloss.NewStyle().Render("text") {
 		t.Error("error style is bare")
 	}
+
+	// Cannot compare against a bare textinput.Model to check that New called textinput.Input
+	if !m.ti.Focused() {
+		t.Error("text input prompt is not focused")
+	}
+
+	if m.log == nil {
+		t.Error("logger not initialized")
+	}
 }
