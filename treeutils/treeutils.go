@@ -10,7 +10,7 @@ import (
 /** Creates and returns a Nav (tree node) that can now be assigned subcommands*/
 func GenerateNav(use, short, long string, aliases []string, subCmds ...*cobra.Command) *cobra.Command {
 	cmd := &cobra.Command{
-		Use:     NavStyle.Render(use),
+		Use:     use,
 		Short:   short,
 		Long:    long,
 		Aliases: aliases,
@@ -52,6 +52,10 @@ var NavRun = func(cmd *cobra.Command, args []string) {
 
 //#region lipgloss styling
 
+/**
+ * NOTE: Per the Lipgloss documentation (https://github.com/charmbracelet/lipgloss?tab=readme-ov-file#faq),
+ * it is intelligent enough to automatically adjust or disable color depending on the given environment.
+ */
 var (
 	ActionStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("#FFAAAA")).Italic(true)
 	NavStyle    = lipgloss.NewStyle().Foreground(lipgloss.Color("#AAAAFF"))

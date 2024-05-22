@@ -11,7 +11,7 @@ func NewKitsCmd() *cobra.Command {
 	//u := lipgloss.NewStyle().Foreground(lipgloss.Color("#FFAAAA")).Italic(true)
 
 	cmd := &cobra.Command{
-		Use:     treeutils.ActionStyle.Render("kits"),
+		Use:     "kits",
 		Short:   "List and manipulate kits",
 		Long:    "...",
 		Aliases: []string{"kit"},
