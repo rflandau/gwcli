@@ -165,7 +165,7 @@ func (m Mother) View() string {
 	*/
 
 	s := strings.Builder{}
-	s.WriteString(CommandPath(&m) + m.ti.View()) // prompt
+	s.WriteString(m.pwd.CommandPath() + m.ti.View()) // prompt
 	if m.ti.Err != nil {
 		// write out previous error and clear it
 		s.WriteString("\n")
@@ -256,7 +256,7 @@ func ContextHelp(m *Mother) tea.Cmd {
 
 /* Returns a composition resembling the full prompt. */
 func (m *Mother) promptString() string {
-	return fmt.Sprintf("%s> %s", CommandPath(m), m.ti.Value())
+	return fmt.Sprintf("%s> %s", m.pwd.CommandPath(), m.ti.Value())
 }
 
 //#endregion
@@ -300,10 +300,6 @@ func isAction(cmd *cobra.Command) bool {
 	default: // sanity check
 		panic("cmd '" + cmd.Name() + "' is neither a nav nor an action!")
 	}
-}
-
-func CommandPath(m *Mother) string {
-	return m.style.nav.Render(m.pwd.CommandPath())
 }
 
 //#endregion
