@@ -47,8 +47,8 @@ type Mother struct {
 	log *log.Logger
 }
 
-/* Generate a Mother instance to operate on the Cobra command tree */
-func New(root *nav, r *lipgloss.Renderer) Mother {
+// internal new command to allow tests to pass in a renderer
+func new(root *nav, r *lipgloss.Renderer) Mother {
 	var err error
 	m := Mother{root: root, pwd: root, mode: prompting}
 
@@ -75,6 +75,11 @@ func New(root *nav, r *lipgloss.Renderer) Mother {
 	}
 
 	return m
+}
+
+/* Generate a Mother instance to operate on the Cobra command tree */
+func New(root *nav) Mother {
+	return new(root, nil)
 }
 
 //#region tea.Model implementation

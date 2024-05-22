@@ -16,7 +16,7 @@ func TestFieldsPopulated(t *testing.T) {
 	r := lipgloss.NewRenderer(io.Discard)
 	r.SetColorProfile(termenv.TrueColor)
 	r.SetHasDarkBackground(true)
-	m := New(&cobra.Command{}, r)
+	m := new(&cobra.Command{}, r)
 
 	if m.root == nil {
 		t.Error("root is nil")
