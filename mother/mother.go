@@ -243,7 +243,7 @@ func navParent(m *Mother) tea.Cmd {
 	}
 	// otherwise, step upward
 	m.pwd = m.pwd.Parent()
-	return TeaCmdPath(m.pwd)
+	return nil
 }
 
 func ContextHelp(m *Mother) tea.Cmd {
