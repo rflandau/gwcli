@@ -10,6 +10,7 @@ import (
 	"gwcli/tree/tools"
 	"gwcli/treeutils"
 	"os"
+	"time"
 
 	"github.com/spf13/cobra"
 )
@@ -24,7 +25,7 @@ func GenerateFlags(root *cobra.Command) {
 	root.PersistentFlags().Bool("no-interactive", false, "Disallows gwcli from entering interactive mode and prints context help instead.\nRecommended for use in scripts to avoid hanging on a malformed command")
 }
 
-var (
+const ( // usage
 	use   string = "gwcli"
 	short string = "Gravwell CLI Client"
 	long  string = "gwcli is a CLI client for interacting with your Gravwell instance directly from your terminal.\n" +
@@ -32,7 +33,18 @@ var (
 		"To invoke the TUI, simply call `gwcli`."
 )
 
-// Execute adds all child commands to the root command and sets flags appropriately.
+const ( // mousetrap
+	mousetrapText string = "This is a command line tool.\n" +
+		"You need to open cmd.exe and run it from there.\n" +
+		"Press Return to close.\n"
+	mousetrapDuration time.Duration = (0 * time.Second)
+)
+
+/**
+ * Execute adds all child commands to the root command, sets flags
+ * appropriately, and launches the program according to the given parameters
+ * (via cobra.Command.Execute()).
+ */
 func Execute() {
 	rootCmd := treeutils.GenerateNav(use, short, long, []string{}, systems.GenerateTree(), search.GenerateTree(), tools.GenerateTree())
 	rootCmd.PersistentPreRunE = EnforceLogin
@@ -46,10 +58,8 @@ func Execute() {
 	}
 
 	// configure Windows mouse trap
-	cobra.MousetrapHelpText = "This is a command line tool.\n" +
-		"You need to open cmd.exe and run it from there.\n" +
-		"Press Return to close.\n"
-	cobra.MousetrapDisplayDuration = 0
+	cobra.MousetrapHelpText = mousetrapText
+	cobra.MousetrapDisplayDuration = mousetrapDuration
 
 	err := rootCmd.Execute()
 	if err != nil {
