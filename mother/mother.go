@@ -16,7 +16,8 @@ import (
 type nav = cobra.Command
 
 const (
-	tiWidth int = 40
+	tiWidth int    = 40
+	indent  string = "    "
 )
 
 // keys kill the program in Update no matter its other states
@@ -290,7 +291,7 @@ func TeaCmdContextHelp(c *cobra.Command) tea.Cmd {
 		} else {
 			name = treeutils.NavStyle.Render(child.Name())
 		}
-		s.WriteString(fmt.Sprintf("%s - %s\n", name, child.Short))
+		s.WriteString(fmt.Sprintf("%s%s - %s\n", indent, name, child.Short))
 	}
 
 	/* Old form using Cobra's standard help template
@@ -301,7 +302,8 @@ func TeaCmdContextHelp(c *cobra.Command) tea.Cmd {
 	*/
 
 	// TODO store the string within mother somewhere so we can lazy-compile all strings
-	return tea.Println(s.String())
+	// chomp last newline and return
+	return tea.Println(strings.TrimSuffix(s.String(), "\n"))
 }
 
 /**
