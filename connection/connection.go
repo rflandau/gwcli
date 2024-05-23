@@ -24,9 +24,7 @@ func Initialize(conn string) (err error) { // TODO accept more arguments to fill
 		return err
 	}
 	opts := grav.Opts{Server: conn, UseHttps: false, InsecureNoEnforceCerts: true, ObjLogger: l}
-	grav.NewOpts(opts)
-
-	Client, err = grav.New(conn, false, false)
+	Client, err = grav.NewOpts(opts)
 	if err != nil {
 		return err
 	}
