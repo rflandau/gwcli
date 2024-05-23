@@ -1,6 +1,8 @@
 /**
  * Root node of the command tree and the true "main".
  * Initializes itself and `Executes()`, triggering Cobra to assemble itself.
+ * All invocations of the program operate via root, whether or not it hands off
+ * control to Mother.
  */
 package tree
 

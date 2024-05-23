@@ -1,3 +1,9 @@
+/**
+ * Mother manages the interactive body of gwcli.
+ * It is the local implementation of tea.Model and drives interactive tree
+ * navigation as well as managing of child processing (Actions).
+ */
+
 package mother
 
 import (

@@ -1,3 +1,7 @@
+/**
+ * Treeutils provides global utility functions to enforce consistency and
+ * facillitate shared references across the tree.
+ */
 package treeutils
 
 import (
