@@ -8,6 +8,7 @@ package mother
 
 import (
 	"fmt"
+	"gwcli/connection"
 	"gwcli/treeutils"
 	"strings"
 
@@ -109,7 +110,7 @@ func (m Mother) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		for _, v := range killKeys {
 			if keyMsg.Type == v {
 				m.mode = quitting
-				return m, tea.Batch(tea.Quit, tea.Println("Bye"))
+				return m, tea.Batch(tea.Quit, connection.End, tea.Println("Bye"))
 			}
 		}
 	}

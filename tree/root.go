@@ -7,6 +7,8 @@
 package tree
 
 import (
+	"fmt"
+	"gwcli/connection"
 	"gwcli/mother"
 	"gwcli/tree/search"
 	"gwcli/tree/systems"
@@ -20,9 +22,49 @@ import (
 	"github.com/spf13/cobra"
 )
 
+/**
+ * Logs the client into
+ */
 func EnforceLogin(cmd *cobra.Command, args []string) error {
-	// TODO check for token or supply user with login model
+	if connection.Client == nil { // if we just started, initialize connection
+		server, err := cmd.Flags().GetString("server")
+		if err != nil {
+			return err
+		}
+		if err = connection.Initialize(server); err != nil {
+			return err
+		}
+	}
+
+	// if logged in, we are done
+	if connection.Client.LoggedIn() {
+		return nil
+	}
+
+	// attempt to login
+	u, err := cmd.Flags().GetString("username")
+	if err != nil {
+		return err
+	}
+	p, err := cmd.Flags().GetString("password")
+	if err != nil {
+		return err
+	}
+
+	// prompt for username and/or password
+	// TODO
+	if u == "" || p == "" {
+		return fmt.Errorf("username (-u) and password (-p) required")
+	}
+
+	if err = connection.Login(u, p); err != nil {
+		return err
+	}
+
+	fmt.Println("Logged in successfully")
+	// TODO check for token or supply user with login model if interactivity available
 	return nil
+
 }
 
 /** Generate Flags populates all root-relevant flags (ergo global and root-local flags) */
@@ -33,6 +75,7 @@ func GenerateFlags(root *cobra.Command) {
 	root.PersistentFlags().StringP("password", "p", "", "login credential")
 	root.MarkFlagsRequiredTogether("username", "password")                       // tie username+password together
 	root.PersistentFlags().Bool("no-color", false, "Disables colourized output") // TODO via lipgloss.NoColor
+	root.PersistentFlags().StringP("server", "s", "localhost:80", "<host>:<port>\nDefault: 'localhost:80'")
 }
 
 const ( // usage
