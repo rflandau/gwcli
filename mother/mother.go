@@ -174,6 +174,7 @@ func (m Mother) View() string {
 
 	s := strings.Builder{}
 	s.WriteString(CommandPath(&m) + m.ti.View()) // prompt
+	// TODO currently superfluous
 	if m.ti.Err != nil {
 		// write out previous error and clear it
 		s.WriteString("\n")
@@ -224,8 +225,11 @@ func processInput(m *Mother) tea.Cmd {
 	// check if we found a match
 	if invocation == nil {
 		// user request unhandlable
-		//m.inputErr = fmt.Errorf("%s has no child '%s'", m.PWD.Name(), given)
-		return tea.Println(priorL)
+
+		return tea.Sequence(
+			tea.Println(priorL),
+			tea.Println(m.style.error.Render(fmt.Sprintf("unknown command '%s'. Press F1 or type 'help' for relevant commands.", given))),
+		)
 	}
 
 	// split on action or nav
