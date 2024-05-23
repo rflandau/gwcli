@@ -23,6 +23,7 @@ go.work
 # binary and logging
 gwcli
 *.log
+rest_client.json
 
 # delve files
 __debug_*
