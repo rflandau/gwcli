@@ -37,8 +37,12 @@ func Login(user, pass string) (err error) {
 
 /* Logs out the current user and closes the connection to the server. */
 func End() tea.Msg {
-	Client.Logout()
-	Client.Close()
+	var errString string
+	errString = Client.Logout().Error()
+	if errString != "" {
+		errString += "|"
+	}
+	errString += Client.Close().Error()
 
-	return nil
+	return errString
 }
