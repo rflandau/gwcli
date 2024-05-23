@@ -1,5 +1,7 @@
 # gwcli
 
+A redesigned Gravwell client for terminal, supporting both TUI-served interactivity and non-interactive script calls. 
+
 # Design
 
 ## Terminology
@@ -14,6 +16,19 @@ Tree leaves (commands that can be invoked interactively or from a script), such 
 
 Tree nodes, commands that require further input, such as `admin`, are *Navs*.
 
+## "Global" Variables
+
+A development features exist as global singletons driven by static subroutines operating on a single, underlying variable instance.
+
+- A single, shared connection to the Gravwell instance, via the Client library, is serviced by the connection package in `connection.go`.
+
+- (NYI) Logging is serviced by the logging package in `logging.go`. It is a shared instance of the gravwell ingest logger. 
+
+### Why?
+
+Because the program must be usable from any number of different entry-points and scenarios, it does not have a central "app" struct or similar for hosting widely-shared resources. Cobra and Mother need access to similar resources, without being able to assume who owns or has utilized what.
+
+Similarly, while there are no current plans to implement threading, a singleton is trivial to enforce locks on, especially in software with flexibility in coarseness of locking. 
 
 ## Cobra/Bubble Tea Interop
 
@@ -37,7 +52,7 @@ flowchart
     mother ==*Action==> ActionMap ==*Action's<br>Update()/View()==> mother
 ```
 
-### Why This Method?
+### Why?
 
 We want to rely on Cobra as much as possible; it has all the navigational features we need and the further we stray from it, the less we benefit from its auto-generation capabilities.
 
