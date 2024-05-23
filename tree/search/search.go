@@ -1,7 +1,7 @@
 package search
 
 import (
-	"gwcli/tree/search/actions"
+	"gwcli/tree/search/kits"
 	"gwcli/treeutils"
 
 	"github.com/spf13/cobra"
@@ -15,5 +15,5 @@ var (
 )
 
 func GenerateTree() *cobra.Command {
-	return treeutils.GenerateNav(use, short, long, aliases, actions.NewKitsCmd())
+	return treeutils.GenerateNav(use, short, long, aliases, kits.NewKitsCmd())
 }
