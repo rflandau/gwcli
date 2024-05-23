@@ -65,7 +65,9 @@ func new(root *nav, _ *lipgloss.Renderer) Mother {
 	if err != nil {
 		panic(err)
 	}
-	m.log.SetLevel(log.DEBUG) // TODO make the logger terse by default
+	if err = m.log.SetLevel(log.DEBUG); err != nil { // TODO make the logger terse by default
+		panic(err)
+	}
 
 	// text input
 	m.ti = textinput.New()
