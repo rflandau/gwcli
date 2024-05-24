@@ -1,4 +1,4 @@
-package macrosactions
+package list
 
 import (
 	"fmt"
@@ -13,17 +13,11 @@ import (
 	"github.com/spf13/cobra"
 )
 
-var (
-	use   string = "list"
-	short string = "list your macros"
-	long  string = "list prints out all macros associated to your user.\n" +
-		"(NYI) Use the x flag to get all macros system-wide or the y <user>" +
-		"parameter to all macros associated to a <user> (if you are an admin)"
-	aliases []string = []string{}
-)
-
-func GenerateAction() action.Pair {
-	return treeutils.GenerateAction(use, short, long, aliases, run, List)
+func GenerateListAction() action.Pair {
+	return treeutils.GenerateAction("list",
+		"list your macros", "list prints out all macros associated to your user.\n"+
+			"(NYI) Use the x flag to get all macros system-wide or the y <user>"+
+			"parameter to all macros associated to a <user> (if you are an admin)", []string{}, run, List)
 }
 
 /* cobra run command for non-interactive usage */
@@ -82,3 +76,5 @@ func (k *list) Reset() error {
 	k.done = false
 	return nil
 }
+
+//#endregion
