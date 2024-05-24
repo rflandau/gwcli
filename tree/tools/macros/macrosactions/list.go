@@ -3,27 +3,25 @@ package macrosactions
 import (
 	"fmt"
 	"gwcli/action"
-	"gwcli/group"
+	"gwcli/treeutils"
 
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/spf13/cobra"
 )
 
+var (
+	use     string   = "list"
+	short   string   = "List all macros"
+	long    string   = "..."
+	aliases []string = []string{}
+)
+
 func GenerateAction() action.Pair {
-	cmd := &cobra.Command{
-		Use:     "list",
-		Short:   "List all installed and staged kits",
-		Long:    "...",
-		Aliases: []string{},
-		GroupID: group.ActionID,
-		//PreRun: ,
-		Run: func(_ *cobra.Command, _ []string) {
-			fmt.Println(listMacros())
-		},
-	}
+	return treeutils.GenerateAction(use, short, long, aliases, run, List)
+}
 
-	return action.Pair{cmd, List}
-
+func run(_ *cobra.Command, _ []string) {
+	fmt.Println(listMacros())
 }
 
 func listMacros() string {

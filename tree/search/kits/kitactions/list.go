@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"gwcli/action"
 	"gwcli/connection"
-	"gwcli/group"
+	"gwcli/treeutils"
 	"strings"
 
 	tea "github.com/charmbracelet/bubbletea"
@@ -13,6 +13,13 @@ import (
 	"github.com/gravwell/gravwell/v3/client/types"
 
 	"github.com/spf13/cobra"
+)
+
+var (
+	use     string   = "list"
+	short   string   = "List all installed and staged kits"
+	long    string   = "..."
+	aliases []string = []string{}
 )
 
 var (
@@ -26,19 +33,11 @@ var (
 var columnsFormat = "%v|%v|%v|%v"
 
 func NewListCmd() action.Pair {
-	cmd := &cobra.Command{
-		Use:     "list",
-		Short:   "List all installed and staged kits",
-		Long:    "...",
-		Aliases: []string{},
-		GroupID: group.ActionID,
-		//PreRun: ,
-		Run: func(_ *cobra.Command, _ []string) {
-			fmt.Println(listKits())
-		},
-	}
+	return treeutils.GenerateAction(use, short, long, aliases, run, Kitlist)
+}
 
-	return action.Pair{cmd, Kitlist}
+func run(_ *cobra.Command, _ []string) {
+	fmt.Println(listKits())
 }
 
 /**

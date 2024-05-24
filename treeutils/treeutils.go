@@ -13,7 +13,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
-/** Creates and returns a Nav (tree node) that can now be assigned subcommands*/
+/* Creates and returns a Nav (tree node) that can now be assigned subcommands*/
 func GenerateNav(use, short, long string, aliases []string, navCmds []*cobra.Command, actionCmds []action.Pair) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:     use,
@@ -42,11 +42,28 @@ func GenerateNav(use, short, long string, aliases []string, navCmds []*cobra.Com
 	return cmd
 }
 
+/** Creates and returns an Action (tree leaf) that can be called directly
+ * non-interactively or via associated methods (actions.Pair) interactively
+ */
+func GenerateAction(use, short, long string, aliases []string, runFunc func(*cobra.Command, []string), act action.Model) action.Pair {
+	cmd := &cobra.Command{
+		Use:     use,
+		Short:   short,
+		Long:    long,
+		Aliases: aliases,
+		GroupID: group.ActionID,
+		//PreRun: ,
+		Run: runFunc,
+	}
+	return action.Pair{Action: cmd, Model: act}
+}
+
 //#region cobra run functions
 
 /**
  * NavRun is the Run function for all Navs (nodes).
- * It checks for the --no-interactive flag and only initializes Mother if unset.
+ * It checks for the --no-interactive flag and initializes Mother with the
+ * command as her pwd if no-interactive is unset.
  */
 var NavRun = func(cmd *cobra.Command, args []string) {
 	noInteractive, err := cmd.Flags().GetBool("no-interactive")
