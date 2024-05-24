@@ -8,6 +8,7 @@ package mother
 
 import (
 	"fmt"
+	"gwcli/actor"
 	"gwcli/connection"
 	"gwcli/treeutils"
 	"strings"
@@ -21,6 +22,7 @@ import (
 )
 
 type nav = cobra.Command
+type action = cobra.Command // actions have associated actors
 
 const (
 	tiWidth int    = 40
@@ -35,6 +37,8 @@ var builtins = map[string](func(*Mother) tea.Cmd){
 	"help": ContextHelp,
 	"quit": quit,
 	"exit": quit}
+
+var actors = map[string]actor.Actor{}
 
 /* tea.Model implementation, carrying all data required for interactive use */
 type Mother struct {
@@ -52,7 +56,11 @@ type Mother struct {
 
 	ti textinput.Model
 
-	log *log.Logger
+	log    *log.Logger
+	active struct {
+		command *action     // command user called
+		actor   actor.Actor // Elm Arch associated to command
+	}
 }
 
 // internal new command to allow tests to pass in a renderer
@@ -117,25 +125,26 @@ func (m Mother) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 	}
 
-	// manage child action if in handoff mode
-	/*if m.mode == handoff {
-		if m.activeCommand == "" { // sanity check
-			panic(fmt.Sprintf("active command (%s) and mode (%s) are inconsistent", m.activeCommand, m.mode.String()))
+	// a child is running
+	if m.mode == handoff {
+		if m.active.actor == nil || m.active.command == nil { // sanity check
+			panic(fmt.Sprintf(
+				"Mother is in handoff mode but has inconsistent actives %#v",
+				m.active))
 		}
-
-		if m.actions[m.activeCommand].Done() { // return to normal processing
-			m.log.Println("Returning from command...")
-			// ensure we are in an active command
-			if m.activeCommand == "" {
-				panic("return mode but no active command")
-			}
-			m.activeCommand = ""
+		// test for child state
+		if !m.active.actor.Done() { // child still processing
+			m.log.Debugf("Handing off Update to %s\n", m.active.command.Name())
+			return m, m.active.actor.Update(&msg)
+		} else {
+			// child has finished processing, regain control and return to normal processing
+			m.log.Debugf("Child %s done. Mother reasserting...", m.active.command.Name())
+			go m.active.actor.Reset()
 			m.mode = prompting
-		} else { // hand control to child action
-			m.log.Printf("Handing off Update control to active command %s\n", m.activeCommand)
-			return m, m.actions[m.activeCommand].Update(&msg)
+			m.active.actor = nil
+			m.active.command = nil
 		}
-	} */
+	}
 
 	// normal handling
 	switch msg := msg.(type) {
@@ -235,11 +244,20 @@ func processInput(m *Mother) tea.Cmd {
 	}
 
 	// split on action or nav
-	if isAction(invocation) {
-		// hand off control to child
-		//m.mode = handoff
-		// TODO each time a command is called, it should be instantiated fresh so old data does not garble the new call
-		//m.activeCommand = invocation.CommandPath() // TODO
+	if isAction(invocation) { // hand off control to child
+		m.mode = handoff
+
+		// look up the subroutines to load
+		var ok bool
+		m.active.actor, ok = actors[invocation.CommandPath()] // save add-on subroutines
+		if !ok {
+			m.active.actor = nil
+			return tea.Sequence(
+				tea.Println(priorL),
+				tea.Println(m.style.error.Render(fmt.Sprintf("Developer issue: no actor associated to action %s. Please submit a bug report.", given))),
+			)
+		}
+		m.active.command = invocation // save relevant command
 		return tea.Println(priorL)
 	} else { // nav
 		// navigate to child

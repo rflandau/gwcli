@@ -2,10 +2,12 @@ package kitactions
 
 import (
 	"fmt"
+	"gwcli/actor"
 	"gwcli/connection"
 	"gwcli/treeutils"
 	"strings"
 
+	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/charmbracelet/lipgloss/table"
 	"github.com/gravwell/gravwell/v3/client/types"
@@ -31,36 +33,9 @@ func NewListCmd() *cobra.Command {
 		Aliases: []string{},
 		GroupID: treeutils.ActionID,
 		//PreRun: ,
-		Run: func(cmd *cobra.Command, args []string) {
-			// style table
-			tbl := table.New().
-				Border(lipgloss.NormalBorder()).
-				BorderStyle(lipgloss.NewStyle().Foreground(lipgloss.Color("99"))).
-				StyleFunc(func(row, col int) lipgloss.Style {
-					switch {
-					case row == 0:
-						return headerStyle
-					case row%2 == 0:
-						return EvenRowStyle
-					default:
-						return OddRowStyle
-					}
-				}).
-				Headers(strings.Split(fmt.Sprintf(columnsFormat, "UID", "NAME", "GLOBAL", "VERSION"), "|")...).
-				Border(lipgloss.DoubleBorder()).
-				BorderRow(false) //.Width(80)
-
-			kits, err := connection.Client.ListKits()
-			if err != nil {
-				panic(err)
-			}
-			for _, k := range kits {
-				tbl.Row(rowKit(k)...)
-			}
-
-			fmt.Println(tbl)
-		},
+		Run: listKits,
 	}
+
 	return cmd
 }
 
@@ -72,4 +47,60 @@ func rowKit(kit types.IdKitState) []string {
 	rowStr := fmt.Sprintf(columnsFormat, kit.UID, kit.Name, kit.Global, kit.Version)
 	return strings.Split(rowStr, "|")
 
+}
+
+func listKits(_ *cobra.Command, _ []string) {
+	// style table
+	tbl := table.New().
+		Border(lipgloss.NormalBorder()).
+		BorderStyle(lipgloss.NewStyle().Foreground(lipgloss.Color("99"))).
+		StyleFunc(func(row, col int) lipgloss.Style {
+			switch {
+			case row == 0:
+				return headerStyle
+			case row%2 == 0:
+				return EvenRowStyle
+			default:
+				return OddRowStyle
+			}
+		}).
+		Headers(strings.Split(fmt.Sprintf(columnsFormat, "UID", "NAME", "GLOBAL", "VERSION"), "|")...).
+		Border(lipgloss.DoubleBorder()).
+		BorderRow(false) //.Width(80)
+
+	kits, err := connection.Client.ListKits()
+	if err != nil {
+		panic(err)
+	}
+	for _, k := range kits {
+		tbl.Row(rowKit(k)...)
+	}
+
+	fmt.Println(tbl)
+}
+
+//#region actor implementation
+
+type kitlist struct {
+	done bool
+}
+
+var Kitlist actor.Actor = &kitlist{done: false}
+
+func (k *kitlist) Update(msg tea.Msg) tea.Cmd {
+	k.done = true
+	return nil
+}
+
+func (k *kitlist) View() string {
+	return ""
+}
+
+func (k *kitlist) Done() bool {
+	return true
+}
+
+func (k *kitlist) Reset() error {
+	k.done = false
+	return nil
 }
