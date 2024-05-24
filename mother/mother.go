@@ -38,7 +38,7 @@ var builtins = map[string](func(*Mother) tea.Cmd){
 	"quit": quit,
 	"exit": quit}
 
-var actors = map[string]actor.Actor{}
+var actors = map[string]actor.Model{}
 
 /* tea.Model implementation, carrying all data required for interactive use */
 type Mother struct {
@@ -59,7 +59,7 @@ type Mother struct {
 	log    *log.Logger
 	active struct {
 		command *action     // command user called
-		actor   actor.Actor // Elm Arch associated to command
+		actor   actor.Model // Elm Arch associated to command
 	}
 }
 

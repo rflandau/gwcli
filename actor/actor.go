@@ -14,7 +14,7 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 )
 
-type Actor interface {
+type Model interface {
 	Update(msg tea.Msg) tea.Cmd
 	View() string
 	Done() bool
