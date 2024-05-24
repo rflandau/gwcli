@@ -188,7 +188,7 @@ func (m Mother) View() string {
  */
 func processInput(m *Mother) tea.Cmd {
 	// TODO trim inputs
-	var given string = m.ti.Value()
+	var given string = strings.TrimSpace(m.ti.Value())
 	clilog.Writer.Debugf("Processing input '%s'\n", given)
 	//m.ti.Validate(given) // TODO add navigation text validation
 	if m.ti.Err != nil {
