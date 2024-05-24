@@ -18,11 +18,13 @@ Tree nodes, commands that require further input, such as `admin`, are *Navs*.
 
 ## "Global" Variables
 
-A development features exist as global singletons driven by static subroutines operating on a single, underlying variable instance.
+A number of development features exist as global singletons driven by static subroutines operating on a single, underlying variable instance.
+
+- `action.go` covers the action map for adding interactive models to Actions.
 
 - A single, shared connection to the Gravwell instance, via the Client library, is serviced by the connection package in `connection.go`.
 
-- (NYI) Logging is serviced by the logging package in `logging.go`. It is a shared instance of the gravwell ingest logger. 
+- `clilog.go` maintains a shared logger for developer logs. It is a shared instance of the gravwell ingest logger.
 
 ### Why?
 
