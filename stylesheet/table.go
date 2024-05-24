@@ -5,6 +5,11 @@ import (
 	"github.com/charmbracelet/lipgloss/table"
 )
 
+const ( // colors
+	strongMagenta    string = "CC22CC"
+	veryLightMagenta string = "FF77FF"
+)
+
 var (
 	baseRowStyle = lipgloss.NewStyle().Padding(0, 1).Width(30)
 
@@ -22,9 +27,9 @@ var (
 			AlignHorizontal(lipgloss.Center).
 			AlignVertical(lipgloss.Center),
 		evenRowStyle: baseRowStyle.
-			Foreground(lipgloss.Color("CC22CC")),
+			Foreground(lipgloss.Color(strongMagenta)),
 		oddRowStyle: baseRowStyle.
-			Foreground(lipgloss.Color("FF77FF"))}
+			Foreground(lipgloss.Color(veryLightMagenta))}
 )
 
 func Table(header []string, rows [][]string) string {
