@@ -1,6 +1,7 @@
 package tools
 
 import (
+	"gwcli/tree/tools/macros"
 	"gwcli/treeutils"
 
 	"github.com/spf13/cobra"
@@ -14,5 +15,5 @@ var (
 )
 
 func GenerateTree() *cobra.Command {
-	return treeutils.GenerateNav(use, short, long, aliases, nil, nil)
+	return treeutils.GenerateNav(use, short, long, aliases, []*cobra.Command{macros.GenerateNav()}, nil)
 }
