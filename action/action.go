@@ -1,10 +1,14 @@
 /**
- * Actors are child-Actions of Mother that implement the Model-Update-View
- * architecture.
- * Each Actor is implemented and *instantiated* in its own package, then
- * associated to an cobra.Command in the command tree.
- * When that cobra.Command is invoked interactively, Mother calls up the Actor
- * to supplant her own Update and View subroutines until the Actor is .Done().
+ * The action package tests and maintains the action map, which bolts
+ * subroutines onto Actions (leaves) in the cobra command tree so Mother can
+ * call them interactively.
+ *
+ * Each Action's Model is implemented and *instantiated* in its own package
+ * (ex: tree/tools/macros/macrosactions) and added to the map as part of the
+ * tree's assembly.
+ * When that cobra.Command is invoked interactively, Mother uses the action map
+ * to find the bolted-on subroutines to supplant her own Update and View
+ * subroutines until the action is `Done()`.
  * Reset() is used to clear the done status and any other no-longer-relevant
  * data so the action can be invoked again cleanly.
  */
@@ -41,6 +45,8 @@ type Pair struct {
 	Model  Model
 }
 
+//#region action map
+
 /* Maps key(command) -> Model (the bolted-on Elm Arch subroutines) */
 var actions = map[string]Model{}
 
@@ -60,9 +66,14 @@ func AddModel(c *cobra.Command, m Model) {
 
 /* Generates a string key from a command. Extracted for consistency */
 func key(c *cobra.Command) string {
-	return c.Parent().Name() + "/" + c.Name()
+	var parentName string = "~"
+	if c.Parent() != nil {
+		parentName = c.Parent().Name()
+	}
+	return parentName + "/" + c.Name()
 }
 
+//#endregion
 /**
  * Given a cobra.Command, returns whether it is an Action (and thus can supplant
  * Mother's Elm cycle) or a Nav.
