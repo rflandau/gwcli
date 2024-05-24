@@ -1,3 +1,4 @@
+/* The group pkg enforces consistent IDs and Titles by centralizing them */
 package group
 
 import "github.com/spf13/cobra"
