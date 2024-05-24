@@ -1,6 +1,7 @@
 package kits
 
 import (
+	"gwcli/action"
 	"gwcli/tree/search/kits/kitactions"
 	"gwcli/treeutils"
 
@@ -14,6 +15,7 @@ var (
 	aliases []string = []string{"kit"}
 )
 
-func NewKitsCmd() *cobra.Command {
-	return treeutils.GenerateNav(use, short, long, aliases, kitactions.NewListCmd())
+func NewKitsNav() *cobra.Command {
+	// no sub navs
+	return treeutils.GenerateNav(use, short, long, aliases, []*cobra.Command{}, []action.Pair{kitactions.NewListCmd()})
 }

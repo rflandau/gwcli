@@ -76,6 +76,7 @@ func GenerateFlags(root *cobra.Command) {
 	root.MarkFlagsRequiredTogether("username", "password")                       // tie username+password together
 	root.PersistentFlags().Bool("no-color", false, "Disables colourized output") // TODO via lipgloss.NoColor
 	root.PersistentFlags().StringP("server", "s", "localhost:80", "<host>:<port>\nDefault: 'localhost:80'")
+	// JSON global flag output
 }
 
 const ( // usage
@@ -99,7 +100,7 @@ const ( // mousetrap
  * (via cobra.Command.Execute()).
  */
 func Execute() {
-	rootCmd := treeutils.GenerateNav(use, short, long, []string{}, systems.GenerateTree(), search.GenerateTree(), tools.GenerateTree())
+	rootCmd := treeutils.GenerateNav(use, short, long, []string{}, []*cobra.Command{systems.NewSystemsNav(), search.NewSearchCmd(), tools.GenerateTree()}, nil)
 	rootCmd.PersistentPreRunE = EnforceLogin
 	rootCmd.Version = "prototype"
 

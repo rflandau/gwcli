@@ -14,5 +14,5 @@ var (
 )
 
 func GenerateTree() *cobra.Command {
-	return treeutils.GenerateNav(use, short, long, aliases)
+	return treeutils.GenerateNav(use, short, long, aliases, nil, nil)
 }

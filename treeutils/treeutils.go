@@ -6,31 +6,39 @@ package treeutils
 
 import (
 	"fmt"
+	"gwcli/action"
+	"gwcli/group"
 
 	"github.com/charmbracelet/lipgloss"
 	"github.com/spf13/cobra"
 )
 
 /** Creates and returns a Nav (tree node) that can now be assigned subcommands*/
-func GenerateNav(use, short, long string, aliases []string, subCmds ...*cobra.Command) *cobra.Command {
+func GenerateNav(use, short, long string, aliases []string, navCmds []*cobra.Command, actionCmds []action.Pair) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:     use,
 		Short:   short,
 		Long:    long,
 		Aliases: aliases,
-		GroupID: NavID,
+		GroupID: group.NavID,
 		//PreRun: ,
 		Run: NavRun,
 	}
 
 	// associate groups
-	AddNavGroup(cmd)
-	AddActionGroup(cmd)
+	group.AddNavGroup(cmd)
+	group.AddActionGroup(cmd)
 
 	// associate subcommands
-	for _, sub := range subCmds {
+	for _, sub := range navCmds {
 		cmd.AddCommand(sub)
 	}
+	for _, sub := range actionCmds {
+		cmd.AddCommand(sub.Action)
+		// now that the commands have a parent, add their models to map
+		action.AddModel(sub.Action, sub.Model)
+	}
+
 	return cmd
 }
 
@@ -64,23 +72,5 @@ var (
 	ActionStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("#FFAAAA")) //.Italic(true)
 	NavStyle    = lipgloss.NewStyle().Foreground(lipgloss.Color("#AAAAFF"))
 )
-
-//#endregion
-
-//#region groups
-
-type GroupID = string
-
-const (
-	ActionID GroupID = "action"
-	NavID    GroupID = "nav"
-)
-
-func AddNavGroup(cmd *cobra.Command) {
-	cmd.AddGroup(&cobra.Group{ID: NavID, Title: "Navigation"})
-}
-func AddActionGroup(cmd *cobra.Command) {
-	cmd.AddGroup(&cobra.Group{ID: ActionID, Title: "Actions"})
-}
 
 //#endregion

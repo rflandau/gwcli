@@ -8,7 +8,7 @@ package mother
 
 import (
 	"fmt"
-	"gwcli/actor"
+	"gwcli/action"
 	"gwcli/connection"
 	"gwcli/treeutils"
 	"strings"
@@ -21,8 +21,8 @@ import (
 	"github.com/spf13/cobra"
 )
 
-type nav = cobra.Command
-type action = cobra.Command // actions have associated actors
+type navCmd = cobra.Command
+type actionCmd = cobra.Command // actions have associated actors
 
 const (
 	tiWidth int    = 40
@@ -38,15 +38,13 @@ var builtins = map[string](func(*Mother) tea.Cmd){
 	"quit": quit,
 	"exit": quit}
 
-var actors = map[string]actor.Model{}
-
 /* tea.Model implementation, carrying all data required for interactive use */
 type Mother struct {
 	mode mode
 
 	// tree references
-	root *nav
-	pwd  *nav
+	root *navCmd
+	pwd  *navCmd
 
 	style struct {
 		nav    lipgloss.Style
@@ -58,13 +56,13 @@ type Mother struct {
 
 	log    *log.Logger
 	active struct {
-		command *action     // command user called
-		actor   actor.Model // Elm Arch associated to command
+		command *actionCmd   // command user called
+		model   action.Model // Elm Arch associated to command
 	}
 }
 
 // internal new command to allow tests to pass in a renderer
-func new(root *nav, _ *lipgloss.Renderer) Mother {
+func new(root *navCmd, _ *lipgloss.Renderer) Mother {
 	var err error
 	m := Mother{root: root, pwd: root, mode: prompting}
 
@@ -96,7 +94,7 @@ func new(root *nav, _ *lipgloss.Renderer) Mother {
 }
 
 /* Generate a Mother instance to operate on the Cobra command tree */
-func New(root *nav) Mother {
+func New(root *navCmd) Mother {
 	return new(root, nil)
 }
 
@@ -127,21 +125,21 @@ func (m Mother) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	// a child is running
 	if m.mode == handoff {
-		if m.active.actor == nil || m.active.command == nil { // sanity check
+		if m.active.model == nil || m.active.command == nil { // sanity check
 			panic(fmt.Sprintf(
 				"Mother is in handoff mode but has inconsistent actives %#v",
 				m.active))
 		}
 		// test for child state
-		if !m.active.actor.Done() { // child still processing
+		if !m.active.model.Done() { // child still processing
 			m.log.Debugf("Handing off Update to %s\n", m.active.command.Name())
-			return m, m.active.actor.Update(&msg)
+			return m, m.active.model.Update(&msg)
 		} else {
 			// child has finished processing, regain control and return to normal processing
 			m.log.Debugf("Child %s done. Mother reasserting...", m.active.command.Name())
-			go m.active.actor.Reset()
+			go m.active.model.Reset()
 			m.mode = prompting
-			m.active.actor = nil
+			m.active.model = nil
 			m.active.command = nil
 		}
 	}
@@ -170,11 +168,9 @@ func (m Mother) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 func (m Mother) View() string {
 	// allow child command to retain control if it exists
-	/*
-		if m.activeCommand != "" {
-			return m.actions[m.activeCommand].View()
-		}
-	*/
+	if m.active.model != nil {
+		return m.active.model.View()
+	}
 
 	// if there was a fatal error, print it out and return
 	/*
@@ -205,6 +201,7 @@ func (m Mother) View() string {
  * ! Be sure each path that clears the prompt also outputs it via tea.Println
  */
 func processInput(m *Mother) tea.Cmd {
+	// TODO trim inputs
 	var given string = m.ti.Value()
 	m.log.Debugf("Processing input '%s'\n", given)
 	//m.ti.Validate(given) // TODO add navigation text validation
@@ -236,7 +233,6 @@ func processInput(m *Mother) tea.Cmd {
 	// check if we found a match
 	if invocation == nil {
 		// user request unhandlable
-
 		return tea.Sequence(
 			tea.Println(priorL),
 			tea.Println(m.style.error.Render(fmt.Sprintf("unknown command '%s'. Press F1 or type 'help' for relevant commands.", given))),
@@ -244,18 +240,15 @@ func processInput(m *Mother) tea.Cmd {
 	}
 
 	// split on action or nav
-	if isAction(invocation) { // hand off control to child
+	if action.Is(invocation) { // hand off control to child
 		m.mode = handoff
 
 		// look up the subroutines to load
-		var ok bool
-		m.active.actor, ok = actors[invocation.CommandPath()] // save add-on subroutines
-		if !ok {
-			m.active.actor = nil
+		m.active.model, _ = action.GetModel(invocation) // save add-on subroutines
+		if m.active.model == nil {
 			return tea.Sequence(
 				tea.Println(priorL),
-				tea.Println(m.style.error.Render(fmt.Sprintf("Developer issue: no actor associated to action %s. Please submit a bug report.", given))),
-			)
+				tea.Println(m.style.error.Render(fmt.Sprintf("Developer issue: Did not find actor associated to '%s'. Please submit a bug report.", given))))
 		}
 		m.active.command = invocation // save relevant command
 		return tea.Println(priorL)
@@ -317,7 +310,7 @@ func TeaCmdContextHelp(c *cobra.Command) tea.Cmd {
 			continue
 		}
 		var name string
-		if isAction(child) {
+		if action.Is(child) {
 			name = treeutils.ActionStyle.Render(child.Name())
 		} else {
 			name = treeutils.NavStyle.Render(child.Name())
@@ -335,25 +328,6 @@ func TeaCmdContextHelp(c *cobra.Command) tea.Cmd {
 	// TODO store the string within mother somewhere so we can lazy-compile all strings
 	// chomp last newline and return
 	return tea.Println(strings.TrimSuffix(s.String(), "\n"))
-}
-
-/**
- * Given a cobra.Command, returns whether it is an Action (and thus can supplant
- * Mother's Elm cycle) or a Nav.
- */
-func isAction(cmd *cobra.Command) bool {
-	if cmd == nil { // sanity check
-		panic("cmd cannot be nil!")
-	}
-	// does not `return cmd.GroupID == treeutils.ActionID` to facilitate sanity check
-	switch cmd.GroupID {
-	case treeutils.ActionID:
-		return true
-	case treeutils.NavID:
-		return false
-	default: // sanity check
-		panic("cmd '" + cmd.Name() + "' is neither a nav nor an action!")
-	}
 }
 
 func CommandPath(m *Mother) string {

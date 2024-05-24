@@ -2,9 +2,9 @@ package kitactions
 
 import (
 	"fmt"
-	"gwcli/actor"
+	"gwcli/action"
 	"gwcli/connection"
-	"gwcli/treeutils"
+	"gwcli/group"
 	"strings"
 
 	tea "github.com/charmbracelet/bubbletea"
@@ -25,18 +25,20 @@ var (
 
 var columnsFormat = "%v|%v|%v|%v"
 
-func NewListCmd() *cobra.Command {
+func NewListCmd() action.Pair {
 	cmd := &cobra.Command{
 		Use:     "list",
 		Short:   "List all installed and staged kits",
 		Long:    "...",
 		Aliases: []string{},
-		GroupID: treeutils.ActionID,
+		GroupID: group.ActionID,
 		//PreRun: ,
-		Run: listKits,
+		Run: func(_ *cobra.Command, _ []string) {
+			fmt.Println(listKits())
+		},
 	}
 
-	return cmd
+	return action.Pair{cmd, Kitlist}
 }
 
 /**
@@ -49,7 +51,7 @@ func rowKit(kit types.IdKitState) []string {
 
 }
 
-func listKits(_ *cobra.Command, _ []string) {
+func listKits() string {
 	// style table
 	tbl := table.New().
 		Border(lipgloss.NormalBorder()).
@@ -76,7 +78,7 @@ func listKits(_ *cobra.Command, _ []string) {
 		tbl.Row(rowKit(k)...)
 	}
 
-	fmt.Println(tbl)
+	return tbl.Render()
 }
 
 //#region actor implementation
@@ -85,11 +87,12 @@ type kitlist struct {
 	done bool
 }
 
-var Kitlist actor.Actor = &kitlist{done: false}
+var Kitlist action.Model = &kitlist{done: false}
 
 func (k *kitlist) Update(msg tea.Msg) tea.Cmd {
 	k.done = true
-	return nil
+
+	return tea.Println(listKits())
 }
 
 func (k *kitlist) View() string {
@@ -97,7 +100,7 @@ func (k *kitlist) View() string {
 }
 
 func (k *kitlist) Done() bool {
-	return true
+	return k.done
 }
 
 func (k *kitlist) Reset() error {

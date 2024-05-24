@@ -14,6 +14,6 @@ var (
 	aliases []string = []string{"data", "health"}
 )
 
-func GenerateTree() *cobra.Command {
-	return treeutils.GenerateNav(use, short, long, aliases, kits.NewKitsCmd())
+func NewSearchCmd() *cobra.Command {
+	return treeutils.GenerateNav(use, short, long, aliases, []*cobra.Command{kits.NewKitsNav()}, nil)
 }

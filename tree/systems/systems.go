@@ -1,7 +1,8 @@
 package systems
 
 import (
-	"gwcli/tree/systems/actions"
+	"gwcli/action"
+	"gwcli/tree/systems/systemsactions"
 	"gwcli/treeutils"
 
 	"github.com/spf13/cobra"
@@ -14,6 +15,6 @@ var (
 	aliases []string = []string{"system", "health"}
 )
 
-func GenerateTree() *cobra.Command {
-	return treeutils.GenerateNav(use, short, long, aliases, actions.NewHardwareCmd())
+func NewSystemsNav() *cobra.Command {
+	return treeutils.GenerateNav(use, short, long, aliases, nil, []action.Pair{systemsactions.NewHardwareList(), systemsactions.NewDiskInfo()})
 }
