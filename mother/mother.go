@@ -135,13 +135,10 @@ func (m Mother) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	// normal handling
 	switch msg := msg.(type) {
-	/*case message.Err:
-	m.err = msg
-	return m, tea.Sequence(tea.Println("Bye"), tea.Quit) */
 	case tea.KeyMsg:
 		// NOTE kill keys are handled above
 		if msg.Type == tea.KeyF1 { // help
-			return m, ContextHelp(&m)
+			return m, m.f1Help()
 		}
 		if msg.Type == tea.KeyEnter { // submit
 			cmd := processInput(&m)
@@ -271,6 +268,31 @@ func ContextHelp(m *Mother) tea.Cmd {
 /* Returns a composition resembling the full prompt. */
 func (m *Mother) promptString() string {
 	return fmt.Sprintf("%s> %s", CommandPath(m), m.ti.Value())
+}
+
+/**
+ * f1Help displays context help relevant to the current state of the model.
+ * It determines if F1 contextual help should be relevant to the pwd or a
+ * command currently on the prompt
+ */
+func (m *Mother) f1Help() tea.Cmd {
+	// figure out the current state of the prompt
+	var prompt string = strings.TrimSpace(m.ti.Value())
+	if prompt == "" {
+		// show help for current directory
+		return tea.Sequence(tea.Println(m.promptString()), TeaCmdContextHelp(m.pwd))
+	}
+	// check if prompt has relevant info
+	var children []*cobra.Command = m.pwd.Commands()
+	clilog.Writer.Debugf("Context Help || prompt: '%s'|pwd:'%s'|children:'%v'", prompt, m.pwd.Name(), children)
+	for _, child := range children {
+		if child.Name() == prompt {
+			return tea.Sequence(tea.Println(m.promptString()), TeaCmdContextHelp(child))
+		}
+	}
+	// no matches
+	clilog.Writer.Debug("no matching child found")
+	return tea.Sequence(tea.Println(m.promptString()), TeaCmdContextHelp(m.pwd))
 }
 
 //#endregion
