@@ -76,7 +76,8 @@ func GenerateFlags(root *cobra.Command) {
 	root.MarkFlagsRequiredTogether("username", "password")                       // tie username+password together
 	root.PersistentFlags().Bool("no-color", false, "Disables colourized output") // TODO via lipgloss.NoColor
 	root.PersistentFlags().StringP("server", "s", "localhost:80", "<host>:<port>\nDefault: 'localhost:80'")
-	// JSON global flag output
+	// TODO JSON global flag output
+	// TODO make the logger terse by default
 }
 
 const ( // usage

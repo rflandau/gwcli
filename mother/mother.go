@@ -9,12 +9,12 @@ package mother
 import (
 	"fmt"
 	"gwcli/action"
+	"gwcli/clilog"
 	"gwcli/connection"
 	"gwcli/treeutils"
 	"strings"
 
 	tea "github.com/charmbracelet/bubbletea"
-	"github.com/gravwell/gravwell/v3/ingest/log"
 
 	"github.com/charmbracelet/bubbles/textinput"
 	"github.com/charmbracelet/lipgloss"
@@ -54,7 +54,6 @@ type Mother struct {
 
 	ti textinput.Model
 
-	log    *log.Logger
 	active struct {
 		command *actionCmd   // command user called
 		model   action.Model // Elm Arch associated to command
@@ -63,17 +62,7 @@ type Mother struct {
 
 // internal new command to allow tests to pass in a renderer
 func new(root *navCmd, _ *lipgloss.Renderer) Mother {
-	var err error
 	m := Mother{root: root, pwd: root, mode: prompting}
-
-	// logger
-	m.log, err = log.NewFile("gwcli.log") // TODO allow external log level edits and output redirection
-	if err != nil {
-		panic(err)
-	}
-	if err = m.log.SetLevel(log.DEBUG); err != nil { // TODO make the logger terse by default
-		panic(err)
-	}
 
 	// text input
 	m.ti = textinput.New()
@@ -132,11 +121,11 @@ func (m Mother) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 		// test for child state
 		if !m.active.model.Done() { // child still processing
-			m.log.Debugf("Handing off Update to %s\n", m.active.command.Name())
+			clilog.Writer.Debugf("Handing off Update to %s\n", m.active.command.Name())
 			return m, m.active.model.Update(&msg)
 		} else {
 			// child has finished processing, regain control and return to normal processing
-			m.log.Debugf("Child %s done. Mother reasserting...", m.active.command.Name())
+			clilog.Writer.Debugf("Child %s done. Mother reasserting...", m.active.command.Name())
 			go m.active.model.Reset()
 			m.mode = prompting
 			m.active.model = nil
@@ -203,7 +192,7 @@ func (m Mother) View() string {
 func processInput(m *Mother) tea.Cmd {
 	// TODO trim inputs
 	var given string = m.ti.Value()
-	m.log.Debugf("Processing input '%s'\n", given)
+	clilog.Writer.Debugf("Processing input '%s'\n", given)
 	//m.ti.Validate(given) // TODO add navigation text validation
 	if m.ti.Err != nil {
 		return nil
@@ -221,11 +210,11 @@ func processInput(m *Mother) tea.Cmd {
 	var invocation *cobra.Command = nil
 	for _, c := range m.pwd.Commands() {
 		// TODO incorporate aliases
-		m.log.Debugf("Given '%s' =?= child '%s'", given, c.Name())
+		clilog.Writer.Debugf("Given '%s' =?= child '%s'", given, c.Name())
 
 		if c.Name() == given { // match
 			invocation = c
-			m.log.Debugf("Match, invoking %s", invocation.Name())
+			clilog.Writer.Debugf("Match, invoking %s", invocation.Name())
 			break
 		}
 	}

@@ -41,8 +41,4 @@ func TestFieldsPopulated(t *testing.T) {
 	if !m.ti.Focused() {
 		t.Error("text input prompt is not focused")
 	}
-
-	if m.log == nil {
-		t.Error("logger not initialized")
-	}
 }
