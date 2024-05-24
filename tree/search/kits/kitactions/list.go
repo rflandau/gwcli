@@ -4,12 +4,11 @@ import (
 	"fmt"
 	"gwcli/action"
 	"gwcli/connection"
+	"gwcli/stylesheet"
 	"gwcli/treeutils"
 	"strings"
 
 	tea "github.com/charmbracelet/bubbletea"
-	"github.com/charmbracelet/lipgloss"
-	"github.com/charmbracelet/lipgloss/table"
 	"github.com/gravwell/gravwell/v3/client/types"
 
 	"github.com/spf13/cobra"
@@ -21,16 +20,6 @@ var (
 	long    string   = "..."
 	aliases []string = []string{}
 )
-
-var (
-	headerStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("99")).
-			AlignHorizontal(lipgloss.Center).AlignVertical(lipgloss.Center)
-	baseRowStyle = lipgloss.NewStyle().Padding(0, 1).Width(20)
-	EvenRowStyle = baseRowStyle.Foreground(lipgloss.Color("CC22CC"))
-	OddRowStyle  = baseRowStyle.Foreground(lipgloss.Color("FF77FF"))
-)
-
-var columnsFormat = "%v|%v|%v|%v"
 
 func NewListCmd() action.Pair {
 	return treeutils.GenerateAction(use, short, long, aliases, run, Kitlist)
@@ -45,39 +34,25 @@ func run(_ *cobra.Command, _ []string) {
  * Format: UID | Global | Name | Version
  */
 func rowKit(kit types.IdKitState) []string {
-	rowStr := fmt.Sprintf(columnsFormat, kit.UID, kit.Name, kit.Global, kit.Version)
+	rowStr := fmt.Sprintf("%v|%v|%v|%v", kit.UID, kit.Name, kit.Global, kit.Version)
 	return strings.Split(rowStr, "|")
 
 }
 
 func listKits() string {
-	// style table
-	tbl := table.New().
-		Border(lipgloss.NormalBorder()).
-		BorderStyle(lipgloss.NewStyle().Foreground(lipgloss.Color("99"))).
-		StyleFunc(func(row, col int) lipgloss.Style {
-			switch {
-			case row == 0:
-				return headerStyle
-			case row%2 == 0:
-				return EvenRowStyle
-			default:
-				return OddRowStyle
-			}
-		}).
-		Headers(strings.Split(fmt.Sprintf(columnsFormat, "UID", "NAME", "GLOBAL", "VERSION"), "|")...).
-		Border(lipgloss.DoubleBorder()).
-		BorderRow(false) //.Width(80)
+	var header []string = []string{"UID", "NAME", "GLOBAL", "VERSION"}
 
 	kits, err := connection.Client.ListKits()
 	if err != nil {
 		panic(err)
 	}
-	for _, k := range kits {
-		tbl.Row(rowKit(k)...)
+	var kitCount int = len(kits)
+	var rows [][]string = make([][]string, kitCount)
+	for i := 0; i < kitCount; i++ {
+		rows[i] = rowKit(kits[i])
 	}
 
-	return tbl.Render()
+	return stylesheet.Table(header, rows)
 }
 
 //#region actor implementation
