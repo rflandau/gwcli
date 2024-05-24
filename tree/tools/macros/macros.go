@@ -2,7 +2,7 @@ package macros
 
 import (
 	"gwcli/action"
-	"gwcli/tree/tools/macros/macrosactions"
+	"gwcli/tree/tools/macros/list"
 	"gwcli/treeutils"
 
 	"github.com/spf13/cobra"
@@ -16,5 +16,5 @@ var (
 )
 
 func GenerateNav() *cobra.Command {
-	return treeutils.GenerateNav(use, short, long, aliases, []*cobra.Command{}, []action.Pair{macrosactions.GenerateAction()})
+	return treeutils.GenerateNav(use, short, long, aliases, []*cobra.Command{}, []action.Pair{list.GenerateListAction()})
 }
