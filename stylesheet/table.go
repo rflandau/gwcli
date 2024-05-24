@@ -6,7 +6,7 @@ import (
 )
 
 var (
-	baseRowStyle = lipgloss.NewStyle().Padding(0, 1).Width(20)
+	baseRowStyle = lipgloss.NewStyle().Padding(0, 1).Width(30)
 
 	tblStyle = struct {
 		borderType   lipgloss.Border
@@ -25,8 +25,10 @@ var (
 			Foreground(lipgloss.Color("CC22CC")),
 		oddRowStyle: baseRowStyle.
 			Foreground(lipgloss.Color("FF77FF"))}
+)
 
-	baseTbl *table.Table = table.New().
+func Table(header []string, rows [][]string) string {
+	tbl := table.New().
 		Border(tblStyle.borderType).
 		BorderStyle(tblStyle.borderStyle).
 		StyleFunc(func(row, col int) lipgloss.Style {
@@ -39,10 +41,6 @@ var (
 				return tblStyle.oddRowStyle
 			}
 		}).BorderRow(false)
-)
-
-func Table(header []string, rows [][]string) string {
-	tbl := baseTbl // duplicate table style
 	// populate data
 	tbl.Headers(header...)
 	tbl.Rows(rows...)
