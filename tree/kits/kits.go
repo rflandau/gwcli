@@ -2,7 +2,7 @@ package kits
 
 import (
 	"gwcli/action"
-	"gwcli/tree/search/kits/kitactions"
+	"gwcli/tree/kits/kitactions"
 	"gwcli/treeutils"
 
 	"github.com/spf13/cobra"

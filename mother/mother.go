@@ -346,7 +346,16 @@ func quit(*Mother) tea.Cmd {
 	return tea.Sequence(tea.Println("Bye"), tea.Quit)
 }
 
-/* Returns a tea.Println Cmd containing the context help for the given command */
+/**
+ * Returns a tea.Println Cmd containing the context help for the given command.
+ * Structure:
+ * <nav> - <desc>
+ *     <childnav> <childaction> <childnav>
+ * <nav> - <desc>
+ *     <childaction>
+ * <action> - <desc>
+ *
+ */
 func TeaCmdContextHelp(c *cobra.Command) tea.Cmd {
 	// generate a list of all available Navs and Actions with their associated shorts
 	var s strings.Builder
@@ -358,12 +367,26 @@ func TeaCmdContextHelp(c *cobra.Command) tea.Cmd {
 			continue
 		}
 		var name string
+		var subchildren strings.Builder // children of this child
 		if action.Is(child) {
 			name = stylesheet.ActionStyle.Render(child.Name())
 		} else {
 			name = stylesheet.NavStyle.Render(child.Name())
+			// build and color subchildren
+			for _, sc := range child.Commands() {
+				_, err := subchildren.WriteString(stylesheet.ColorCommandName(sc) + " ")
+				if err != nil {
+					panic(err)
+				}
+			}
+
 		}
+		// generate the output
+		trimmedSubChildren := strings.TrimSpace(subchildren.String())
 		s.WriteString(fmt.Sprintf("%s%s - %s\n", indent, name, child.Short))
+		if trimmedSubChildren != "" {
+			s.WriteString(indent + indent + trimmedSubChildren + "\n")
+		}
 	}
 
 	/* Old form using Cobra's standard help template

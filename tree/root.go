@@ -9,6 +9,7 @@ package tree
 import (
 	"fmt"
 	"gwcli/connection"
+	"gwcli/tree/kits"
 	"gwcli/tree/search"
 	"gwcli/tree/systems"
 	"gwcli/tree/tools"
@@ -101,7 +102,7 @@ const ( // mousetrap
  * (via cobra.Command.Execute()).
  */
 func Execute() {
-	rootCmd := treeutils.GenerateNav(use, short, long, []string{}, []*cobra.Command{systems.NewSystemsNav(), search.NewSearchCmd(), tools.GenerateTree()}, nil)
+	rootCmd := treeutils.GenerateNav(use, short, long, []string{}, []*cobra.Command{systems.NewSystemsNav(), search.NewSearchCmd(), tools.GenerateTree(), kits.NewKitsNav()}, nil)
 	rootCmd.PersistentPreRunE = EnforceLogin
 	rootCmd.Version = "prototype"
 
