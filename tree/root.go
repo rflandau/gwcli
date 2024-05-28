@@ -23,7 +23,8 @@ import (
 )
 
 /**
- * Logs the client into
+ * Logs the client into the Gravwell instance dictated by the --server flag.
+ * Safe (ineffectual) to call if already logged in.
  */
 func EnforceLogin(cmd *cobra.Command, args []string) error {
 	if connection.Client == nil { // if we just started, initialize connection
@@ -66,6 +67,8 @@ func EnforceLogin(cmd *cobra.Command, args []string) error {
 	return nil
 
 }
+
+// TODO add lipgloss tree printing to help
 
 /** Generate Flags populates all root-relevant flags (ergo global and root-local flags) */
 func GenerateFlags(root *cobra.Command) {
