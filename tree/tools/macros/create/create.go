@@ -10,6 +10,8 @@ import (
 
 	grav "github.com/gravwell/gravwell/v3/client/types"
 
+	"github.com/charmbracelet/bubbles/help"
+	"github.com/charmbracelet/bubbles/key"
 	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/spf13/cobra"
@@ -17,10 +19,6 @@ import (
 
 func GenerateAction() action.Pair {
 	return treeutils.GenerateAction("create", "create a new macro", "", []string{}, run, Create)
-}
-
-func run(_ *cobra.Command, _ []string) {
-	fmt.Println("create macro")
 }
 
 func createMacro(name, desc, value string) bool {
@@ -34,6 +32,11 @@ func createMacro(name, desc, value string) bool {
 	}
 
 	return true
+}
+
+func run(_ *cobra.Command, _ []string) {
+
+	fmt.Println("create macro")
 }
 
 //#region actor implementation
@@ -52,11 +55,18 @@ const (
 	value
 )
 
+const (
+	helpShowAllInitial = false // starting state of help.model.ShowAll
+)
+
 type create struct {
 	done bool
 
 	focusedInput input
-
+	help         struct {
+		model help.Model
+		keys  helpKeyMap
+	}
 	ti []textinput.Model // name, desc, value
 }
 
@@ -80,6 +90,28 @@ func Initial() *create {
 	c.ti[0].Focus()
 	c.focusedInput = name
 
+	// set up help
+	c.help.model = help.New()
+	c.help.keys = helpKeyMap{
+		Next: key.NewBinding(
+			key.WithKeys("tab"),
+			key.WithHelp("tab", "next"),
+		),
+		Prev: key.NewBinding(
+			key.WithKeys(tea.KeyShiftTab.String()),
+			key.WithHelp(tea.KeyShiftTab.String(), "next"),
+		),
+		Help: key.NewBinding(
+			key.WithKeys("?"),
+			key.WithHelp("?", "toggle help"),
+		),
+		Quit: key.NewBinding(
+			key.WithKeys("esc"),
+			key.WithHelp("esc", "return to navigation"),
+		),
+	}
+	c.help.model.ShowAll = helpShowAllInitial
+
 	return c
 }
 
@@ -91,9 +123,8 @@ func (c *create) Update(msg tea.Msg) tea.Cmd {
 
 	switch msg := msg.(type) { // check for meta inputs
 	case tea.KeyMsg: // only KeyMsg could require special handling
-
-		switch msg.Type {
-		case tea.KeyEnter:
+		switch {
+		case msg.Type == tea.KeyEnter:
 			clilog.Writer.Debugf("Create.Update received enter %v", msg.String())
 			if c.focusedInput == value { // if last input, attempt to create the macros
 				c.done = createMacro(c.ti[name].Value(), c.ti[desc].Value(), c.ti[value].Value())
@@ -101,11 +132,15 @@ func (c *create) Update(msg tea.Msg) tea.Cmd {
 				c.focusNext()
 			}
 
-		case tea.KeyTab:
+		case msg.Type == tea.KeyTab:
 			c.focusNext()
 
-		case tea.KeyShiftTab:
+		case msg.Type == tea.KeyShiftTab:
 			c.focusPrevious()
+
+		case key.Matches(msg, c.help.keys.Help):
+			clilog.Writer.Debugf("Swapping showall")
+			c.help.model.ShowAll = !c.help.model.ShowAll
 
 		default:
 			// other key messages getting passed to name need to be upper-cased
@@ -128,9 +163,13 @@ func (c *create) Update(msg tea.Msg) tea.Cmd {
 }
 
 func (c *create) View() string {
-	return fmt.Sprintf("Name: %s\n"+
+	fields := fmt.Sprintf("Name: %s\n"+
 		"Desc: %s\n"+
 		"Expansion: %s \n", c.ti[name].View(), c.ti[desc].View(), c.ti[value].View())
+
+	helpDisplay := c.help.model.View(c.help.keys)
+
+	return fields + "\n" + helpDisplay
 }
 
 func (c *create) Done() bool {
@@ -151,6 +190,7 @@ func (c *create) Reset() error {
 	c.ti[c.focusedInput].Focus()
 
 	c.done = false
+	c.help.model.ShowAll = helpShowAllInitial
 	return nil
 }
 
@@ -184,6 +224,29 @@ func (c *create) focusPrevious() {
 	// focus next (the prior ti)
 	c.ti[nextInput].Focus()
 	c.focusedInput = nextInput
+}
+
+//#endregion
+
+//#region help display
+
+type helpKeyMap struct {
+	Next key.Binding // tab
+	Prev key.Binding // shift+tab
+	Help key.Binding // '?'
+	Quit key.Binding // esc
+}
+
+func (k helpKeyMap) ShortHelp() []key.Binding {
+	return []key.Binding{k.Help, k.Quit}
+}
+
+func (k helpKeyMap) FullHelp() [][]key.Binding {
+	return [][]key.Binding{
+		// ! Bubbles transposes the bindings when displaying!
+		{k.Help, k.Quit}, // first column
+		{k.Next, k.Prev}, // second column
+	}
 }
 
 //#endregion
