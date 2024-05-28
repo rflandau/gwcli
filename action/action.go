@@ -16,7 +16,6 @@ package action
 
 import (
 	"errors"
-	"fmt"
 	"gwcli/group"
 
 	tea "github.com/charmbracelet/bubbletea"
@@ -60,7 +59,7 @@ func GetModel(c *cobra.Command) (m Model, err error) {
 
 /** AddModel adds a new action and its subroutines to the action map */
 func AddModel(c *cobra.Command, m Model) {
-	fmt.Printf("Inserting %s into action map\n", key(c))
+	//fmt.Printf("Inserting %s into action map\n", key(c))
 	actions[key(c)] = m
 }
 
