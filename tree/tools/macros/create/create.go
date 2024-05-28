@@ -24,7 +24,6 @@ func run(_ *cobra.Command, _ []string) {
 
 func createMacro(name, desc, value string) bool {
 	// via the web gui, adding a macro requies a name and value (plus optional desc)
-
 	macro := grav.SearchMacro{Name: name, Description: desc, Expansion: value}
 
 	_, err := connection.Client.AddMacro(macro)
@@ -136,8 +135,11 @@ func (c *create) Done() bool {
  * dropping all data from each field.
  */
 func (c *create) Reset() error {
-	// TODO will this memleak without freeing the tis? If so, call ti[i].Reset
-	c = Initial()
+	for i := range c.ti {
+		c.ti[i].Reset()
+	}
+
+	c.focusedInput = name
 
 	c.done = false
 	// TODO
