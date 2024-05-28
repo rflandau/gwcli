@@ -14,10 +14,14 @@ import (
 )
 
 func GenerateListAction() action.Pair {
-	return treeutils.GenerateAction("list",
-		"list your macros", "list prints out all macros associated to your user.\n"+
-			"(NYI) Use the x flag to get all macros system-wide or the y <user>"+
-			"parameter to all macros associated to a <user> (if you are an admin)", []string{}, run, List)
+	return treeutils.GenerateAction(
+		treeutils.NewActionCommand("list",
+			"list your macros", "list prints out all macros associated to your user.\n"+
+				"(NYI) Use the x flag to get all macros system-wide or the y <user>"+
+				"parameter to all macros associated to a <user> (if you are an admin)",
+			[]string{},
+			run),
+		List)
 }
 
 /* cobra run command for non-interactive usage */

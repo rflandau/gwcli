@@ -22,7 +22,7 @@ var (
 )
 
 func NewListCmd() action.Pair {
-	return treeutils.GenerateAction(use, short, long, aliases, run, Kitlist)
+	return treeutils.GenerateAction(treeutils.NewActionCommand(use, short, long, aliases, run), Kitlist)
 }
 
 func run(_ *cobra.Command, _ []string) {

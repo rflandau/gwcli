@@ -45,8 +45,13 @@ func GenerateNav(use, short, long string, aliases []string, navCmds []*cobra.Com
 /** Creates and returns an Action (tree leaf) that can be called directly
  * non-interactively or via associated methods (actions.Pair) interactively
  */
-func GenerateAction(use, short, long string, aliases []string, runFunc func(*cobra.Command, []string), act action.Model) action.Pair {
-	cmd := &cobra.Command{
+func GenerateAction(cmd *cobra.Command, act action.Model) action.Pair {
+	return action.Pair{Action: cmd, Model: act}
+}
+
+/* Returns a boilerplate action command that can be fed into GenerateAction */
+func NewActionCommand(use, short, long string, aliases []string, runFunc func(*cobra.Command, []string)) *cobra.Command {
+	return &cobra.Command{
 		Use:     use,
 		Short:   short,
 		Long:    long,
@@ -55,7 +60,6 @@ func GenerateAction(use, short, long string, aliases []string, runFunc func(*cob
 		//PreRun: ,
 		Run: runFunc,
 	}
-	return action.Pair{Action: cmd, Model: act}
 }
 
 //#region cobra run functions

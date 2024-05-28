@@ -6,6 +6,7 @@ import (
 	"gwcli/clilog"
 	"gwcli/connection"
 	"gwcli/treeutils"
+	"strings"
 	"unicode"
 
 	grav "github.com/gravwell/gravwell/v3/client/types"
@@ -18,26 +19,66 @@ import (
 )
 
 func GenerateAction() action.Pair {
-	return treeutils.GenerateAction("create", "create a new macro", "", []string{}, run, Create)
+	// create the action
+	cmd := treeutils.NewActionCommand("create", "create a new macro", "", []string{}, run)
+
+	// attach flags
+
+	cmd.Flags().StringP("name", "n", "", "the shorthand that will be expanded")
+	cmd.Flags().StringP("description", "d", "", "(flavour) description")
+	cmd.Flags().StringP("expansion", "e", "", "value for the macro to expand to")
+	cmd.MarkFlagRequired("name")
+	cmd.MarkFlagRequired("description")
+	cmd.MarkFlagRequired("expansion")
+
+	return treeutils.GenerateAction(cmd, Create)
 }
 
-func createMacro(name, desc, value string) bool {
+func createMacro(name, desc, value string) error {
 	// via the web gui, adding a macro requies a name and value (plus optional desc)
 	macro := grav.SearchMacro{Name: name, Description: desc, Expansion: value}
 
 	_, err := connection.Client.AddMacro(macro)
 	if err != nil {
 		clilog.Writer.Warnf("Failed to create Macro: %s", err.Error())
-		return false
+		// TODO unwrap http error messages
+		return err
 	}
 
-	return true
+	return nil
 }
 
-func run(_ *cobra.Command, _ []string) {
+//#region cobra command
 
-	fmt.Println("create macro")
+func run(cmd *cobra.Command, _ []string) {
+
+	// fetch data from flags
+	name, err := cmd.Flags().GetString("name")
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+	name = strings.ToUpper(name) // name must be caps
+
+	desc, err := cmd.Flags().GetString("description")
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+	value, err := cmd.Flags().GetString("expansion")
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+
+	if err = createMacro(name, desc, value); err != nil {
+		fmt.Fprintf(cmd.ErrOrStderr(), "Failed to create macro: %v", err.Error())
+	} else {
+		fmt.Println("Successfully created macro " + name)
+	}
 }
+
+//#endregion
 
 //#region actor implementation
 
@@ -126,8 +167,19 @@ func (c *create) Update(msg tea.Msg) tea.Cmd {
 		switch {
 		case msg.Type == tea.KeyEnter:
 			clilog.Writer.Debugf("Create.Update received enter %v", msg.String())
-			if c.focusedInput == value { // if last input, attempt to create the macros
-				c.done = createMacro(c.ti[name].Value(), c.ti[desc].Value(), c.ti[value].Value())
+			if c.focusedInput == value &&
+				c.ti[name].Value() != "" &&
+				c.ti[desc].Value() != "" &&
+				c.ti[value].Value() != "" { // if last input and inputs are populated, attempt to create the macros
+				if err := createMacro(c.ti[name].Value(), c.ti[desc].Value(), c.ti[value].Value()); err != nil {
+					c.Reset()
+					// TODO output error message below prompt
+					return nil
+				} else {
+					c.done = true
+					return nil
+				}
+
 			} else {
 				c.focusNext()
 			}
