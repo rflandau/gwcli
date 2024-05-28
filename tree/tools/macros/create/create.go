@@ -142,7 +142,6 @@ func (c *create) Reset() error {
 	c.focusedInput = name
 
 	c.done = false
-	// TODO
 	return nil
 }
 
