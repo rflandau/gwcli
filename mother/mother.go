@@ -30,7 +30,7 @@ const (
 )
 
 // keys kill the program in Update no matter its other states
-var killKeys = [...]tea.KeyType{tea.KeyCtrlC, tea.KeyEsc}
+var killKeys = [...]tea.KeyType{tea.KeyCtrlC}
 
 var builtins = map[string](func(*Mother) tea.Cmd){
 	"..":   navParent,

@@ -85,11 +85,19 @@ func Initial() *create {
 
 func (c *create) Update(msg tea.Msg) tea.Cmd {
 
+	if c.done {
+		return nil
+	}
+
 	switch msg := msg.(type) { // check for meta inputs
 	case tea.KeyMsg: // only KeyMsg could require special handling
 		clilog.Writer.Debugf("key msg %v", msg.String())
 
 		switch msg.Type {
+		case tea.KeyEsc:
+			c.done = true
+			return nil
+
 		case tea.KeyEnter:
 			clilog.Writer.Debugf("Create.Update received enter %v", msg.String())
 			if c.focusedInput == value { // if last input, attempt to create the macros
@@ -97,10 +105,13 @@ func (c *create) Update(msg tea.Msg) tea.Cmd {
 			} else {
 				c.focusNext()
 			}
+
 		case tea.KeyTab:
 			c.focusNext()
+
 		case tea.KeyShiftTab:
 			c.focusPrevious()
+
 		default:
 			// other key messages getting passed to name need to be upper-cased
 			// if passing text to name field, upper-case it
