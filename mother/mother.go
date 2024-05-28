@@ -219,12 +219,22 @@ func processInput(m *Mother) tea.Cmd {
 	// if we do not find a built in, test for a valid invocation
 	var invocation *cobra.Command = nil
 	for _, c := range m.pwd.Commands() {
-		// TODO incorporate aliases
-		clilog.Writer.Debugf("Given '%s' =?= child '%s'", given, c.Name())
-
-		if c.Name() == given { // match
+		// check name
+		if c.Name() == given {
 			invocation = c
 			clilog.Writer.Debugf("Match, invoking %s", invocation.Name())
+			break
+		}
+		// check aliases
+		for _, alias := range c.Aliases {
+			if alias == given {
+				invocation = c
+				clilog.Writer.Debugf("Alias match, invoking %s", invocation.Name())
+				break
+			}
+		}
+		// if alias match, we also need to break the outer loop
+		if invocation != nil {
 			break
 		}
 	}
