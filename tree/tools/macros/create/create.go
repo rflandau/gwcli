@@ -6,6 +6,7 @@ import (
 	"gwcli/clilog"
 	"gwcli/connection"
 	"gwcli/treeutils"
+	"unicode"
 
 	grav "github.com/gravwell/gravwell/v3/client/types"
 
@@ -100,24 +101,25 @@ func (c *create) Update(msg tea.Msg) tea.Cmd {
 			c.focusNext()
 		case tea.KeyShiftTab:
 			c.focusPrevious()
+		default:
+			// other key messages getting passed to name need to be upper-cased
+			// if passing text to name field, upper-case it
+			if c.focusedInput == name {
+				for i, r := range msg.Runes {
+					if unicode.IsLetter(r) {
+						msg.Runes[i] = unicode.ToUpper(r)
+					}
+				}
+			}
 		}
-
-		for i := range c.ti {
-			c.ti[i].Blur()
-		}
-		c.ti[c.focusedInput].Focus()
 	}
 
 	clilog.Writer.Debugf("Passing updates to child tis %v", msg)
 
-	// pass input to the focused text input
-	var tiLen = len(c.ti)
-	var cmds []tea.Cmd = make([]tea.Cmd, tiLen)
-	for i := 0; i < tiLen; i++ {
-		c.ti[i], cmds[i] = c.ti[i].Update(msg)
-	}
+	var cmd tea.Cmd
+	c.ti[c.focusedInput], cmd = c.ti[c.focusedInput].Update(msg)
 
-	return tea.Batch(cmds...)
+	return cmd
 }
 
 func (c *create) View() string {
@@ -139,7 +141,9 @@ func (c *create) Reset() error {
 		c.ti[i].Reset()
 	}
 
+	c.ti[c.focusedInput].Blur()
 	c.focusedInput = name
+	c.ti[c.focusedInput].Focus()
 
 	c.done = false
 	return nil
