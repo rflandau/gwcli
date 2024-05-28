@@ -9,15 +9,12 @@ package tree
 import (
 	"fmt"
 	"gwcli/connection"
-	"gwcli/mother"
 	"gwcli/tree/search"
 	"gwcli/tree/systems"
 	"gwcli/tree/tools"
 	"gwcli/treeutils"
 	"os"
 	"time"
-
-	tea "github.com/charmbracelet/bubbletea"
 
 	"github.com/spf13/cobra"
 )
@@ -121,21 +118,7 @@ func Execute() {
 	cobra.MousetrapDisplayDuration = mousetrapDuration
 
 	// configure root's Run to launch Mother
-	rootCmd.Run = func(cmd *cobra.Command, args []string) {
-		noInteractive, err := cmd.Flags().GetBool("no-interactive")
-		if err != nil {
-			panic(err)
-		}
-		if noInteractive {
-			cmd.Help()
-			return
-		}
-		// invoke mother
-		interactive := tea.NewProgram(mother.New(rootCmd))
-		if _, err := interactive.Run(); err != nil {
-			panic(err)
-		}
-	}
+	rootCmd.Run = treeutils.NavRun
 
 	err := rootCmd.Execute()
 	if err != nil {

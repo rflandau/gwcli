@@ -11,7 +11,7 @@ import (
 	"gwcli/action"
 	"gwcli/clilog"
 	"gwcli/connection"
-	"gwcli/treeutils"
+	"gwcli/stylesheet"
 	"strings"
 
 	tea "github.com/charmbracelet/bubbletea"
@@ -57,12 +57,16 @@ type Mother struct {
 	active struct {
 		command *actionCmd   // command user called
 		model   action.Model // Elm Arch associated to command
+		args    []string     // arguments pass to action
 	}
 }
 
 // internal new command to allow tests to pass in a renderer
-func new(root *navCmd, _ *lipgloss.Renderer) Mother {
+func new(root *navCmd, pwd *navCmd, _ *lipgloss.Renderer) Mother {
 	m := Mother{root: root, pwd: root, mode: prompting}
+	if pwd != nil {
+		m.pwd = pwd
+	}
 
 	// text input
 	m.ti = textinput.New()
@@ -74,17 +78,20 @@ func new(root *navCmd, _ *lipgloss.Renderer) Mother {
 	/*if r != nil { // given renderer
 		// TODO
 	} else { */ // auto-selected renderer
-	m.style.nav = treeutils.NavStyle
-	m.style.action = treeutils.ActionStyle
+	m.style.nav = stylesheet.NavStyle
+	m.style.action = stylesheet.ActionStyle
 	m.style.error = lipgloss.NewStyle().Foreground(lipgloss.Color("#CC444")).Bold(true)
 	//}
 
 	return m
 }
 
-/* Generate a Mother instance to operate on the Cobra command tree */
-func New(root *navCmd) Mother {
-	return new(root, nil)
+/**
+ * Generate a Mother instance to operate on the Cobra command tree.
+ * If pwd is nil, Mother will start at root.
+ */
+func New(root *navCmd, pwd *navCmd) Mother {
+	return new(root, pwd, nil)
 }
 
 //#region tea.Model implementation
@@ -342,9 +349,9 @@ func TeaCmdContextHelp(c *cobra.Command) tea.Cmd {
 		}
 		var name string
 		if action.Is(child) {
-			name = treeutils.ActionStyle.Render(child.Name())
+			name = stylesheet.ActionStyle.Render(child.Name())
 		} else {
-			name = treeutils.NavStyle.Render(child.Name())
+			name = stylesheet.NavStyle.Render(child.Name())
 		}
 		s.WriteString(fmt.Sprintf("%s%s - %s\n", indent, name, child.Short))
 	}

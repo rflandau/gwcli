@@ -5,11 +5,11 @@
 package treeutils
 
 import (
-	"fmt"
 	"gwcli/action"
 	"gwcli/group"
+	"gwcli/mother"
 
-	"github.com/charmbracelet/lipgloss"
+	tea "github.com/charmbracelet/bubbletea"
 	"github.com/spf13/cobra"
 )
 
@@ -57,8 +57,7 @@ func NewActionCommand(use, short, long string, aliases []string, runFunc func(*c
 		Long:    long,
 		Aliases: aliases,
 		GroupID: group.ActionID,
-		//PreRun: ,
-		Run: runFunc,
+		Run:     runFunc,
 	}
 }
 
@@ -76,22 +75,13 @@ var NavRun = func(cmd *cobra.Command, args []string) {
 	}
 	if noInteractive {
 		cmd.Help()
-	} else {
-		fmt.Printf("Initializing Mother... (NYI)\n") // TODO initialize Mother here
+		return
+	}
+	// invoke mother
+	interactive := tea.NewProgram(mother.New(cmd.Root(), cmd))
+	if _, err := interactive.Run(); err != nil {
+		panic(err)
 	}
 }
-
-//#endregion
-
-//#region lipgloss styling
-
-/**
- * NOTE: Per the Lipgloss documentation (https://github.com/charmbracelet/lipgloss?tab=readme-ov-file#faq),
- * it is intelligent enough to automatically adjust or disable color depending on the given environment.
- */
-var (
-	ActionStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("#FFAAAA")) //.Italic(true)
-	NavStyle    = lipgloss.NewStyle().Foreground(lipgloss.Color("#AAAAFF"))
-)
 
 //#endregion
