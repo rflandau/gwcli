@@ -105,6 +105,7 @@ func (m Mother) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	keyMsg, isKeyMsg := msg.(tea.KeyMsg)
 	if isKeyMsg {
 		for _, v := range killKeys {
+			// TODO if we receive a kill key in a child command, kill just the child
 			if keyMsg.Type == v {
 				m.mode = quitting
 				return m, tea.Batch(tea.Quit, connection.End, tea.Println("Bye"))
@@ -122,11 +123,11 @@ func (m Mother) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		// test for child state
 		if !m.active.model.Done() { // child still processing
 			clilog.Writer.Debugf("Handing off Update to %s\n", m.active.command.Name())
-			return m, m.active.model.Update(&msg)
+			return m, m.active.model.Update(msg)
 		} else {
 			// child has finished processing, regain control and return to normal processing
 			clilog.Writer.Debugf("Child %s done. Mother reasserting...", m.active.command.Name())
-			go m.active.model.Reset()
+			m.active.model.Reset()
 			m.mode = prompting
 			m.active.model = nil
 			m.active.command = nil
