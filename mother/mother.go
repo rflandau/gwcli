@@ -111,6 +111,14 @@ func (m Mother) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				return m, tea.Batch(tea.Quit, connection.End, tea.Println("Bye"))
 			}
 		}
+		if keyMsg.Type == tea.KeyEsc {
+			if m.active.model != nil {
+				// kick out the child and return to normal processing
+				clilog.Writer.Debugf("Escape. Mother reasserting...")
+				m.UnsetAction()
+				return m, nil
+			}
+		}
 	}
 
 	// a child is running
@@ -127,10 +135,7 @@ func (m Mother) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		} else {
 			// child has finished processing, regain control and return to normal processing
 			clilog.Writer.Debugf("Child %s done. Mother reasserting...", m.active.command.Name())
-			m.active.model.Reset()
-			m.mode = prompting
-			m.active.model = nil
-			m.active.command = nil
+			m.UnsetAction()
 		}
 	}
 
@@ -294,6 +299,20 @@ func (m *Mother) f1Help() tea.Cmd {
 	// no matches
 	clilog.Writer.Debug("no matching child found")
 	return tea.Sequence(tea.Println(m.promptString()), TeaCmdContextHelp(m.pwd))
+}
+
+/**
+ * UnsetAction resets the current active command/action, clears actives, and
+ * returns control to Mother.
+ */
+func (m *Mother) UnsetAction() {
+	if m.active.model == nil || m.active.command == nil {
+		panic("nil actives")
+	}
+	m.active.model.Reset()
+	m.mode = prompting
+	m.active.model = nil
+	m.active.command = nil
 }
 
 //#endregion

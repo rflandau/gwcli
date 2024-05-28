@@ -91,13 +91,8 @@ func (c *create) Update(msg tea.Msg) tea.Cmd {
 
 	switch msg := msg.(type) { // check for meta inputs
 	case tea.KeyMsg: // only KeyMsg could require special handling
-		clilog.Writer.Debugf("key msg %v", msg.String())
 
 		switch msg.Type {
-		case tea.KeyEsc:
-			c.done = true
-			return nil
-
 		case tea.KeyEnter:
 			clilog.Writer.Debugf("Create.Update received enter %v", msg.String())
 			if c.focusedInput == value { // if last input, attempt to create the macros
@@ -125,8 +120,7 @@ func (c *create) Update(msg tea.Msg) tea.Cmd {
 		}
 	}
 
-	clilog.Writer.Debugf("Passing updates to child tis %v", msg)
-
+	// update focused input
 	var cmd tea.Cmd
 	c.ti[c.focusedInput], cmd = c.ti[c.focusedInput].Update(msg)
 
