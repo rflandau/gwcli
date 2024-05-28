@@ -143,8 +143,8 @@ func Initial() *create {
 			key.WithHelp(tea.KeyShiftTab.String(), "next"),
 		),
 		Help: key.NewBinding(
-			key.WithKeys("?"),
-			key.WithHelp("?", "toggle help"),
+			key.WithKeys(tea.KeyF1.String(), tea.KeyCtrlH.String()),
+			key.WithHelp(tea.KeyF1.String()+"/"+tea.KeyCtrlH.String(), "toggle help"),
 		),
 		Quit: key.NewBinding(
 			key.WithKeys("esc"),
