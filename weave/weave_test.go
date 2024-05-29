@@ -124,7 +124,7 @@ func TestToCSVHash(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := ToCSVHash(tt.args.st, tt.args.columns); got != tt.want {
+			if got := ToCSV(tt.args.st, tt.args.columns); got != tt.want {
 				t.Errorf("\n---ToCSVHash()---\n'%v'\n---want---\n'%v'", got, tt.want)
 			}
 		})
@@ -169,7 +169,7 @@ func TestToCSVHash(t *testing.T) {
 			)
 		}
 
-		actual := ToCSVHash(data, []string{"n", "in", "iin", "iiin"})
+		actual := ToCSV(data, []string{"n", "in", "iin", "iiin"})
 		expected := strings.TrimSpace(expectedBldr.String()) // chomp newline
 		if actual != expected {
 			// count newlines in parallel
