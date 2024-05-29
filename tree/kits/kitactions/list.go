@@ -6,6 +6,7 @@ import (
 	"gwcli/connection"
 	"gwcli/stylesheet"
 	"gwcli/treeutils"
+	"gwcli/weave"
 	"strings"
 
 	tea "github.com/charmbracelet/bubbletea"
@@ -22,11 +23,23 @@ var (
 )
 
 func NewListCmd() action.Pair {
-	return treeutils.GenerateAction(treeutils.NewActionCommand(use, short, long, aliases, run), Kitlist)
+	cmd := treeutils.NewActionCommand(use, short, long, aliases, run)
+	cmd.Flags().Bool("csv", false, "output results as a csv")
+	return treeutils.GenerateAction(cmd, Kitlist)
 }
 
-func run(_ *cobra.Command, _ []string) {
-	fmt.Println(listKits())
+func run(cmd *cobra.Command, _ []string) {
+	data, err := connection.Client.ListKits()
+	if err != nil {
+		panic(err)
+	}
+	if csv, err := cmd.Flags().GetBool("csv"); err != nil {
+		panic(err)
+	} else if csv {
+		fmt.Println(weave.ToCSV(data, []string{"UUID", "UID", "name"}))
+	} else { // default output
+		fmt.Println(listKits(data))
+	}
 }
 
 /**
@@ -39,13 +52,10 @@ func rowKit(kit types.IdKitState) []string {
 
 }
 
-func listKits() string {
+// TODO convert this to a weave.ToTable
+func listKits(kits []types.IdKitState) string {
 	var header []string = []string{"UID", "NAME", "GLOBAL", "VERSION"}
 
-	kits, err := connection.Client.ListKits()
-	if err != nil {
-		panic(err)
-	}
 	var kitCount int = len(kits)
 	var rows [][]string = make([][]string, kitCount)
 	for i := 0; i < kitCount; i++ {
@@ -66,10 +76,15 @@ var Kitlist action.Model = &kitlist{done: false}
 func (k *kitlist) Update(msg tea.Msg) tea.Cmd {
 	k.done = true
 
-	return tea.Println(listKits())
+	data, err := connection.Client.ListKits()
+	if err != nil {
+		panic(err)
+	}
+	return tea.Println(listKits(data))
 }
 
 func (k *kitlist) View() string {
+	// no action required; line is output as history in Update
 	return ""
 }
 
