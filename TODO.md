@@ -12,9 +12,11 @@
     - [x] CSV output
         - [x] take list of columns to include from output
         - [ ] create exclude variant
+            - [ ] default to all columns if no columns are given
     - [ ] JSON output
         - [ ] take list of columns to include/exclude from output
         - [ ] create exclude variant
+            - [ ] default to all columns if no columns are given
 
 - [ ] Display suggestions beneath current prompt
 
@@ -28,3 +30,5 @@
 - [ ] Colourize Cobra help
 
 - [ ] Disable Cobra displaying help on failed PersistentPreRun
+
+- [ ] Replace the panics floating around mother with appropriate error handling
