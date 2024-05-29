@@ -1,8 +1,12 @@
 package weave
 
 import (
+	"fmt"
+	"strings"
 	"testing"
 )
+
+const longCSVLineCount = 5000
 
 type inner struct {
 	foo string
@@ -125,4 +129,76 @@ func TestToCSVHash(t *testing.T) {
 			}
 		})
 	}
+
+	// test against significant amounts of data
+	t.Run("long data", func(t *testing.T) {
+		// set up the data and structures
+		type innerInnerInnerNest struct {
+			iiin string
+		}
+		type innerInnerNest struct {
+			innerInnerInnerNest
+			iin string
+		}
+		type innerNest struct {
+			innerInnerNest
+			in string
+		}
+		type nest struct {
+			innerNest
+			n string
+		}
+
+		var data []interface{} = make([]interface{}, longCSVLineCount)
+		for i := 0; i < longCSVLineCount; i++ {
+			data[i] = nest{
+				n: fmt.Sprintf("%dN", i), innerNest: innerNest{
+					in: "IN", innerInnerNest: innerInnerNest{
+						iin: "IIN", innerInnerInnerNest: innerInnerInnerNest{iiin: "IIIN"},
+					},
+				},
+			}
+		}
+
+		var expectedBldr strings.Builder
+		expectedBldr.Grow(longCSVLineCount * 16)    // roughly 14-16B per line; better overallocate
+		expectedBldr.WriteString("n,in,iin,iiin\n") // header
+		for i := 0; i < longCSVLineCount; i++ {
+			expectedBldr.WriteString(
+				fmt.Sprintf("%dN,IN,IIN,IIIN\n", i),
+			)
+		}
+
+		actual := ToCSVHash(data, []string{"n", "in", "iin", "iiin"})
+		expected := strings.TrimSpace(expectedBldr.String()) // chomp newline
+		if actual != expected {
+			// count newlines in parallel
+			actualCountDone := make(chan int)
+			var actualCount int
+			// check line length
+			go func() {
+				actualCountDone <- strings.Count(actual, "\n")
+			}()
+
+			expectedCountDone := make(chan int)
+			var expectedCount int
+			go func() {
+				expectedCountDone <- strings.Count(expected, "\n")
+			}()
+
+			// wait for children
+			actualCount = <-actualCountDone
+			expectedCount = <-expectedCountDone
+
+			// clean up
+			close(actualCountDone)
+			close(expectedCountDone)
+
+			if actualCount != expectedCount {
+				t.Errorf("# of lines in actual (%d) <> # of lines in expected (%d)", actualCount, expectedCount)
+			}
+
+			t.Errorf("actual does not match expected!\n---actual---\n%s\n---expected---\n%s\n", actual, expected)
+		}
+	})
 }
