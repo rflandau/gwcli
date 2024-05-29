@@ -6,7 +6,7 @@ import (
 	"testing"
 )
 
-const longCSVLineCount = 5000
+const longCSVLineCount = 17000
 
 type inner struct {
 	foo string
@@ -120,6 +120,54 @@ func TestToCSVHash(t *testing.T) {
 				"5.0123,FOO,3.145,D,10,256\n" +
 				"5.0123,FOO,3.145,D,10,0\n" +
 				"5.0123,FOO,3.145,D!,10,0",
+		},
+		{"∃c2r, non-existant column 'missing' and 'foobar'",
+			args{
+				st: []interface{}{
+					outer{
+						inner:    inner{foo: "FOO"},
+						a:        10,
+						b:        0,
+						c:        5.0123,
+						d:        "D",
+						Exported: 3.145},
+					outer{
+						inner:    inner{foo: "FOO"},
+						a:        10,
+						b:        0,
+						c:        5.0123,
+						d:        "D",
+						Exported: 3.145}},
+				columns: []string{
+					"c", "foo", "Exported", "missing", "d", "a", "b", "foobar",
+				}},
+			"c,foo,Exported,missing,d,a,b,foobar\n" + "5.0123,FOO,3.145,,D,10,0,\n" + "5.0123,FOO,3.145,,D,10,0,",
+		},
+		{"superfluous, no columns",
+			args{
+				st: []interface{}{
+					outer{
+						inner:    inner{foo: "FOO"},
+						a:        10,
+						b:        0,
+						c:        5.0123,
+						d:        "D",
+						Exported: 3.145},
+					outer{
+						inner:    inner{foo: "FOO"},
+						a:        10,
+						b:        0,
+						c:        5.0123,
+						d:        "D",
+						Exported: 3.145}},
+				columns: []string{}},
+			"",
+		},
+		{"superfluous, no data",
+			args{
+				st:      []interface{}{},
+				columns: []string{"c", "foo", "Exported", "missing", "d", "a", "b", "foobar"}},
+			"",
 		},
 	}
 	for _, tt := range tests {
