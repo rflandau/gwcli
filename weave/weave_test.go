@@ -178,21 +178,19 @@ func TestToCSVHash(t *testing.T) {
 			// check line length
 			go func() {
 				actualCountDone <- strings.Count(actual, "\n")
+				close(actualCountDone)
 			}()
 
 			expectedCountDone := make(chan int)
 			var expectedCount int
 			go func() {
 				expectedCountDone <- strings.Count(expected, "\n")
+				close(expectedCountDone)
 			}()
 
 			// wait for children
 			actualCount = <-actualCountDone
 			expectedCount = <-expectedCountDone
-
-			// clean up
-			close(actualCountDone)
-			close(expectedCountDone)
 
 			if actualCount != expectedCount {
 				t.Errorf("# of lines in actual (%d) <> # of lines in expected (%d)", actualCount, expectedCount)
