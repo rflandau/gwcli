@@ -28,7 +28,7 @@ func ToCSV(st []interface{}, columns []string) string {
 	//	iterate through the list of columns and use the map to fetch the
 	//	column/field's values by index, building the csv token by token
 
-	if len(st) < 1 || len(columns) < 1 { // superfluous request
+	if columns == nil || st == nil || len(st) < 1 || len(columns) < 1 { // superfluous request
 		return ""
 	}
 
