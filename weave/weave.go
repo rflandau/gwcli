@@ -1,7 +1,6 @@
 /**
  * The output module; weave consumes arbitrary structs, orchestrating them into
  * a specified format, and returning the formatted string.
- * TODO will this work? https://github.com/jszwec/csvutil
  */
 package weave
 
@@ -74,7 +73,6 @@ func stringifyStructCSV(s interface{}, columns []string, columnMap map[string][]
 	// search for each column
 	for _, col := range columns {
 		findices := columnMap[col]
-		// TODO iterate through the findices to get the final value in the event of struct embedding
 		if findices == nil {
 			// no matching field
 			// do nothing
