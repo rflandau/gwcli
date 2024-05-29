@@ -8,9 +8,13 @@
 - [ ] Implement `dry-run` flag for shell access
     - Validate syntax and exit
 
-- [ ] Implement `weaver` for taking arbitrary structs and returning a JSON/CSV/etc representation of the data
-    - [ ] take list of columns to include/exclude from output
-    - iterate over struct reflection as key/values
+- [ ] Implement `weave` for taking arbitrary structs and returning a JSON/CSV/etc representation of the data
+    - [x] CSV output
+        - [x] take list of columns to include from output
+        - [ ] create exclude variant
+    - [ ] JSON output
+        - [ ] take list of columns to include/exclude from output
+        - [ ] create exclude variant
 
 - [ ] Display suggestions beneath current prompt
 
