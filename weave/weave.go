@@ -19,7 +19,7 @@ import (
  * TODO incorporate exclude boolean to blacklist columns instead of assuming whitelist
  * TODO allow column names to be case-insensitive
  */
-func ToCSV(st []interface{}, columns []string) string {
+func ToCSV[generic any](st []generic, columns []string) string {
 	// DESIGN:
 	// We have a list of column, ordered.
 	// We have a map of column names -> field index.

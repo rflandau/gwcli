@@ -197,7 +197,7 @@ func TestToCSVHash(t *testing.T) {
 			n string
 		}
 
-		var data []interface{} = make([]interface{}, longCSVLineCount)
+		var data []nest = make([]nest, longCSVLineCount)
 		for i := 0; i < longCSVLineCount; i++ {
 			data[i] = nest{
 				n: fmt.Sprintf("%dN", i), innerNest: innerNest{
