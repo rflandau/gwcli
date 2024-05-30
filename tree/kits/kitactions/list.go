@@ -6,13 +6,12 @@ import (
 	"gwcli/connection"
 	"gwcli/stylesheet"
 	"gwcli/treeutils"
-	"gwcli/weave"
 	"strings"
+
+	grav "github.com/gravwell/gravwell/v3/client"
 
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/gravwell/gravwell/v3/client/types"
-
-	"github.com/spf13/cobra"
 )
 
 var (
@@ -23,22 +22,15 @@ var (
 )
 
 func NewListCmd() action.Pair {
-	cmd := treeutils.NewListCmd(use, short, long, aliases, connection.Client.ListKits)
+	// this appears to pass a handle to the method at address X,
+	// rather than a handle to the method on the current state of the singleton
+	// using a static subroutine and passing *Client should fix it, but is less then ideal
+	cmd := treeutils.NewListCmd(use, short, long, aliases, ListKits)
 	return treeutils.GenerateAction(cmd, Kitlist)
 }
 
-func run(cmd *cobra.Command, _ []string) {
-	data, err := connection.Client.ListKits()
-	if err != nil {
-		panic(err)
-	}
-	if csv, err := cmd.Flags().GetBool("csv"); err != nil {
-		panic(err)
-	} else if csv {
-		fmt.Println(weave.ToCSV(data, []string{"UUID", "UID", "name"}))
-	} else { // default output
-		fmt.Println(listKits(data))
-	}
+func ListKits(c *grav.Client) ([]types.IdKitState, error) {
+	return c.ListKits()
 }
 
 /**
