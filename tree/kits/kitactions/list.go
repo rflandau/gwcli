@@ -22,13 +22,11 @@ var (
 )
 
 func NewListCmd() action.Pair {
-	// this appears to pass a handle to the method at address X,
-	// rather than a handle to the method on the current state of the singleton
-	// using a static subroutine and passing *Client should fix it, but is less then ideal
 	cmd := treeutils.NewListCmd(use, short, long, aliases, ListKits)
 	return treeutils.GenerateAction(cmd, Kitlist)
 }
 
+// Retrieve and return array of kit structs via gravwell client
 func ListKits(c *grav.Client) ([]types.IdKitState, error) {
 	return c.ListKits()
 }
