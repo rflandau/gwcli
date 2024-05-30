@@ -51,7 +51,7 @@ func GenerateAction(cmd *cobra.Command, act action.Model) action.Pair {
 
 /* Returns a boilerplate action command that can be fed into GenerateAction */
 func NewActionCommand(use, short, long string, aliases []string, runFunc func(*cobra.Command, []string)) *cobra.Command {
-	return &cobra.Command{
+	cmd := &cobra.Command{
 		Use:     use,
 		Short:   short,
 		Long:    long,
@@ -59,6 +59,10 @@ func NewActionCommand(use, short, long string, aliases []string, runFunc func(*c
 		GroupID: group.ActionID,
 		Run:     runFunc,
 	}
+
+	cmd.SilenceUsage = true
+
+	return cmd
 }
 
 //#region cobra run functions
