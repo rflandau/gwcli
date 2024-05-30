@@ -10,6 +10,7 @@ import (
 	"gwcli/clilog"
 	"gwcli/connection"
 	"gwcli/weave"
+	"reflect"
 
 	grav "github.com/gravwell/gravwell/v3/client"
 	"github.com/spf13/cobra"
@@ -120,4 +121,19 @@ func determineFormat(cmd *cobra.Command) format {
 		}
 	}
 	return format
+}
+
+// Returns a list of all fields in the struct *definition*
+func StructFields(st any) (columns []string) {
+	types := reflect.ValueOf(st).Type()
+	numFields := types.NumField()
+	columns = make([]string, numFields)
+
+	// TODO use FieldByIndex to dig into embedded types and the direct field names
+
+	for i := 0; i < numFields; i++ {
+		columns[i] = types.Field(i).Name
+	}
+
+	return
 }
