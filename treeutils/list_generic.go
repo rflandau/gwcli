@@ -1,14 +1,17 @@
 /**
- * Helper functions and generic structs.
- * Intended to be boilder plate for specific list implementation.
+ * Helper functions and generic struct.
+ * Intended to be boilder plate for specific list implementations.
  */
 
 package treeutils
 
 import (
 	"fmt"
+	"gwcli/clilog"
+	"gwcli/connection"
 	"gwcli/weave"
 
+	grav "github.com/gravwell/gravwell/v3/client"
 	"github.com/spf13/cobra"
 )
 
@@ -16,7 +19,7 @@ type ListAction struct {
 	done bool
 }
 
-type format = uint
+type format uint
 
 const (
 	json format = iota
@@ -24,25 +27,39 @@ const (
 	table
 )
 
+func (f format) String() string {
+	switch f {
+	case json:
+		return "JSON"
+	case csv:
+		return "CSV"
+	case table:
+		return "table"
+	}
+	return fmt.Sprintf("unknown format (%d)", f)
+}
+
 // NewListCmd creates and returns a cobra.Command suitable for use as a list
-// action. Has common flags (such as mutually exclusive output modules, columns,
-// inclusive/exclusive column handling) and is designated as an Action Cmd.
-// If no output module is given, it will default to table
+// action, complete with common flags and a generic run function operating off
+// the given dataFunc.
 //
-// `dataFunc` must be a function that returns an array of structures containing
-// the data to be listed.
+// Flags: {--csv, --json, --table} --columns <...>
+//
+// If no output module is given, defaults to --table.
+//
+// ! `dataFunc` should be a static wrapper function for a method that returns an array of structures containing the data to be listed.
+// Any data massaging required to get the data into an array of functions should be performed there.
+// See kitactions' ListKits() as an example
 //
 // Go's Generics are a godsend.
-func NewListCmd[T any](use, short, long string, aliases []string, dataFunc func() ([]T, error)) *cobra.Command {
-	// the problem is the run function
-	// it is mostly generic, but will have a unique "fetchData" function
-	// this would be easy to manage, but we do not know any function signatures in advance
-	// 	and therefore cannot allow a user to pass in a function
-	// ! for the time being, allow dataFunc to take no params
-
+func NewListCmd[Any any](use, short, long string, aliases []string, dataFunc func(*grav.Client) ([]Any, error)) *cobra.Command {
 	// the function to run if called from the shell/non-interactively
 	runFunc := func(cmd *cobra.Command, _ []string) {
-		data, err := dataFunc()
+		data, err := dataFunc(connection.Client)
+		if err != nil {
+			clilog.TeeError(cmd.ErrOrStderr(), err.Error())
+			return
+		}
 
 		// process flags
 		// NOTE format flags are marked mutually exclusive on creation
@@ -50,16 +67,14 @@ func NewListCmd[T any](use, short, long string, aliases []string, dataFunc func(
 
 		// determine columns
 		var columns []string
-		// TODO
-
-		// determine output
-		var format format = determineFormat(cmd)
-		// TODO
-
+		columns, err = cmd.Flags().GetStringSlice("columns")
 		if err != nil {
-			panic(err)
+			clilog.TeeError(cmd.ErrOrStderr(), err.Error())
+			return
 		}
 
+		var format format = determineFormat(cmd)
+		clilog.Writer.Debugf("List: format %s | row count: %d", format, len(data))
 		switch format {
 		case csv:
 			fmt.Println(weave.ToCSV(data, columns))
@@ -68,7 +83,8 @@ func NewListCmd[T any](use, short, long string, aliases []string, dataFunc func(
 		case table:
 			//fmt.Println(weave.ToTable(data, columns))
 		default:
-			panic(fmt.Sprintf("unknown output format (%d)", format))
+			clilog.TeeError(cmd.ErrOrStderr(), fmt.Sprintf("unknown output format (%d)", format))
+			return
 		}
 	}
 
@@ -80,6 +96,10 @@ func NewListCmd[T any](use, short, long string, aliases []string, dataFunc func(
 	cmd.Flags().Bool("json", false, "output results as json")
 	cmd.Flags().Bool("table", true, "output results in a human-readable table") // default
 	cmd.MarkFlagsMutuallyExclusive("csv", "json", "table")
+	cmd.Flags().StringSlice("columns", []string{},
+		"comma-seperated list of columns to include in the output."+
+			"Use --help to see the full list of columns.")
+	// TODO add a flag (or modify help) to output possible columns
 	return cmd
 }
 
