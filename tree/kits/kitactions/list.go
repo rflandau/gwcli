@@ -23,8 +23,7 @@ var (
 )
 
 func NewListCmd() action.Pair {
-	cmd := treeutils.NewActionCommand(use, short, long, aliases, run)
-	cmd.Flags().Bool("csv", false, "output results as a csv")
+	cmd := treeutils.NewListCmd(use, short, long, aliases, connection.Client.ListKits)
 	return treeutils.GenerateAction(cmd, Kitlist)
 }
 
