@@ -1,11 +1,13 @@
 /**
- * The output module; weave consumes arbitrary structs, orchestrating them into
- * a specified format, and returning the formatted string.
+ * The output module.
+ * Weave consumes arbitrary structs, orchestrating them into a specified format
+ * and returning the formatted string.
  */
 package weave
 
 import (
 	"fmt"
+	"gwcli/stylesheet"
 	"reflect"
 	"strings"
 )
@@ -19,7 +21,7 @@ import (
  * TODO incorporate exclude boolean to blacklist columns instead of assuming whitelist
  * TODO allow column names to be case-insensitive
  */
-func ToCSV[generic any](st []generic, columns []string) string {
+func ToCSV[Any any](st []Any, columns []string) string {
 	// DESIGN:
 	// We have a list of column, ordered.
 	// We have a map of column names -> field index.
@@ -89,4 +91,17 @@ func stringifyStructCSV(s interface{}, columns []string, columnMap map[string][]
 
 func chomp(s string) string {
 	return strings.TrimSuffix(s, ",")
+}
+
+func ToTable[Any any](st []Any, columns []string) string {
+
+	if columns == nil || st == nil || len(st) < 1 || len(columns) < 1 { // superfluous request
+		return ""
+	}
+
+	var data [][]string = make([][]string, len(st))
+	// TODO import stylesheet.Table, instead calling base styling from stylesheet.NewTable
+
+	// TODO
+	return stylesheet.Table(columns, data)
 }
