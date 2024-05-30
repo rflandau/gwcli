@@ -8,6 +8,7 @@ package tree
 
 import (
 	"fmt"
+	"gwcli/clilog"
 	"gwcli/connection"
 	"gwcli/tree/kits"
 	"gwcli/tree/search"
@@ -60,7 +61,7 @@ func EnforceLogin(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	fmt.Println("Logged in successfully")
+	clilog.Writer.Infof("Logged in successfully")
 	// TODO check for token or supply user with login model if interactivity available
 	return nil
 
