@@ -1,6 +1,10 @@
 package clilog
 
-import "github.com/gravwell/gravwell/v3/ingest/log"
+import (
+	"io"
+
+	"github.com/gravwell/gravwell/v3/ingest/log"
+)
 
 var Writer *log.Logger
 
@@ -25,4 +29,10 @@ func Init(path string, lvl log.Level) {
 		panic(err)
 	}
 
+}
+
+// Writes the error to clilog.Writer and a secondary output, usually stderr
+func TeeError(alt io.Writer, str string) {
+	Writer.Debugf(str)
+	alt.Write([]byte(str))
 }
