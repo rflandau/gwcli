@@ -6,11 +6,22 @@
 package weave
 
 import (
+	"errors"
 	"fmt"
+	"gwcli/clilog"
 	"gwcli/stylesheet"
 	"reflect"
 	"strings"
 )
+
+//#region errors
+
+const (
+	ErrNotAStruct  string = "given value is not a struct or pointer to a struct"
+	ErrStructIsNil string = "given value is nil"
+)
+
+//#endregion
 
 // Takes an array of arbitrary struct `st` and the *ordered* columns to
 // include/exclude and returns a string containing the csv representation of the
@@ -33,6 +44,7 @@ func ToCSV[Any any](st []Any, columns []string) string {
 	//	column/field's values by index, building the csv token by token
 
 	if columns == nil || st == nil || len(st) < 1 || len(columns) < 1 { // superfluous request
+		clilog.Writer.Warnf("superfluous request (columns: %v, st: %v)", columns, st)
 		return ""
 	}
 
@@ -97,6 +109,38 @@ func stringifyStructCSV(s interface{}, columns []string, columnMap map[string][]
 
 func chomp(s string) string {
 	return strings.TrimSuffix(s, ",")
+}
+
+// Given a fully qualified column name (ex: "outerstruct.innerstruct.field"),
+// finds the associated field, if it exists.
+//
+// ! st must be a struct
+func FindQualifiedField[Any any](qualCol string, st any) (reflect.StructField, bool, error) {
+	// pre checks
+	if qualCol == "" {
+		return reflect.StructField{}, false, nil
+	}
+	if st == nil {
+		return reflect.StructField{}, false, errors.New(ErrStructIsNil)
+	}
+	t := reflect.TypeOf(st)
+	if t.Kind() != reflect.Struct {
+		return reflect.StructField{}, false, errors.New(ErrNotAStruct)
+	}
+
+	exploded := strings.Split(qualCol, ".")
+	var field reflect.StructField
+	for i, e := range exploded {
+		var found bool
+		field, found = t.FieldByName(e)
+		if !found { // no value found
+			fmt.Printf("DEBUG: found no value for qualifier '%s' at depth %d\n", e, i)
+			return reflect.StructField{}, false, nil
+		}
+	}
+	// if we reached the end of the loop, we have our final field
+	return field, true, nil
+
 }
 
 func ToTable[Any any](st []Any, columns []string) string {
