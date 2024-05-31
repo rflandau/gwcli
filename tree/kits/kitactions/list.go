@@ -22,7 +22,7 @@ var (
 )
 
 func NewListCmd() action.Pair {
-	cmd := treeutils.NewListCmd(use, short, long, aliases, ListKits)
+	cmd := treeutils.NewListCmd(use, short, long, aliases, types.IdKitState{}, ListKits)
 	return treeutils.GenerateAction(cmd, Kitlist)
 }
 
