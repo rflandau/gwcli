@@ -29,15 +29,6 @@ const (
 	table
 )
 
-//#region errors
-
-const (
-	ErrNotAStruct string = "given value is not a struct or pointer to a struct"
-	ErrIsNil      string = "given value is nil"
-)
-
-//#endregion
-
 func (f format) String() string {
 	switch f {
 	case json:
@@ -157,14 +148,14 @@ func determineFormat(cmd *cobra.Command) format {
 // internally
 func StructFields(st any) (columns []string, err error) {
 	if st == nil {
-		return nil, errors.New(ErrIsNil)
+		return nil, errors.New(weave.ErrStructIsNil)
 	}
 	to := reflect.TypeOf(st)
 	if to.Kind() == reflect.Pointer { // dereference
 		to = to.Elem()
 	}
 	if to.Kind() != reflect.Struct { // prerequisite
-		return nil, errors.New(ErrNotAStruct)
+		return nil, errors.New(weave.ErrNotAStruct)
 	}
 	numFields := to.NumField()
 	columns = []string{}
