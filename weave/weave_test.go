@@ -271,4 +271,30 @@ func TestToCSVHash(t *testing.T) {
 		}
 
 	})
+
+	// nested pointers
+	type ptrstruct struct {
+		a int
+		b string
+	}
+	type inner struct {
+		inptr *int
+		p     *ptrstruct
+	}
+	type outer struct {
+		inner
+		z uint
+	}
+
+	t.Run("embedded pointers, all initialized", func(t *testing.T) {
+		inptrVal := -9
+		ptrStructVal := ptrstruct{a: 0, b: "B"}
+		v := outer{z: 10, inner: inner{inptr: &inptrVal, p: &ptrStructVal}}
+		actual := ToCSV([]outer{v}, []string{"z", "inptr", "p", "a", "b"})
+		expected := "z,inptr,p,a,b\n" +
+			"10,-9,{0 B},,"
+		if actual != expected {
+			t.Errorf("\n---ToCSVHash()---\n'%v'\n---want---\n'%v'", actual, expected)
+		}
+	})
 }
