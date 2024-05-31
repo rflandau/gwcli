@@ -188,23 +188,3 @@ func innerStructFields(qualification string, field reflect.StructField) []string
 
 	return columns
 }
-
-// Returns a list of all fields in the struct *definition*
-func StructFieldsO(st any) (columns []string) {
-	types := reflect.ValueOf(st).Type()
-	numFields := types.NumField()
-	columns = make([]string, numFields)
-
-	// TODO use FieldByIndex to dig into embedded types and the direct field names
-
-	for i := 0; i < numFields; i++ {
-		field := types.Field(i)
-		fbi := types.FieldByIndex(field.Index)
-		fmt.Printf("{%d}\nfield: %#v\nfieldIndex: %+v\nfbi: %+v", i, field, field.Index, fbi)
-		columns[i] = fbi.Name
-
-		//columns[i] = types.Field(i).Name
-	}
-
-	return
-}
