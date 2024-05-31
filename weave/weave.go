@@ -12,15 +12,18 @@ import (
 	"strings"
 )
 
-/**
- * Takes an array of arbitrary struct `st` and the *ordered* columns to include/exclude
- * and returns a string containing the csv representation of the data contained
- * therein.
- * ! Returns the empty string if columns or st are empty
- * ! the array of interfaces are expected to be structs with identical structure
- * TODO incorporate exclude boolean to blacklist columns instead of assuming whitelist
- * TODO allow column names to be case-insensitive
- */
+// Takes an array of arbitrary struct `st` and the *ordered* columns to
+// include/exclude and returns a string containing the csv representation of the
+// data contained therein.
+//
+// # NOTE: Promoted fields' column names are unqualified, but a named struct
+// is referenced by its field name and is returned as a bracketed,
+// space-seperated array.
+//
+// ! Returns the empty string if columns or st are empty
+// ! the array of interfaces are expected to be structs with identical structure
+// TODO incorporate exclude boolean to blacklist columns instead of assuming whitelist
+// TODO allow column names to be case-insensitive
 func ToCSV[Any any](st []Any, columns []string) string {
 	// DESIGN:
 	// We have a list of column, ordered.
