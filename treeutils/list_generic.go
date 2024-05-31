@@ -114,6 +114,8 @@ func NewListCmd[Any any](use, short, long string, aliases []string, dataFunc fun
 	return cmd
 }
 
+// Helper function for NewListCmd's runFunc creation
+// Takes an initialized list cmd and returns the output format for listing
 func determineFormat(cmd *cobra.Command) format {
 	var format format
 	if format_csv, err := cmd.Flags().GetBool("csv"); err != nil {
@@ -121,7 +123,7 @@ func determineFormat(cmd *cobra.Command) format {
 	} else if format_csv {
 		format = csv
 	} else {
-		if format_json, err := cmd.Flags().GetBool("csv"); err != nil {
+		if format_json, err := cmd.Flags().GetBool("json"); err != nil {
 			panic(err)
 		} else if format_json {
 			format = json
