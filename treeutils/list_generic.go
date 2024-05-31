@@ -59,13 +59,31 @@ func (f format) String() string {
 // If no output module is given, defaults to --table.
 //
 // ! `dataFunc` should be a static wrapper function for a method that returns an array of structures containing the data to be listed.
+// ! `dataStruct` must be the type of struct returned by dataFunc. Its values do not matter.
 // Any data massaging required to get the data into an array of functions should be performed there.
 // See kitactions' ListKits() as an example
 //
 // Go's Generics are a godsend.
-func NewListCmd[Any any](use, short, long string, aliases []string, dataFunc func(*grav.Client) ([]Any, error)) *cobra.Command {
+func NewListCmd[Any any](use, short, long string, aliases []string, dataStruct Any, dataFunc func(*grav.Client) ([]Any, error)) *cobra.Command {
+	// assert developer provided a usable data struct
+	if reflect.TypeOf(dataStruct).Kind() != reflect.Struct {
+		panic("dataStruct must be a struct") // developer error
+	}
+
 	// the function to run if called from the shell/non-interactively
 	runFunc := func(cmd *cobra.Command, _ []string) {
+		// check for --show-columns
+		if sc, err := cmd.Flags().GetBool("show-columns"); err != nil {
+			panic(err)
+		} else if sc {
+			col, err := StructFields(dataStruct)
+			if err != nil {
+				panic(err)
+			}
+			fmt.Fprintf(cmd.OutOrStdout(), "%+v\n", col)
+			return
+		}
+
 		data, err := dataFunc(connection.Client)
 		if err != nil {
 			clilog.TeeError(cmd.ErrOrStderr(), err.Error())
@@ -109,8 +127,8 @@ func NewListCmd[Any any](use, short, long string, aliases []string, dataFunc fun
 	cmd.MarkFlagsMutuallyExclusive("csv", "json", "table")
 	cmd.Flags().StringSlice("columns", []string{},
 		"comma-seperated list of columns to include in the output."+
-			"Use --help to see the full list of columns.")
-	// TODO add a flag (or modify help) to output possible columns
+			"Use --show-columns to see the full list of columns.")
+	cmd.Flags().Bool("show-columns", false, "display the list of fully qualified column names and die.")
 	return cmd
 }
 
