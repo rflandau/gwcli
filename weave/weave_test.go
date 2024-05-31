@@ -247,4 +247,28 @@ func TestToCSVHash(t *testing.T) {
 			t.Errorf("actual does not match expected!\n---actual---\n%s\n---expected---\n%s\n", actual, expected)
 		}
 	})
+
+	t.Run("ptr", func(t *testing.T) {
+		// define struct with pointer
+		type ptrstruct struct {
+			a   int
+			ptr *int
+		}
+
+		ptrval := 5
+		st := ptrstruct{
+			a:   1,
+			ptr: &ptrval,
+		}
+
+		want := "a,ptr\n" +
+			"1,5"
+
+		actual := ToCSV([]ptrstruct{st}, []string{"a", "ptr"})
+
+		if actual != want {
+			t.Errorf("\n---ToCSVHash()---\n'%v'\n---want---\n'%v'", actual, want)
+		}
+
+	})
 }

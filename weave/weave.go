@@ -81,6 +81,9 @@ func stringifyStructCSV(s interface{}, columns []string, columnMap map[string][]
 		} else {
 			// use field index to retrieve value
 			data := structVals.FieldByIndex(findices)
+			if data.Kind() == reflect.Pointer {
+				data = data.Elem()
+			}
 			row.WriteString(fmt.Sprintf("%v", data))
 		}
 		row.WriteString(",") // append comma to token
