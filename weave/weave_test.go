@@ -2,6 +2,7 @@ package weave
 
 import (
 	"fmt"
+	"reflect"
 	"strings"
 	"testing"
 )
@@ -297,4 +298,52 @@ func TestToCSVHash(t *testing.T) {
 			t.Errorf("\n---ToCSVHash()---\n'%v'\n---want---\n'%v'", actual, expected)
 		}
 	})
+}
+
+func TestFindQualifiedField(t *testing.T) {
+	type lvl1 struct {
+		a string
+	}
+
+	t.Run("depth 0", func(t *testing.T) {
+
+		_, wantFound := reflect.TypeOf(lvl1{}).FieldByName("a")
+		_, actualFound, actualErr := FindQualifiedField[lvl1]("a", lvl1{})
+		if actualErr != nil {
+			t.Error(actualErr)
+		}
+		if actualFound != wantFound {
+			t.Errorf("found mismatch: actual (%v) != want (%v)", actualFound, wantFound)
+		}
+		// TODO compare fields
+	})
+
+	/*type args struct {
+		qualCol string
+		st      any
+	}
+	tests := []struct {
+		name    string
+		args    args
+		want    reflect.StructField
+		want1   bool
+		wantErr bool
+	}{
+
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, got1, err := FindQualifiedField(tt.args.qualCol, tt.args.st)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("FindQualifiedField() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+			if !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("FindQualifiedField() got = %v, want %v", got, tt.want)
+			}
+			if got1 != tt.want1 {
+				t.Errorf("FindQualifiedField() got1 = %v, want %v", got1, tt.want1)
+			}
+		})
+	} */
 }
