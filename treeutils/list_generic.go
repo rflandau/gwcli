@@ -33,6 +33,7 @@ const (
 
 const (
 	ErrNotAStruct string = "given value is not a struct or pointer to a struct"
+	ErrIsNil      string = "given value is nil"
 )
 
 //#endregion
@@ -132,8 +133,12 @@ func determineFormat(cmd *cobra.Command) format {
 	return format
 }
 
-// Returns a list of all fields in the struct *definition*
+// Returns a list of all fields in the struct *definition*, as they are ordered
+// internally
 func StructFields(st any) (columns []string, err error) {
+	if st == nil {
+		return nil, errors.New(ErrIsNil)
+	}
 	to := reflect.TypeOf(st)
 	if to.Kind() == reflect.Pointer { // dereference
 		to = to.Elem()
