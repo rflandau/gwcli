@@ -1,6 +1,7 @@
 package treeutils
 
 import (
+	"gwcli/weave"
 	"reflect"
 	"testing"
 )
@@ -19,6 +20,19 @@ func TestStructFields(t *testing.T) {
 		dbl dblmbd
 		a   int
 		b   uint
+	}
+
+	type inner2 struct {
+		z    *string
+		none string
+	}
+
+	type ptr struct {
+		a        *int
+		b        *int
+		innerptr *inner2
+		inner    inner2
+		non      string
 	}
 
 	type args struct {
@@ -44,6 +58,8 @@ func TestStructFields(t *testing.T) {
 					z: "z string 2"},
 			}}, triple_want},
 		{"third level valueless", args{st: triple{}}, triple_want},
+		{"third level pointer", args{st: &triple{}}, triple_want},
+		{"pointers", args{ptr{}}, []string{"a", "b", "innerptr.z", "innerptr.none", "inner.z", "inner.none", "non"}},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -59,15 +75,35 @@ func TestStructFields(t *testing.T) {
 	// validate errors
 	t.Run("struct is nil", func(t *testing.T) {
 		c, err := StructFields(nil)
-		if err.Error() != ErrIsNil || c != nil {
+		if err.Error() != weave.ErrStructIsNil || c != nil {
 			t.Errorf("Error value mismatch: err: %v c: %v", err, c)
 		}
 	})
 	t.Run("not a struct", func(t *testing.T) {
 		m := make(map[string]int)
 		c, err := StructFields(m)
-		if err.Error() != ErrNotAStruct || c != nil {
+		if err.Error() != weave.ErrNotAStruct || c != nil {
 			t.Errorf("Error value mismatch: err: %v c: %v", err, c)
 		}
 	})
+}
+
+func Test_format_String(t *testing.T) {
+	tests := []struct {
+		name string
+		f    format
+		want string
+	}{
+		{"JSON", json, "JSON"},
+		{"CSV", csv, "CSV"},
+		{"table", table, "table"},
+		{"unknown", 5, "unknown format (5)"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := tt.f.String(); got != tt.want {
+				t.Errorf("format.String() = %v, want %v", got, tt.want)
+			}
+		})
+	}
 }
