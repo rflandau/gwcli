@@ -33,6 +33,6 @@
 
 - [ ] Replace the panics floating around mother with appropriate error handling
 
-- [ ] Incorporate Qualified Field Names into `weave`
+- [x] Incorporate Qualified Field Names into `weave`
 
 - [?] Spin `weave` off into its own package
