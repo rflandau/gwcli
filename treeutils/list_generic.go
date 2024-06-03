@@ -178,6 +178,12 @@ func StructFields(st any) (columns []string, err error) {
 // Operates down the struct, in field-order.
 func innerStructFields(qualification string, field reflect.StructField) []string {
 	var columns []string = []string{}
+
+	// dereference
+	if field.Type.Kind() == reflect.Ptr {
+		field.Type = field.Type.Elem()
+	}
+
 	if field.Type.Kind() == reflect.Struct {
 		for k := 0; k < field.Type.NumField(); k++ {
 			var innerQual string
@@ -186,7 +192,6 @@ func innerStructFields(qualification string, field reflect.StructField) []string
 			} else {
 				innerQual = qualification + "." + field.Name
 			}
-
 			columns = append(columns, innerStructFields(innerQual, field.Type.Field(k))...)
 		}
 	} else {
