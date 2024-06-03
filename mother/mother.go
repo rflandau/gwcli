@@ -32,7 +32,9 @@ const (
 // keys kill the program in Update no matter its other states
 var killKeys = [...]tea.KeyType{tea.KeyCtrlC}
 
-var builtins = map[string](func(*Mother) tea.Cmd){
+// special, global actions
+// takes a reference to Mother and tokens [1:]
+var builtins = map[string](func(*Mother, []string) tea.Cmd){
 	"..":   navParent,
 	"help": ContextHelp,
 	"quit": quit,
@@ -200,34 +202,40 @@ func (m Mother) View() string {
  * ! Be sure each path that clears the prompt also outputs it via tea.Println
  */
 func processInput(m *Mother) tea.Cmd {
-	// TODO trim inputs
-	var given string = strings.TrimSpace(m.ti.Value())
-	clilog.Writer.Debugf("Processing input '%s'\n", given)
-	//m.ti.Validate(given) // TODO add navigation text validation
+	clilog.Writer.Debugf("Processing input '%s'\n", m.ti.Value())
+
 	if m.ti.Err != nil {
 		return nil
 	}
 
-	priorL := m.promptString() // save off prompt string to output as history
-	m.ti.Reset()               // empty out the input
+	onComplete := make([]tea.Cmd, 1)
+	onComplete[0] = tea.Println(m.promptString()) // save off prompt string to output as history
+	m.ti.Reset()                                  // empty out the input
+
+	// tokenize input
+	given := strings.Split(strings.TrimSpace(m.ti.Value()), " ")
+	//m.ti.Validate(given) // TODO add navigation text validation
+
+	if len(given) == 0 { // superfluous
+		return onComplete[0]
+	}
 
 	// check for a builtin command
-	builtinFunc, ok := builtins[given]
-	if ok {
-		return tea.Sequence(tea.Println(priorL), builtinFunc(m))
+	if builtinFunc, ok := builtins[given[0]]; ok {
+		return tea.Sequence(onComplete[0], builtinFunc(m, given[1:]))
 	}
 	// if we do not find a built in, test for a valid invocation
 	var invocation *cobra.Command = nil
 	for _, c := range m.pwd.Commands() {
 		// check name
-		if c.Name() == given {
+		if c.Name() == given[0] {
 			invocation = c
 			clilog.Writer.Debugf("Match, invoking %s", invocation.Name())
 			break
 		}
 		// check aliases
 		for _, alias := range c.Aliases {
-			if alias == given {
+			if alias == given[0] {
 				invocation = c
 				clilog.Writer.Debugf("Alias match, invoking %s", invocation.Name())
 				break
@@ -243,7 +251,7 @@ func processInput(m *Mother) tea.Cmd {
 	if invocation == nil {
 		// user request unhandlable
 		return tea.Sequence(
-			tea.Println(priorL),
+			onComplete[0],
 			tea.Println(m.style.error.Render(fmt.Sprintf("unknown command '%s'. Press F1 or type 'help' for relevant commands.", given))),
 		)
 	}
@@ -256,22 +264,22 @@ func processInput(m *Mother) tea.Cmd {
 		m.active.model, _ = action.GetModel(invocation) // save add-on subroutines
 		if m.active.model == nil {
 			return tea.Sequence(
-				tea.Println(priorL),
+				onComplete[0],
 				tea.Println(m.style.error.Render(fmt.Sprintf("Developer issue: Did not find actor associated to '%s'. Please submit a bug report.", given))))
 		}
 		m.active.command = invocation // save relevant command
-		return tea.Println(priorL)
+		return onComplete[0]
 	} else { // nav
 		// navigate to child
 		m.pwd = invocation
-		return tea.Println(priorL)
+		return onComplete[0]
 	}
 }
 
 //#region builtin functions
 
-/* Using the current menu, navigate up one level */
-func navParent(m *Mother) tea.Cmd {
+// Using the current menu, navigate up one level
+func navParent(m *Mother, args []string) tea.Cmd {
 	if m.pwd == m.root { // if we are at root, do nothing
 		return nil
 	}
@@ -280,7 +288,8 @@ func navParent(m *Mother) tea.Cmd {
 	return nil
 }
 
-func ContextHelp(m *Mother) tea.Cmd {
+// Built-in, interactive help invocation
+func ContextHelp(m *Mother, _ []string) tea.Cmd {
 	return TeaCmdContextHelp(m.pwd)
 }
 
@@ -342,7 +351,7 @@ func TeaCmdPath(c *cobra.Command) tea.Cmd {
 }
 
 /* Quit the program */
-func quit(*Mother) tea.Cmd {
+func quit(*Mother, []string) tea.Cmd {
 	return tea.Sequence(tea.Println("Bye"), tea.Quit)
 }
 
