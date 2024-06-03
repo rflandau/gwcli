@@ -14,13 +14,17 @@ const longCSVLineCount = 17000
 
 type inner struct {
 	foo string
+	too struct {
+		mu int
+		yu int16
+	}
 }
 
 type outer struct {
 	inner
 	a        int
 	b        uint
-	c        float32
+	c        *float32
 	d        string
 	Exported float64
 }
@@ -32,6 +36,7 @@ func TestToCSVHash(t *testing.T) {
 	}
 
 	clilog.Init("weave_test.log", grav.DEBUG)
+	var c float32 = 5.0123
 
 	tests := []struct {
 		name string
@@ -44,7 +49,7 @@ func TestToCSVHash(t *testing.T) {
 					outer{
 						a:     10,
 						b:     0,
-						c:     5.0123,
+						c:     &c,
 						d:     "D",
 						inner: inner{foo: "FOO"}}},
 				columns: []string{"a"}},
@@ -54,16 +59,19 @@ func TestToCSVHash(t *testing.T) {
 			args{
 				st: []interface{}{
 					outer{
-						inner:    inner{foo: "FOO"},
+						inner: inner{foo: "FOO", too: struct {
+							mu int
+							yu int16
+						}{mu: 5, yu: 1}},
 						a:        10,
 						b:        0,
-						c:        5.0123,
+						c:        &c,
 						d:        "D",
 						Exported: 3.145}},
 				columns: []string{
-					"a", "b", "c", "d", "foo", "Exported",
+					"foo", "too.mu", "too.yu", "a", "b", "c", "d", "Exported",
 				}},
-			"a,b,c,d,foo,Exported\n" + "10,0,5.0123,D,FOO,3.145",
+			"foo,too.mu,too.yu,a,b,c,d,Exported,too.mu\n" + "FOO,5,1,10,0,5.0123,D,3.145,5",
 		},
 		{"∀c∃!r, ordered randomly",
 			args{
@@ -72,7 +80,7 @@ func TestToCSVHash(t *testing.T) {
 						inner:    inner{foo: "FOO"},
 						a:        10,
 						b:        0,
-						c:        5.0123,
+						c:        &c,
 						d:        "D",
 						Exported: 3.145}},
 				columns: []string{
@@ -87,35 +95,35 @@ func TestToCSVHash(t *testing.T) {
 						inner:    inner{foo: "FOO"},
 						a:        10,
 						b:        0,
-						c:        5.0123,
+						c:        &c,
 						d:        "D",
 						Exported: 3.145},
 					outer{
 						inner:    inner{foo: "FOO"},
 						a:        57,
 						b:        0,
-						c:        5.0123,
+						c:        &c,
 						d:        "D",
 						Exported: 3.145},
 					outer{
 						inner:    inner{foo: "FOO"},
 						a:        10,
 						b:        256,
-						c:        5.0123,
+						c:        &c,
 						d:        "D",
 						Exported: 3.145},
 					outer{
 						inner:    inner{foo: "FOO"},
 						a:        10,
 						b:        0,
-						c:        5.0123,
+						c:        &c,
 						d:        "D",
 						Exported: 3.145},
 					outer{
 						inner:    inner{foo: "FOO"},
 						a:        10,
 						b:        0,
-						c:        5.0123,
+						c:        &c,
 						d:        "D!",
 						Exported: 3.145}},
 				columns: []string{
@@ -135,14 +143,14 @@ func TestToCSVHash(t *testing.T) {
 						inner:    inner{foo: "FOO"},
 						a:        10,
 						b:        0,
-						c:        5.0123,
+						c:        &c,
 						d:        "D",
 						Exported: 3.145},
 					outer{
 						inner:    inner{foo: "FOO"},
 						a:        10,
 						b:        0,
-						c:        5.0123,
+						c:        &c,
 						d:        "D",
 						Exported: 3.145}},
 				columns: []string{
@@ -157,14 +165,14 @@ func TestToCSVHash(t *testing.T) {
 						inner:    inner{foo: "FOO"},
 						a:        10,
 						b:        0,
-						c:        5.0123,
+						c:        &c,
 						d:        "D",
 						Exported: 3.145},
 					outer{
 						inner:    inner{foo: "FOO"},
 						a:        10,
 						b:        0,
-						c:        5.0123,
+						c:        &c,
 						d:        "D",
 						Exported: 3.145}},
 				columns: []string{}},
