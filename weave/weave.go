@@ -27,10 +27,13 @@ const (
 // include/exclude and returns a string containing the csv representation of the
 // data contained therein.
 //
-// # NOTE: Promoted fields' column names are unqualified, but a named struct
-// is referenced by its field name and is returned as a bracketed,
-// space-seperated array.
+// Uses qualified names to access nested structs/fields of arbitrary depth.
+// Promoted names can still be accessed unqualified, but all other nested structs/fields are accessed via dot separators.
+// Ex: structField.fieldA
 //
+// # See FindQualifiedField for more on qualification.
+//
+// ! column names are case sensitive
 // ! Returns the empty string if columns or st are empty
 // ! the array of interfaces are expected to be structs with identical structure
 // TODO incorporate exclude boolean to blacklist columns instead of assuming whitelist
@@ -48,25 +51,24 @@ func ToCSV[Any any](st []Any, columns []string) string {
 		return ""
 	}
 
-	// deconstruct the first struct to validate requested columns
-	vals := reflect.ValueOf(st[0])
-	types := vals.Type()
-
 	var hdrBldr strings.Builder
 
+	// deconstruct the first struct to validate requested columns
 	// coordinate columns
-	// TODO keying the map on columns index would bring faster lookups
 	columnMap := make(map[string][]int, len(columns)) // column name -> recursive field indices
 	for i := range columns {
 		hdrBldr.WriteString(columns[i] + ",") // generate header
 		// map column names to their field indices
 		// if a name is not found, nil it so it can be skipped later
-		field, found := types.FieldByName(columns[i])
-		if !found {
+		_, fo, index, err := FindQualifiedField[any](columns[i], st[0])
+		if err != nil {
+			panic(err)
+		}
+		if !fo {
 			columnMap[columns[i]] = nil
 			continue
 		}
-		columnMap[columns[i]] = field.Index
+		columnMap[columns[i]] = index
 	}
 	var hdr string = chomp(hdrBldr.String())
 
@@ -114,32 +116,47 @@ func chomp(s string) string {
 // Given a fully qualified column name (ex: "outerstruct.innerstruct.field"),
 // finds the associated field, if it exists.
 //
+// Returns the field, whether or not it was found, the index path (for
+// FieldByIndex) to the field (more on this below), and any errors.
+//
+// index path is returned here becaue field.Index is NOT reliable for some
+// nested structures. Fields do not necessarily know their complete index path
+// for the given parent struct and therefore using field.Index in FieldByIndex
+// can cause unexpected, erroneous reults.
+// The returned index path is composed of the known indices of every field
+// touched during traversal, returning a complete path.
+//
 // ! st must be a struct
-func FindQualifiedField[Any any](qualCol string, st any) (reflect.StructField, bool, error) {
+func FindQualifiedField[Any any](qualCol string, st any) (field reflect.StructField, found bool, index []int, err error) {
 	// pre checks
 	if qualCol == "" {
-		return reflect.StructField{}, false, nil
+		return reflect.StructField{}, false, nil, nil
 	}
 	if st == nil {
-		return reflect.StructField{}, false, errors.New(ErrStructIsNil)
+		return reflect.StructField{}, false, nil, errors.New(ErrStructIsNil)
 	}
 	t := reflect.TypeOf(st)
 	if t.Kind() != reflect.Struct {
-		return reflect.StructField{}, false, errors.New(ErrNotAStruct)
+		return reflect.StructField{}, false, nil, errors.New(ErrNotAStruct)
 	}
 
+	index = make([]int, 0)
+
 	exploded := strings.Split(qualCol, ".")
-	var field reflect.StructField
+	field.Type = t
+	// iterate down the field tree until we run out of qualifications or cannot
+	// location the next qualification
 	for i, e := range exploded {
-		var found bool
-		field, found = t.FieldByName(e)
+		field, found = field.Type.FieldByName(e)
 		if !found { // no value found
 			fmt.Printf("DEBUG: found no value for qualifier '%s' at depth %d\n", e, i)
-			return reflect.StructField{}, false, nil
+			return reflect.StructField{}, false, nil, nil
 		}
+		// build path
+		index = append(index, field.Index...)
 	}
 	// if we reached the end of the loop, we have our final field
-	return field, true, nil
+	return field, true, index, nil
 
 }
 
