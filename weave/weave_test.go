@@ -384,6 +384,14 @@ func TestFindQualifiedField(t *testing.T) {
 		a  string
 	}
 
+	// silence "unused" warnings as we only care about types
+	c := "c"
+	var _ lvl1 = lvl1{l2: lvl2{b: 0, c: &c, l3: lvl3{d: -8,
+		e: struct {
+			a string
+			b string
+		}{a: "", b: ""}}}, lvl2: lvl2{b: 9}, a: "a"}
+
 	t.Run("depth 0", func(t *testing.T) {
 		exp, expFound := reflect.TypeOf(lvl1{}).FieldByName("a")
 		got, gotFound, _, err := FindQualifiedField[lvl1]("a", lvl1{})
