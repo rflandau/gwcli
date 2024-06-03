@@ -35,7 +35,6 @@ var killKeys = [...]tea.KeyType{tea.KeyCtrlC}
 // special, global actions
 // takes a reference to Mother and tokens [1:]
 var builtins = map[string](func(*Mother, []string) tea.Cmd){
-	"..":   navParent,
 	"help": ContextHelp,
 	"quit": quit,
 	"exit": quit}
@@ -202,7 +201,8 @@ func (m Mother) View() string {
  * ! Be sure each path that clears the prompt also outputs it via tea.Println
  */
 func processInput(m *Mother) tea.Cmd {
-	clilog.Writer.Debugf("Processing input '%s'\n", m.ti.Value())
+	input := m.ti.Value()
+	clilog.Writer.Debugf("Processing input '%s'\n", input)
 
 	if m.ti.Err != nil {
 		return nil
@@ -213,84 +213,25 @@ func processInput(m *Mother) tea.Cmd {
 	m.ti.Reset()                                  // empty out the input
 
 	// tokenize input
-	given := strings.Split(strings.TrimSpace(m.ti.Value()), " ")
+	given := strings.Split(strings.TrimSpace(input), " ")
 	//m.ti.Validate(given) // TODO add navigation text validation
 
-	if len(given) == 0 { // superfluous
-		return onComplete[0]
-	}
+	return tea.Sequence(m.walk(given, onComplete)...)
 
-	// check for a builtin command
-	if builtinFunc, ok := builtins[given[0]]; ok {
-		return tea.Sequence(onComplete[0], builtinFunc(m, given[1:]))
-	}
-	// if we do not find a built in, test for a valid invocation
-	var invocation *cobra.Command = nil
-	for _, c := range m.pwd.Commands() {
-		// check name
-		if c.Name() == given[0] {
-			invocation = c
-			clilog.Writer.Debugf("Match, invoking %s", invocation.Name())
-			break
-		}
-		// check aliases
-		for _, alias := range c.Aliases {
-			if alias == given[0] {
-				invocation = c
-				clilog.Writer.Debugf("Alias match, invoking %s", invocation.Name())
-				break
-			}
-		}
-		// if alias match, we also need to break the outer loop
-		if invocation != nil {
-			break
-		}
-	}
-
-	// check if we found a match
-	if invocation == nil {
-		// user request unhandlable
-		return tea.Sequence(
-			onComplete[0],
-			tea.Println(m.style.error.Render(fmt.Sprintf("unknown command '%s'. Press F1 or type 'help' for relevant commands.", given))),
-		)
-	}
-
-	// split on action or nav
-	if action.Is(invocation) { // hand off control to child
-		m.mode = handoff
-
-		// look up the subroutines to load
-		m.active.model, _ = action.GetModel(invocation) // save add-on subroutines
-		if m.active.model == nil {
-			return tea.Sequence(
-				onComplete[0],
-				tea.Println(m.style.error.Render(fmt.Sprintf("Developer issue: Did not find actor associated to '%s'. Please submit a bug report.", given))))
-		}
-		m.active.command = invocation // save relevant command
-		return onComplete[0]
-	} else { // nav
-		// navigate to child
-		m.pwd = invocation
-		return onComplete[0]
-	}
 }
 
 //#region builtin functions
 
-// Using the current menu, navigate up one level
-func navParent(m *Mother, args []string) tea.Cmd {
-	if m.pwd == m.root { // if we are at root, do nothing
-		return nil
-	}
-	// otherwise, step upward
-	m.pwd = m.pwd.Parent()
-	return nil
-}
-
 // Built-in, interactive help invocation
-func ContextHelp(m *Mother, _ []string) tea.Cmd {
-	return TeaCmdContextHelp(m.pwd)
+func ContextHelp(m *Mother, args []string) tea.Cmd {
+	if len(args) == 0 {
+		return TeaCmdContextHelp(m.pwd)
+	}
+
+	// TODO resolve help in the context of the following tokens
+
+	return nil
+
 }
 
 //#endregion
@@ -339,6 +280,92 @@ func (m *Mother) UnsetAction() {
 	m.mode = prompting
 	m.active.model = nil
 	m.active.command = nil
+}
+
+// Recursively walk the tokens of the exploded user input until we run out or
+// find a valid destination
+func (m *Mother) walk(tokens []string, onCompleteCmds []tea.Cmd) []tea.Cmd {
+	if len(tokens) == 0 {
+		// nothing more to be done
+		return onCompleteCmds
+	}
+
+	clilog.Writer.Debugf("Walking %v", tokens)
+
+	curToken := strings.TrimSpace(tokens[0])
+
+	// check for a builtin command
+	if builtinFunc, ok := builtins[curToken]; ok {
+		return append(onCompleteCmds, builtinFunc(m, tokens[1:]))
+	}
+
+	// check for upwards navigation
+	if curToken == ".." {
+		m.walkUp()
+		return m.walk(tokens[1:], onCompleteCmds)
+	}
+
+	// if we do not find a built in, test for a local action invocation
+	var invocation *cobra.Command = nil
+	for _, c := range m.pwd.Commands() {
+		// check name
+		if c.Name() == curToken {
+			invocation = c
+			clilog.Writer.Debugf("Match, invoking %s", invocation.Name())
+			break
+		}
+		// check aliases
+		for _, alias := range c.Aliases {
+			if alias == curToken {
+				invocation = c
+				clilog.Writer.Debugf("Alias match, invoking %s", invocation.Name())
+				break
+			}
+		}
+		// if alias match, we also need to break the outer loop
+		if invocation != nil {
+			break
+		}
+	}
+
+	// check if we found a match
+	if invocation == nil {
+		// user request unhandlable
+		// TODO maybe we shouldn't move on a failure
+		return append(onCompleteCmds, tea.Println(m.style.error.Render(fmt.Sprintf("unknown command '%s'. Press F1 or type 'help' for relevant commands.", curToken))))
+
+	}
+
+	// split on action or nav
+	if action.Is(invocation) { // hand off control to child
+		m.mode = handoff
+
+		// look up the subroutines to load
+		m.active.model, _ = action.GetModel(invocation) // save add-on subroutines
+		if m.active.model == nil {
+			return append(
+				onCompleteCmds,
+				tea.Println(m.style.error.Render(fmt.Sprintf("Developer issue: Did not find actor associated to '%s'. Please submit a bug report.", curToken))))
+		}
+		m.active.command = invocation // save relevant command
+		return onCompleteCmds
+	} else { // nav
+		// navigate given path
+		m.pwd = invocation
+		m.walk(tokens[1:], onCompleteCmds)
+		return onCompleteCmds
+	}
+}
+
+// Using the current menu, navigate walkUp one level
+func (m *Mother) walkUp() tea.Cmd {
+	if m.pwd == m.root { // if we are at root, do nothing
+		return nil
+	}
+	// otherwise, step upward
+	m.pwd = m.pwd.Parent()
+
+	return nil
 }
 
 //#endregion
