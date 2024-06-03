@@ -2,9 +2,12 @@ package weave
 
 import (
 	"fmt"
+	"gwcli/clilog"
 	"reflect"
 	"strings"
 	"testing"
+
+	grav "github.com/gravwell/gravwell/v3/ingest/log"
 )
 
 const longCSVLineCount = 17000
@@ -27,6 +30,9 @@ func TestToCSVHash(t *testing.T) {
 		st      []interface{}
 		columns []string
 	}
+
+	clilog.Init("weave_test.log", grav.DEBUG)
+
 	tests := []struct {
 		name string
 		args args
@@ -300,50 +306,148 @@ func TestToCSVHash(t *testing.T) {
 	})
 }
 
-func TestFindQualifiedField(t *testing.T) {
+func TestFindQualifiedFieldOld(t *testing.T) {
+	type lvl2 struct {
+		b uint
+	}
 	type lvl1 struct {
-		a string
+		lvl2
+		l2 lvl2
+		a  string
 	}
 
 	t.Run("depth 0", func(t *testing.T) {
 
-		_, wantFound := reflect.TypeOf(lvl1{}).FieldByName("a")
-		_, actualFound, actualErr := FindQualifiedField[lvl1]("a", lvl1{})
+		wantField, wantFound := reflect.TypeOf(lvl1{}).FieldByName("a")
+		actualField, actualFound, actualErr := FindQualifiedField[lvl1]("a", lvl1{})
 		if actualErr != nil {
 			t.Error(actualErr)
 		}
 		if actualFound != wantFound {
 			t.Errorf("found mismatch: actual (%v) != want (%v)", actualFound, wantFound)
 		}
-		// TODO compare fields
+		// cannot directly compare reflect.StructField
+		if actualField.Type != wantField.Type {
+			t.Errorf("type mismatch: actual (%v) != want (%v)", actualField.Type, wantField.Type)
+		}
+		if !reflect.DeepEqual(actualField, wantField) {
+			t.Errorf("equality mismatch: actual (%v) != want (%v)", actualField, wantField)
+		}
+	})
+}
+
+func TestFindQualifiedField(t *testing.T) {
+	// strutures to test on
+	type lvl2 struct {
+		b uint
+		c *string
+	}
+	type lvl1 struct {
+		lvl2
+		l2 lvl2
+		a  string
+	}
+
+	t.Run("depth 0", func(t *testing.T) {
+		exp, expFound := reflect.TypeOf(lvl1{}).FieldByName("a")
+		got, gotFound, err := FindQualifiedField[lvl1]("a", lvl1{})
+		if err != nil {
+			panic(err)
+		}
+		if gotFound != expFound {
+			t.Errorf("found mismatch: got(%v) != expected(%v)", gotFound, expFound)
+		}
+
+		if !reflect.DeepEqual(got, exp) {
+			t.Errorf("equality mismatch: got(%v) != expected(%v)", got, exp)
+			return
+		}
 	})
 
-	/*type args struct {
-		qualCol string
-		st      any
-	}
-	tests := []struct {
-		name    string
-		args    args
-		want    reflect.StructField
-		want1   bool
-		wantErr bool
-	}{
+	t.Run("promoted", func(t *testing.T) {
+		exp, expFound := reflect.TypeOf(lvl1{}).FieldByName("b")
+		got, gotFound, err := FindQualifiedField[lvl1]("b", lvl1{})
+		if err != nil {
+			panic(err)
+		}
+		if gotFound != expFound {
+			t.Errorf("found mismatch: got(%v) != expected(%v)", gotFound, expFound)
+		}
 
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			got, got1, err := FindQualifiedField(tt.args.qualCol, tt.args.st)
-			if (err != nil) != tt.wantErr {
-				t.Errorf("FindQualifiedField() error = %v, wantErr %v", err, tt.wantErr)
-				return
-			}
-			if !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("FindQualifiedField() got = %v, want %v", got, tt.want)
-			}
-			if got1 != tt.want1 {
-				t.Errorf("FindQualifiedField() got1 = %v, want %v", got1, tt.want1)
-			}
-		})
-	} */
+		if !reflect.DeepEqual(got, exp) {
+			t.Errorf("equality mismatch: got(%v) != expected(%v)", got, exp)
+			return
+		}
+	})
+
+	t.Run("promoted pointer", func(t *testing.T) {
+		exp, expFound := reflect.TypeOf(lvl1{}).FieldByName("c")
+		got, gotFound, err := FindQualifiedField[lvl1]("c", lvl1{})
+		if err != nil {
+			panic(err)
+		}
+		if gotFound != expFound {
+			t.Errorf("found mismatch: got(%v) != expected(%v)", gotFound, expFound)
+		}
+
+		if !reflect.DeepEqual(got, exp) {
+			t.Errorf("equality mismatch: got(%v) != expected(%v)", got, exp)
+			return
+		}
+	})
+	t.Run("named struct navigation", func(t *testing.T) {
+
+		to := reflect.TypeOf(lvl1{})
+		indices := []int{0, 0}
+
+		var exp reflect.StructField = to.Field(0)
+		for i := 1; i < len(indices); i++ {
+			exp = exp.Type.Field(indices[i])
+		}
+
+		got, _, err := FindQualifiedField[lvl1]("l2.b", lvl1{})
+		if err != nil {
+			panic(err)
+		}
+
+		if !StructFieldsEqual(got, exp) {
+			t.Errorf("equality mismatch: got(%v) != expected(%v)", got, exp)
+			return
+		}
+	})
+	t.Run("named struct navigation ptr", func(t *testing.T) {
+
+		to := reflect.TypeOf(lvl1{})
+		indices := []int{0, 1}
+
+		var exp reflect.StructField = to.Field(0)
+		for i := 1; i < len(indices); i++ {
+			exp = exp.Type.Field(indices[i])
+		}
+
+		got, _, err := FindQualifiedField[lvl1]("l2.c", lvl1{})
+		if err != nil {
+			panic(err)
+		}
+
+		if !StructFieldsEqual(got, exp) {
+			t.Errorf("equality mismatch: got(%v) != expected(%v)", got, exp)
+			return
+		}
+	})
+}
+
+// Fields returned by FindQualifiedField retain their true, nested index while
+// fetching via FindByIndex or iterative Field() calls do not.
+// Therefore, we cannot use DeepEqual() for comparison, but want to compare as
+// much else as possible and makes sense for all primatives.
+func StructFieldsEqual(x reflect.StructField, y reflect.StructField) bool {
+	return (x.Anonymous == y.Anonymous &&
+		x.Name == y.Name &&
+		x.Offset == y.Offset &&
+		x.PkgPath == y.PkgPath &&
+		x.Tag == y.Tag &&
+		x.Type == y.Type &&
+		x.IsExported() == y.IsExported() &&
+		x.Type.Align() == y.Type.Align())
 }
