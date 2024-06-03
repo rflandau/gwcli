@@ -12,12 +12,14 @@ import (
 
 const longCSVLineCount = 17000
 
+type too struct {
+	mu int
+	yu int16
+}
+
 type inner struct {
 	foo string
-	too struct {
-		mu int
-		yu int16
-	}
+	too too
 }
 
 type outer struct {
@@ -55,21 +57,69 @@ func TestToCSVHash(t *testing.T) {
 				columns: []string{"a"}},
 			"a\n" + "10",
 		},
+		{"∃c∃!r",
+			args{
+				st: []interface{}{
+					outer{
+						a:     10,
+						b:     0,
+						c:     &c,
+						d:     "D",
+						inner: inner{foo: "FOO"}}},
+				columns: []string{"a", "c"}},
+			"a,c\n" + "10,5.0123",
+		},
+		{"too ∀c2r, ordered as struct",
+			args{
+				st: []interface{}{
+					too{mu: 1, yu: 2}, too{mu: 3, yu: 4}},
+				columns: []string{
+					"mu", "yu",
+				}},
+			"mu,yu\n" + "1,2\n" + "3,4",
+		},
+		{"∃!c∃!r, deeply nested",
+			args{
+				st: []interface{}{
+					outer{inner: inner{too: too{mu: 5}}},
+				},
+				columns: []string{
+					"too.mu",
+				}},
+			"too.mu\n" + "5",
+		},
+		{"∃c∃!r, deeply nested",
+			args{
+				st: []interface{}{
+					outer{inner: inner{too: too{mu: 5, yu: 6}}},
+				},
+				columns: []string{
+					"too.mu", "too.yu",
+				}},
+			"too.mu,too.yu\n" + "5,6",
+		},
+		{"∃c∃!r, deeply nested",
+			args{
+				st: []interface{}{
+					outer{inner: inner{too: too{mu: 5, yu: 6}}, a: 10000, Exported: -87.5},
+				},
+				columns: []string{
+					"Exported", "too.mu", "too.yu", "a",
+				}},
+			"Exported,too.mu,too.yu,a\n" + "-87.5,5,6,10000",
+		},
 		{"∀c∃!r, ordered as struct",
 			args{
 				st: []interface{}{
 					outer{
-						inner: inner{foo: "FOO", too: struct {
-							mu int
-							yu int16
-						}{mu: 5, yu: 1}},
+						inner:    inner{foo: "FOO", too: too{mu: 5, yu: 1}},
 						a:        10,
 						b:        0,
 						c:        &c,
 						d:        "D",
 						Exported: 3.145}},
 				columns: []string{
-					"foo", "too.mu", "too.yu", "a", "b", "c", "d", "Exported",
+					"foo", "too.mu", "too.yu", "a", "b", "c", "d", "Exported", "too.mu",
 				}},
 			"foo,too.mu,too.yu,a,b,c,d,Exported,too.mu\n" + "FOO,5,1,10,0,5.0123,D,3.145,5",
 		},
@@ -314,41 +364,19 @@ func TestToCSVHash(t *testing.T) {
 	})
 }
 
-func TestFindQualifiedFieldOld(t *testing.T) {
-	type lvl2 struct {
-		b uint
-	}
-	type lvl1 struct {
-		lvl2
-		l2 lvl2
-		a  string
-	}
-
-	t.Run("depth 0", func(t *testing.T) {
-
-		wantField, wantFound := reflect.TypeOf(lvl1{}).FieldByName("a")
-		actualField, actualFound, actualErr := FindQualifiedField[lvl1]("a", lvl1{})
-		if actualErr != nil {
-			t.Error(actualErr)
-		}
-		if actualFound != wantFound {
-			t.Errorf("found mismatch: actual (%v) != want (%v)", actualFound, wantFound)
-		}
-		// cannot directly compare reflect.StructField
-		if actualField.Type != wantField.Type {
-			t.Errorf("type mismatch: actual (%v) != want (%v)", actualField.Type, wantField.Type)
-		}
-		if !reflect.DeepEqual(actualField, wantField) {
-			t.Errorf("equality mismatch: actual (%v) != want (%v)", actualField, wantField)
-		}
-	})
-}
-
 func TestFindQualifiedField(t *testing.T) {
+	type lvl3 struct {
+		d int
+		e struct {
+			a string
+			b string
+		}
+	}
 	// strutures to test on
 	type lvl2 struct {
-		b uint
-		c *string
+		b  uint
+		c  *string
+		l3 lvl3
 	}
 	type lvl1 struct {
 		lvl2
@@ -358,7 +386,22 @@ func TestFindQualifiedField(t *testing.T) {
 
 	t.Run("depth 0", func(t *testing.T) {
 		exp, expFound := reflect.TypeOf(lvl1{}).FieldByName("a")
-		got, gotFound, err := FindQualifiedField[lvl1]("a", lvl1{})
+		got, gotFound, _, err := FindQualifiedField[lvl1]("a", lvl1{})
+		if err != nil {
+			panic(err)
+		}
+		if gotFound != expFound {
+			t.Errorf("found mismatch: got(%v) != expected(%v)", gotFound, expFound)
+		}
+
+		if !reflect.DeepEqual(got, exp) {
+			t.Errorf("equality mismatch: got(%v) != expected(%v)", got, exp)
+			return
+		}
+	})
+	t.Run("depth 0 pointer", func(t *testing.T) {
+		exp, expFound := reflect.TypeOf(lvl2{}).FieldByName("c")
+		got, gotFound, _, err := FindQualifiedField[lvl2]("c", lvl2{})
 		if err != nil {
 			panic(err)
 		}
@@ -374,7 +417,7 @@ func TestFindQualifiedField(t *testing.T) {
 
 	t.Run("promoted", func(t *testing.T) {
 		exp, expFound := reflect.TypeOf(lvl1{}).FieldByName("b")
-		got, gotFound, err := FindQualifiedField[lvl1]("b", lvl1{})
+		got, gotFound, _, err := FindQualifiedField[lvl1]("b", lvl1{})
 		if err != nil {
 			panic(err)
 		}
@@ -390,7 +433,7 @@ func TestFindQualifiedField(t *testing.T) {
 
 	t.Run("promoted pointer", func(t *testing.T) {
 		exp, expFound := reflect.TypeOf(lvl1{}).FieldByName("c")
-		got, gotFound, err := FindQualifiedField[lvl1]("c", lvl1{})
+		got, gotFound, _, err := FindQualifiedField[lvl1]("c", lvl1{})
 		if err != nil {
 			panic(err)
 		}
@@ -400,40 +443,78 @@ func TestFindQualifiedField(t *testing.T) {
 
 		if !reflect.DeepEqual(got, exp) {
 			t.Errorf("equality mismatch: got(%v) != expected(%v)", got, exp)
-			return
 		}
 	})
 	t.Run("named struct navigation", func(t *testing.T) {
 
-		to := reflect.TypeOf(lvl1{})
-		indices := []int{0, 0}
+		var expIndexPath []int = []int{1, 0}
+		var exp reflect.StructField = reflect.TypeOf(lvl1{}).FieldByIndex(expIndexPath)
 
-		var exp reflect.StructField = to.Field(0)
-		for i := 1; i < len(indices); i++ {
-			exp = exp.Type.Field(indices[i])
-		}
-
-		got, _, err := FindQualifiedField[lvl1]("l2.b", lvl1{})
+		got, _, gotIndexPath, err := FindQualifiedField[lvl1]("l2.b", lvl1{})
 		if err != nil {
 			panic(err)
 		}
 
 		if !StructFieldsEqual(got, exp) {
 			t.Errorf("equality mismatch: got(%v) != expected(%v)", got, exp)
+		}
+
+		if len(gotIndexPath) != len(expIndexPath) {
+			t.Errorf("path len mismatch: gotPath(%v) != expectedPath(%v)", gotIndexPath, expIndexPath)
+		}
+
+		for i := 0; i < len(gotIndexPath); i++ {
+			if gotIndexPath[i] != expIndexPath[i] {
+				t.Errorf("path mismatch @ index [%d]: gotPath(%v) != expectedPath(%v)", i, gotIndexPath, expIndexPath)
+			}
+		}
+
+	})
+	t.Run("named struct navigation outer -> (embed) -> too -> mu", func(t *testing.T) {
+		var expIndexPath []int = []int{0, 1, 0}
+		var exp reflect.StructField = reflect.TypeOf(outer{}).FieldByIndex(expIndexPath)
+
+		got, _, gotIndexPath, err := FindQualifiedField[outer]("too.mu", outer{})
+		if err != nil {
+			panic(err)
+		}
+
+		if !StructFieldsEqual(got, exp) {
+			t.Errorf("equality mismatch: got(%v) != expected(%v)", got, exp)
+		}
+
+		if len(gotIndexPath) != len(expIndexPath) {
+			t.Errorf("path len mismatch: gotPath(%v) != expectedPath(%v)", gotIndexPath, expIndexPath)
+		}
+
+		for i := 0; i < len(gotIndexPath); i++ {
+			if gotIndexPath[i] != expIndexPath[i] {
+				t.Errorf("path mismatch @ index [%d]: gotPath(%v) != expectedPath(%v)", i, gotIndexPath, expIndexPath)
+			}
+		}
+
+	})
+	t.Run("named struct navigation outer -> (embed) -> too -> mu fail (no equity)", func(t *testing.T) {
+
+		// access one field too far within too
+
+		var exp reflect.StructField = reflect.TypeOf(outer{}).FieldByIndex([]int{0, 1, 1})
+
+		got, _, _, err := FindQualifiedField[lvl1]("too.mu", outer{})
+		if err != nil {
+			panic(err)
+		}
+
+		if StructFieldsEqual(got, exp) {
+			t.Errorf("equality mismatch expected but found equity: got(%v) != expected(%v)", got, exp)
 			return
 		}
 	})
 	t.Run("named struct navigation ptr", func(t *testing.T) {
 
-		to := reflect.TypeOf(lvl1{})
-		indices := []int{0, 1}
+		var exp reflect.StructField = reflect.TypeOf(lvl1{}).FieldByIndex([]int{0, 1})
 
-		var exp reflect.StructField = to.Field(0)
-		for i := 1; i < len(indices); i++ {
-			exp = exp.Type.Field(indices[i])
-		}
-
-		got, _, err := FindQualifiedField[lvl1]("l2.c", lvl1{})
+		got, _, _, err := FindQualifiedField[lvl1]("l2.c", lvl1{})
 		if err != nil {
 			panic(err)
 		}
@@ -441,6 +522,61 @@ func TestFindQualifiedField(t *testing.T) {
 		if !StructFieldsEqual(got, exp) {
 			t.Errorf("equality mismatch: got(%v) != expected(%v)", got, exp)
 			return
+		}
+	})
+
+	t.Run("embedded + depth 2", func(t *testing.T) {
+		var exp reflect.StructField = reflect.TypeOf(lvl1{}).FieldByIndex([]int{0, 2, 0})
+
+		got, _, _, err := FindQualifiedField[lvl1]("l3.d", lvl1{})
+		if err != nil {
+			panic(err)
+		}
+
+		if !StructFieldsEqual(got, exp) {
+			t.Errorf("equality mismatch: got(%v) != expected(%v)", got, exp)
+			return
+		}
+	})
+
+	t.Run("depth 3", func(t *testing.T) {
+		var exp reflect.StructField = reflect.TypeOf(lvl1{}).FieldByIndex([]int{0, 2, 0})
+
+		got, _, _, err := FindQualifiedField[lvl1]("l2.l3.d", lvl1{})
+		if err != nil {
+			panic(err)
+		}
+
+		if !StructFieldsEqual(got, exp) {
+			t.Errorf("equality mismatch: got(%v) != expected(%v)", got, exp)
+		}
+	})
+
+	// test accessing fields within first-class struct, e, embedded at depth 0,
+	// in struct lvl3
+	t.Run("first-class internal struct @ depth 0", func(t *testing.T) {
+		var exp reflect.StructField = reflect.TypeOf(lvl3{}).FieldByIndex([]int{1, 1})
+
+		got, _, _, err := FindQualifiedField[lvl3]("e.b", lvl3{})
+		if err != nil {
+			panic(err)
+		}
+
+		if !StructFieldsEqual(got, exp) {
+			t.Errorf("equality mismatch: got(%v) != expected(%v)", got, exp)
+		}
+	})
+
+	t.Run("deeply nested first-class struct", func(t *testing.T) {
+		var exp reflect.StructField = reflect.TypeOf(lvl1{}).FieldByIndex([]int{1, 2, 1, 1})
+
+		got, _, _, err := FindQualifiedField[lvl1]("l2.l3.e.b", lvl1{})
+		if err != nil {
+			panic(err)
+		}
+
+		if !StructFieldsEqual(got, exp) {
+			t.Errorf("equality mismatch: got(%v) != expected(%v)", got, exp)
 		}
 	})
 }
