@@ -24,10 +24,10 @@ import (
 type navCmd = cobra.Command
 type actionCmd = cobra.Command // actions have associated actors
 
-type WalkStatus int
+type walkStatus int
 
 const (
-	invalidCommand WalkStatus = iota
+	invalidCommand walkStatus = iota
 	foundNav
 	foundAction
 	foundBuiltin
@@ -231,21 +231,23 @@ func processInput(m *Mother) tea.Cmd {
 	given := strings.Split(strings.TrimSpace(input), " ")
 	//m.ti.Validate(given) // TODO add navigation text validation
 
-	var (
+	/*var (
 		endCmd     *cobra.Command
-		status     WalkStatus
+		status     walkStatus
 		inputError string
-	)
-	endCmd, status, onComplete, inputError = walk(m.pwd, given, onComplete)
-	if inputError != "" {
+	)*/
+	//endCmd, status, onComplete, inputError = walk(m.pwd, given, onComplete)
+	wr := walk(m.pwd, given, onComplete)
+
+	if wr.errString != "" {
 		return tea.Sequence(
 			append(
 				onComplete,
-				tea.Println(m.style.error.Render(inputError)),
+				tea.Println(m.style.error.Render(wr.errString)),
 			)...)
 	}
 	// split on action or nav
-	switch status {
+	switch wr.status {
 	case foundBuiltin:
 		// if the built-in is not the first command, we don't care about it
 		// so re-test only the first token
@@ -254,22 +256,23 @@ func processInput(m *Mother) tea.Cmd {
 			return tea.Sequence(onComplete...)
 		}
 	case foundNav:
-		m.pwd = endCmd
+		m.pwd = wr.endCommand
 	case foundAction:
 		m.mode = handoff
 
 		// look up the subroutines to load
-		m.active.model, _ = action.GetModel(endCmd) // save add-on subroutines
+		m.active.model, _ = action.GetModel(wr.endCommand) // save add-on subroutines
 		if m.active.model == nil {
 			onComplete = append(
 				onComplete,
 				tea.Printf("Developer issue: Did not find actor associated to '%s'."+
 					" Please submit a bug report.\n",
-					endCmd.Name()),
+					wr.endCommand.Name()),
 			)
 		}
-		m.active.command = endCmd // save relevant command
-		// TODO save args in m.active.args
+		// save relevant command and any extra tokens
+		m.active.command = wr.endCommand
+		m.active.args = wr.remainingTokens
 	case invalidCommand:
 		clilog.Writer.Errorf("walking input %v returned invalid", given)
 	}
@@ -289,13 +292,14 @@ func ContextHelp(m *Mother, args []string) tea.Cmd {
 	// walk the command tree
 	// action or nav, print help about it
 	// if invalid/no destination, print error
-	finalCmd, status, _, inputError := walk(m.pwd, args, make([]tea.Cmd, 1))
-	if inputError != "" { // erroneous input
-		return tea.Println(m.style.error.Render(inputError))
+	wr := walk(m.pwd, args, make([]tea.Cmd, 1))
+
+	if wr.errString != "" { // erroneous input
+		return tea.Println(m.style.error.Render(wr.errString))
 	}
-	switch status {
+	switch wr.status {
 	case foundNav, foundAction:
-		return TeaCmdContextHelp(finalCmd)
+		return TeaCmdContextHelp(wr.endCommand)
 	case foundBuiltin:
 		if _, ok := builtins[args[0]]; ok {
 			// TODO fill in help information for each built-in command
@@ -304,7 +308,7 @@ func ContextHelp(m *Mother, args []string) tea.Cmd {
 
 	}
 
-	clilog.Writer.Debugf("Doing nothing (finalCmd: %v | status: %v | inputErrpr: %v)", finalCmd, status, inputError)
+	clilog.Writer.Debugf("Doing nothing (%#v)", wr)
 
 	return nil
 }
@@ -357,21 +361,52 @@ func (m *Mother) UnsetAction() {
 	m.active.command = nil
 }
 
+//#endregion
+
+//#region static helper functions
+
+//#region tree navigation
+
+type walkResult struct {
+	endCommand     *cobra.Command // the relevent command walk completed on
+	status         walkStatus     // ending state
+	onCompleteCmds []tea.Cmd      // ordered list of commands to pass to the bubble tea driver
+	errString      string
+
+	// builtin function information, if relevant (else Zero vals)
+	builtinStr  string
+	builtinFunc func(*Mother, []string) tea.Cmd
+
+	// contains args for actions
+	remainingTokens []string // any tokens remaining for later processing by walk caller
+}
+
 // Recursively walk the tokens of the exploded user input until we run out or
 // find a valid destination.
 // Returns the relevant command (ending Nav destination or action to invoke),
 // the type of the command (action, nav, invalid), a list of commands to pass to
 // tea, and an error (if one occurred).
-func walk(dir *cobra.Command, tokens []string, onCompleteCmds []tea.Cmd) (*cobra.Command, WalkStatus, []tea.Cmd, string) {
+func walk(dir *cobra.Command, tokens []string, onCompleteCmds []tea.Cmd) walkResult {
 	if len(tokens) == 0 {
 		// only move if the final command was a nav
-		return dir, foundNav, onCompleteCmds, ""
+		return walkResult{
+			endCommand:     dir,
+			status:         foundNav,
+			onCompleteCmds: onCompleteCmds,
+		}
 	}
 
 	curToken := strings.TrimSpace(tokens[0])
 
-	if _, ok := builtins[curToken]; ok { // check for built-in command
-		return nil, foundBuiltin, onCompleteCmds, ""
+	if bif, ok := builtins[curToken]; ok { // check for built-in command
+		return walkResult{
+			endCommand:      nil,
+			status:          foundBuiltin,
+			onCompleteCmds:  onCompleteCmds,
+			builtinStr:      curToken,
+			builtinFunc:     bif,
+			remainingTokens: tokens[1:],
+		}
 	}
 
 	if curToken == ".." { // navigate upward
@@ -403,15 +438,23 @@ func walk(dir *cobra.Command, tokens []string, onCompleteCmds []tea.Cmd) (*cobra
 	// check if we found a match
 	if invocation == nil {
 		// user request unhandlable
-		return nil,
-			invalidCommand,
-			onCompleteCmds,
-			fmt.Sprintf("unknown command '%s'. Press F1 or type 'help' for relevant commands.", curToken)
+		return walkResult{
+			endCommand:      nil,
+			status:          invalidCommand,
+			onCompleteCmds:  onCompleteCmds,
+			errString:       fmt.Sprintf("unknown command '%s'. Press F1 or type 'help' for relevant commands.", curToken),
+			remainingTokens: tokens[1:],
+		}
 	}
 
 	// split on action or nav
 	if action.Is(invocation) {
-		return invocation, foundAction, onCompleteCmds, ""
+		return walkResult{
+			endCommand:      invocation,
+			status:          foundAction,
+			onCompleteCmds:  onCompleteCmds,
+			remainingTokens: tokens[1:],
+		}
 	} else { // nav
 		// navigate given path
 		dir = invocation
@@ -420,8 +463,6 @@ func walk(dir *cobra.Command, tokens []string, onCompleteCmds []tea.Cmd) (*cobra
 }
 
 //#endregion
-
-//#region static helper functions
 
 // Return the parent directory to the given command
 func up(dir *cobra.Command) *cobra.Command {
