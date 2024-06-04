@@ -457,41 +457,38 @@ func TeaCmdContextHelp(c *cobra.Command) tea.Cmd {
 	// generate a list of all available Navs and Actions with their associated shorts
 	var s strings.Builder
 
-	children := c.Commands()
-	for _, child := range children {
-		// handle special commands
-		if child.Name() == "help" || child.Name() == "completion" {
-			continue
-		}
-		var name string
-		var subchildren strings.Builder // children of this child
-		if action.Is(child) {
-			name = stylesheet.ActionStyle.Render(child.Name())
-		} else {
-			name = stylesheet.NavStyle.Render(child.Name())
-			// build and color subchildren
-			for _, sc := range child.Commands() {
-				_, err := subchildren.WriteString(stylesheet.ColorCommandName(sc) + " ")
-				if err != nil {
-					panic(err)
-				}
+	if action.Is(c) {
+		s.WriteString(c.UsageString())
+	} else {
+		children := c.Commands()
+		for _, child := range children {
+			// handle special commands
+			if child.Name() == "help" || child.Name() == "completion" {
+				continue
 			}
+			var name string
+			var subchildren strings.Builder // children of this child
+			if action.Is(child) {
+				name = stylesheet.ActionStyle.Render(child.Name())
+			} else {
+				name = stylesheet.NavStyle.Render(child.Name())
+				// build and color subchildren
+				for _, sc := range child.Commands() {
+					_, err := subchildren.WriteString(stylesheet.ColorCommandName(sc) + " ")
+					if err != nil {
+						panic(err)
+					}
+				}
 
-		}
-		// generate the output
-		trimmedSubChildren := strings.TrimSpace(subchildren.String())
-		s.WriteString(fmt.Sprintf("%s%s - %s\n", indent, name, child.Short))
-		if trimmedSubChildren != "" {
-			s.WriteString(indent + indent + trimmedSubChildren + "\n")
+			}
+			// generate the output
+			trimmedSubChildren := strings.TrimSpace(subchildren.String())
+			s.WriteString(fmt.Sprintf("%s%s - %s\n", indent, name, child.Short))
+			if trimmedSubChildren != "" {
+				s.WriteString(indent + indent + trimmedSubChildren + "\n")
+			}
 		}
 	}
-
-	/* Old form using Cobra's standard help template
-	// redirect output so we can pass it to bubble tea
-	var s strings.Builder
-	c.SetOut(&s) // TODO do this on mother's invocation?
-	c.Usage()    // TODO do not print flags?
-	*/
 
 	// TODO store the string within mother somewhere so we can lazy-compile all strings
 	// chomp last newline and return
