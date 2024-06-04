@@ -106,6 +106,7 @@ func ToTable[Any any](st []Any, columns []string) string {
 	var rows [][]string = make([][]string, len(st))
 
 	for i := range st { // operate on each struct
+		rows[i] = make([]string, len(columns))
 		// deconstruct the struct
 		structVals := reflect.ValueOf(st[i])
 		// search for each column
