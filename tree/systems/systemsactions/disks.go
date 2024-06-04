@@ -47,3 +47,7 @@ func (k *diskInfo) Reset() error {
 	k.done = false
 	return nil
 }
+
+func (k *diskInfo) SetArgs([]string) (bool, error) {
+	return true, nil
+}

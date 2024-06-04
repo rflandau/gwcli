@@ -263,16 +263,32 @@ func processInput(m *Mother) tea.Cmd {
 		// look up the subroutines to load
 		m.active.model, _ = action.GetModel(wr.endCommand) // save add-on subroutines
 		if m.active.model == nil {
-			onComplete = append(
+			// undo handoff mode
+			m.mode = prompting
+
+			return tea.Sequence(append(
 				onComplete,
 				tea.Printf("Developer issue: Did not find actor associated to '%s'."+
 					" Please submit a bug report.\n",
-					wr.endCommand.Name()),
-			)
+					wr.endCommand.Name()))...)
 		}
-		// save relevant command and any extra tokens
+
+		if valid, err := m.active.model.SetArgs(wr.remainingTokens); err != nil {
+			m.UnsetAction()
+
+			errString := fmt.Sprintf("Failed to set args %v\nactive model %v\nactive command%v", wr.remainingTokens, m.active.model, wr.endCommand)
+			clilog.Writer.Errorf("%v", errString)
+
+			return tea.Sequence(append(
+				onComplete,
+				tea.Println(errString))...)
+		} else if !valid {
+			return tea.Sequence(append(
+				onComplete,
+				tea.Println("invalid arguments. See help for invocation requirements"))...)
+		}
+
 		m.active.command = wr.endCommand
-		m.active.args = wr.remainingTokens
 	case invalidCommand:
 		clilog.Writer.Errorf("walking input %v returned invalid", given)
 	}
@@ -352,10 +368,10 @@ func (m *Mother) f1Help() tea.Cmd {
  * returns control to Mother.
  */
 func (m *Mother) UnsetAction() {
-	if m.active.model == nil || m.active.command == nil {
-		panic("nil actives")
+	if m.active.model != nil {
+		m.active.model.Reset()
 	}
-	m.active.model.Reset()
+
 	m.mode = prompting
 	m.active.model = nil
 	m.active.command = nil

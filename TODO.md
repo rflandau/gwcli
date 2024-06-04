@@ -1,12 +1,3 @@
-- [x] Implement multi-token parsing on the interactive prompt
-    - [x] navigate multiple levels, matching against each context's children
-    - [x] allow contextual help via `help <command>`
-        - Auxillary to already-implemented F1 prompt reading
-    - [ ] pass tokens past an action to the action as arguments
-        - [ ] allow actions to define a .Validate to ensure argument status
-    - [x] do not walk  if final step is action invokation
-    - [x] do not walk if an invalid token is parsed
-
 - [ ] Implement `dry-run` flag for shell access
     - Validate syntax and exit
 
@@ -34,7 +25,5 @@
 - [ ] Disable Cobra displaying help on failed PersistentPreRun
 
 - [ ] Replace the panics floating around mother with appropriate error handling
-
-- [x] Incorporate Qualified Field Names into `weave`
 
 - [?] Spin `weave` off into its own package

@@ -35,6 +35,7 @@ type Model interface {
 	View() string
 	Done() bool
 	Reset() error
+	SetArgs([]string) (bool, error)
 }
 
 // Temp tuple used to construct the Action Map

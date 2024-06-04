@@ -16,22 +16,35 @@ import (
 	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/spf13/cobra"
+	"github.com/spf13/pflag"
 )
+
+var localFlagset pflag.FlagSet
 
 func GenerateAction() action.Pair {
 	// create the action
 	cmd := treeutils.NewActionCommand("create", "create a new macro", "", []string{}, run)
 
-	// attach flags
+	// establish local flags
+	localFlagset = initialLocalFlagSet()
 
-	cmd.Flags().StringP("name", "n", "", "the shorthand that will be expanded")
-	cmd.Flags().StringP("description", "d", "", "(flavour) description")
-	cmd.Flags().StringP("expansion", "e", "", "value for the macro to expand to")
+	cmd.Flags().AddFlagSet(&localFlagset)
+
 	cmd.MarkFlagRequired("name")
 	cmd.MarkFlagRequired("description")
 	cmd.MarkFlagRequired("expansion")
 
 	return treeutils.GenerateAction(cmd, Create)
+}
+
+func initialLocalFlagSet() pflag.FlagSet {
+	fs := pflag.FlagSet{}
+
+	fs.StringP("name", "n", "", "the shorthand that will be expanded")
+	fs.StringP("description", "d", "", "(flavour) description")
+	fs.StringP("expansion", "e", "", "value for the macro to expand to")
+
+	return fs
 }
 
 func createMacro(name, desc, value string) error {
@@ -228,14 +241,16 @@ func (c *create) Done() bool {
 	return c.done
 }
 
-/**
- * Reset clears the done flag and resets the model to its initial state,
- * dropping all data from each field.
- */
+// Resets the model to its initial state, dropping all data. This ensures the
+// next call is against a clean slate
 func (c *create) Reset() error {
 	for i := range c.ti {
 		c.ti[i].Reset()
 	}
+
+	// pflag has no way to unset flag values,
+	// so we need to establish a new localFlagset
+	localFlagset = initialLocalFlagSet()
 
 	c.ti[c.focusedInput].Blur()
 	c.focusedInput = name
@@ -276,6 +291,42 @@ func (c *create) focusPrevious() {
 	// focus next (the prior ti)
 	c.ti[nextInput].Focus()
 	c.focusedInput = nextInput
+}
+
+// SetArgs parses the tokens against the local flagset and sets internal
+// parameters. Returns false if the token set does not contain required flags or
+// is invalid
+func (c *create) SetArgs(tokens []string) (bool, error) {
+	// parse the tokens agains the local flagset
+	err := localFlagset.Parse(tokens)
+	if err != nil {
+		return false, err
+	}
+
+	// set action variable fields
+	var val string
+	if val, err = localFlagset.GetString("name"); err != nil {
+		return false, err
+	}
+	val = strings.ToUpper(strings.TrimSpace(val))
+	clilog.Writer.Debugf("Set name to %v", val)
+	c.ti[name].SetValue(val)
+
+	if val, err := localFlagset.GetString("description"); err != nil {
+		return false, err
+	} else if val != "" {
+		clilog.Writer.Debugf("Set description to %v", val)
+		c.ti[desc].SetValue(val)
+	}
+
+	if val, err := localFlagset.GetString("expansion"); err != nil {
+		return false, err
+	} else if val != "" {
+		clilog.Writer.Debugf("Set expansion to %v", val)
+		c.ti[value].SetValue(val)
+	}
+
+	return true, nil
 }
 
 //#endregion

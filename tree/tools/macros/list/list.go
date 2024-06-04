@@ -81,4 +81,8 @@ func (k *list) Reset() error {
 	return nil
 }
 
+func (k *list) SetArgs([]string) (bool, error) {
+	return true, nil
+}
+
 //#endregion

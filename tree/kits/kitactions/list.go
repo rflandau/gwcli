@@ -85,3 +85,9 @@ func (k *kitlist) Reset() error {
 	k.done = false
 	return nil
 }
+
+func (k *kitlist) SetArgs([]string) (bool, error) {
+	return true, nil
+}
+
+//#endregion

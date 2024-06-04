@@ -49,3 +49,7 @@ func (k *hwlist) Reset() error {
 	k.done = false
 	return nil
 }
+
+func (k *hwlist) SetArgs([]string) (bool, error) {
+	return true, nil
+}
