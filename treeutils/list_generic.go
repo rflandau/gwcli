@@ -100,7 +100,7 @@ func NewListCmd[Any any](use, short, long string, aliases []string, dataStruct A
 		case json:
 			//fmt.Println(weave.ToJSON(data, columns))
 		case table:
-			//fmt.Println(weave.ToTable(data, columns))
+			fmt.Println(weave.ToTable(data, columns))
 		default:
 			clilog.TeeError(cmd.ErrOrStderr(), fmt.Sprintf("unknown output format (%d)", format))
 			return

@@ -51,26 +51,9 @@ func ToCSV[Any any](st []Any, columns []string) string {
 		return ""
 	}
 
-	var hdrBldr strings.Builder
+	columnMap := buildColumnMap(st[0], columns)
 
-	// deconstruct the first struct to validate requested columns
-	// coordinate columns
-	columnMap := make(map[string][]int, len(columns)) // column name -> recursive field indices
-	for i := range columns {
-		hdrBldr.WriteString(columns[i] + ",") // generate header
-		// map column names to their field indices
-		// if a name is not found, nil it so it can be skipped later
-		_, fo, index, err := FindQualifiedField[any](columns[i], st[0])
-		if err != nil {
-			panic(err)
-		}
-		if !fo {
-			columnMap[columns[i]] = nil
-			continue
-		}
-		columnMap[columns[i]] = index
-	}
-	var hdr string = chomp(hdrBldr.String())
+	var hdr string = strings.Join(columns, ",")
 
 	var csv strings.Builder // stores the actual data
 
@@ -114,16 +97,32 @@ func chomp(s string) string {
 }
 
 func ToTable[Any any](st []Any, columns []string) string {
-
 	if columns == nil || st == nil || len(st) < 1 || len(columns) < 1 { // superfluous request
 		return ""
 	}
 
-	var data [][]string = make([][]string, len(st))
-	// TODO import stylesheet.Table, instead calling base styling from stylesheet.NewTable
+	columnMap := buildColumnMap(st[0], columns)
 
-	// TODO
-	return stylesheet.Table(columns, data)
+	var rows [][]string = make([][]string, len(st))
+
+	for i := range st { // operate on each struct
+		// deconstruct the struct
+		structVals := reflect.ValueOf(st[i])
+		// search for each column
+		for k := range columns {
+			findex := columnMap[columns[k]]
+			if findex != nil {
+				data := structVals.FieldByIndex(findex)
+				if data.Kind() == reflect.Pointer {
+					data = data.Elem()
+				}
+				// save the data into our row
+				rows[i][k] = fmt.Sprintf("%v", data)
+			}
+		}
+	}
+
+	return stylesheet.Table(columns, rows)
 }
 
 // Given a fully qualified column name (ex: "outerstruct.innerstruct.field"),
@@ -237,4 +236,26 @@ func innerStructFields(qualification string, field reflect.StructField, exported
 	}
 
 	return columns
+}
+
+func buildColumnMap(st any, columns []string) (columnMap map[string][]int) {
+	numColumns := len(columns)
+
+	// deconstruct the first struct to validate requested columns
+	// coordinate columns
+	columnMap = make(map[string][]int, numColumns) // column name -> recursive field indices
+	for i := range columns {
+		// map column names to their field indices
+		// if a name is not found, nil it so it can be skipped later
+		_, fo, index, err := FindQualifiedField[any](columns[i], st)
+		if err != nil {
+			panic(err)
+		}
+		if !fo {
+			columnMap[columns[i]] = nil
+			continue
+		}
+		columnMap[columns[i]] = index
+	}
+	return
 }
