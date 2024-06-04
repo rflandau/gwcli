@@ -269,6 +269,7 @@ func processInput(m *Mother) tea.Cmd {
 			)
 		}
 		m.active.command = endCmd // save relevant command
+		// TODO save args in m.active.args
 	case invalidCommand:
 		clilog.Writer.Errorf("walking input %v returned invalid", given)
 	}
@@ -370,7 +371,6 @@ func walk(dir *cobra.Command, tokens []string, onCompleteCmds []tea.Cmd) (*cobra
 	curToken := strings.TrimSpace(tokens[0])
 
 	if _, ok := builtins[curToken]; ok { // check for built-in command
-		// TODO do not execute builtin; allow caller to do that
 		return nil, foundBuiltin, onCompleteCmds, ""
 	}
 
