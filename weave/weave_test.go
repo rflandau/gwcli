@@ -633,6 +633,10 @@ func TestStructFields(t *testing.T) {
 		non      string
 	}
 
+	// silence "unused" warnings as we only care about types
+	a, b, z := 1, 2, "z"
+	var _ ptr = ptr{a: &a, b: &b, innerptr: &inner2{z: &z, none: ""}, inner: inner2{}, non: ""}
+
 	type args struct {
 		st any
 	}
