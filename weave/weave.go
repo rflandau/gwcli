@@ -113,6 +113,19 @@ func chomp(s string) string {
 	return strings.TrimSuffix(s, ",")
 }
 
+func ToTable[Any any](st []Any, columns []string) string {
+
+	if columns == nil || st == nil || len(st) < 1 || len(columns) < 1 { // superfluous request
+		return ""
+	}
+
+	var data [][]string = make([][]string, len(st))
+	// TODO import stylesheet.Table, instead calling base styling from stylesheet.NewTable
+
+	// TODO
+	return stylesheet.Table(columns, data)
+}
+
 // Given a fully qualified column name (ex: "outerstruct.innerstruct.field"),
 // finds the associated field, if it exists.
 //
@@ -160,15 +173,63 @@ func FindQualifiedField[Any any](qualCol string, st any) (field reflect.StructFi
 
 }
 
-func ToTable[Any any](st []Any, columns []string) string {
+// Returns a list of all fields in the struct *definition*, as they are ordered
+// internally
+func StructFields(st any) (columns []string, err error) {
+	if st == nil {
+		return nil, errors.New(ErrStructIsNil)
+	}
+	to := reflect.TypeOf(st)
+	if to.Kind() == reflect.Pointer { // dereference
+		to = to.Elem()
+	}
+	if to.Kind() != reflect.Struct { // prerequisite
+		return nil, errors.New(ErrNotAStruct)
+	}
+	numFields := to.NumField()
+	columns = []string{}
 
-	if columns == nil || st == nil || len(st) < 1 || len(columns) < 1 { // superfluous request
-		return ""
+	// for each field
+	//	if the field is not a struct, append it to the columns
+	//	if the field is a struct, repeat
+
+	for i := 0; i < numFields; i++ {
+		columns = append(columns, innerStructFields("", to.Field(i))...)
 	}
 
-	var data [][]string = make([][]string, len(st))
-	// TODO import stylesheet.Table, instead calling base styling from stylesheet.NewTable
+	return columns, nil
+}
 
-	// TODO
-	return stylesheet.Table(columns, data)
+// innerStructFields is a helper function for StructFields, returning the
+// qualified name of the given field or the list of qualified names of its
+// children, if a struct.
+// Operates recursively on the given field if it is a struct.
+// Operates down the struct, in field-order.
+func innerStructFields(qualification string, field reflect.StructField) []string {
+	var columns []string = []string{}
+
+	// dereference
+	if field.Type.Kind() == reflect.Ptr {
+		field.Type = field.Type.Elem()
+	}
+
+	if field.Type.Kind() == reflect.Struct {
+		for k := 0; k < field.Type.NumField(); k++ {
+			var innerQual string
+			if qualification == "" {
+				innerQual = field.Name
+			} else {
+				innerQual = qualification + "." + field.Name
+			}
+			columns = append(columns, innerStructFields(innerQual, field.Type.Field(k))...)
+		}
+	} else {
+		if qualification == "" {
+			columns = append(columns, field.Name)
+		} else {
+			columns = append(columns, qualification+"."+field.Name)
+		}
+	}
+
+	return columns
 }
