@@ -10,6 +10,10 @@
         - [ ] take list of columns to include/exclude from output
         - [ ] create exclude variant
             - [ ] default to all columns if no columns are given
+    - [ ] table output
+        - [ ] take list of columns to include/exclude from output
+        - [ ] create exclude variant
+            - [ ] default to all columns if no columns are given
 
 - [ ] Display suggestions beneath current prompt
 
