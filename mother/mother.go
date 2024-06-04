@@ -44,10 +44,15 @@ var killKeys = [...]tea.KeyType{tea.KeyCtrlC}
 
 // special, global actions
 // takes a reference to Mother and tokens [1:]
-var builtins = map[string](func(*Mother, []string) tea.Cmd){
-	"help": ContextHelp,
-	"quit": quit,
-	"exit": quit}
+var builtins map[string](func(*Mother, []string) tea.Cmd)
+
+func init() {
+	// need init to avoid an initialization cycle
+	builtins = map[string](func(*Mother, []string) tea.Cmd){
+		"help": ContextHelp,
+		"quit": quit,
+		"exit": quit}
+}
 
 /* tea.Model implementation, carrying all data required for interactive use */
 type Mother struct {
@@ -227,13 +232,17 @@ func processInput(m *Mother) tea.Cmd {
 	//m.ti.Validate(given) // TODO add navigation text validation
 
 	var (
-		endCmd *cobra.Command
-		status WalkStatus
-		err    error
+		endCmd     *cobra.Command
+		status     WalkStatus
+		inputError string
 	)
-	endCmd, status, onComplete, err = m.walk(m.pwd, given, onComplete)
-	if err != nil {
-		panic(err)
+	endCmd, status, onComplete, inputError = walk(m.pwd, given, onComplete)
+	if inputError != "" {
+		return tea.Sequence(
+			append(
+				onComplete,
+				tea.Println(m.style.error.Render(inputError)),
+			)...)
 	}
 	// split on action or nav
 	switch status {
@@ -241,7 +250,8 @@ func processInput(m *Mother) tea.Cmd {
 		// if the built-in is not the first command, we don't care about it
 		// so re-test only the first token
 		if bi, ok := builtins[given[0]]; ok {
-			bi(m, given[1:])
+			onComplete = append(onComplete, bi(m, given[1:]))
+			return tea.Sequence(onComplete...)
 		}
 	case foundNav:
 		m.pwd = endCmd
@@ -270,6 +280,7 @@ func processInput(m *Mother) tea.Cmd {
 
 // Built-in, interactive help invocation
 func ContextHelp(m *Mother, args []string) tea.Cmd {
+	clilog.Writer.Debugf("Help with args(%d) '%v'", len(args), args)
 	if len(args) == 0 {
 		return TeaCmdContextHelp(m.pwd)
 	}
@@ -277,11 +288,24 @@ func ContextHelp(m *Mother, args []string) tea.Cmd {
 	// walk the command tree
 	// action or nav, print help about it
 	// if invalid/no destination, print error
+	finalCmd, status, _, inputError := walk(m.pwd, args, make([]tea.Cmd, 1))
+	if inputError != "" { // erroneous input
+		return tea.Println(m.style.error.Render(inputError))
+	}
+	switch status {
+	case foundNav, foundAction:
+		return TeaCmdContextHelp(finalCmd)
+	case foundBuiltin:
+		if _, ok := builtins[args[0]]; ok {
+			// TODO fill in help information for each built-in command
+			return tea.Printf("help for %v", args[0])
+		}
 
-	// TODO resolve help in the context of the following tokens
+	}
+
+	clilog.Writer.Debugf("Doing nothing (finalCmd: %v | status: %v | inputErrpr: %v)", finalCmd, status, inputError)
 
 	return nil
-
 }
 
 //#endregion
@@ -334,24 +358,25 @@ func (m *Mother) UnsetAction() {
 
 // Recursively walk the tokens of the exploded user input until we run out or
 // find a valid destination.
-// Returns the relevant command, the type of the command (action, nav, invalid),
-// a list of commands to pass to tea, and an error (if one occurred).
-func (m *Mother) walk(dir *cobra.Command, tokens []string, onCompleteCmds []tea.Cmd) (*cobra.Command, WalkStatus, []tea.Cmd, error) {
+// Returns the relevant command (ending Nav destination or action to invoke),
+// the type of the command (action, nav, invalid), a list of commands to pass to
+// tea, and an error (if one occurred).
+func walk(dir *cobra.Command, tokens []string, onCompleteCmds []tea.Cmd) (*cobra.Command, WalkStatus, []tea.Cmd, string) {
 	if len(tokens) == 0 {
 		// only move if the final command was a nav
-		return dir, foundNav, onCompleteCmds, nil
+		return dir, foundNav, onCompleteCmds, ""
 	}
 
 	curToken := strings.TrimSpace(tokens[0])
 
 	if _, ok := builtins[curToken]; ok { // check for built-in command
 		// TODO do not execute builtin; allow caller to do that
-		return nil, foundBuiltin, onCompleteCmds, nil
+		return nil, foundBuiltin, onCompleteCmds, ""
 	}
 
 	if curToken == ".." { // navigate upward
 		dir = up(dir)
-		return m.walk(dir, tokens[1:], onCompleteCmds)
+		return walk(dir, tokens[1:], onCompleteCmds)
 	}
 
 	// test for a local command
@@ -378,16 +403,19 @@ func (m *Mother) walk(dir *cobra.Command, tokens []string, onCompleteCmds []tea.
 	// check if we found a match
 	if invocation == nil {
 		// user request unhandlable
-		return nil, invalidCommand, append(onCompleteCmds, tea.Println(m.style.error.Render(fmt.Sprintf("unknown command '%s'. Press F1 or type 'help' for relevant commands.", curToken)))), nil
+		return nil,
+			invalidCommand,
+			onCompleteCmds,
+			fmt.Sprintf("unknown command '%s'. Press F1 or type 'help' for relevant commands.", curToken)
 	}
 
 	// split on action or nav
 	if action.Is(invocation) {
-		return invocation, foundAction, onCompleteCmds, nil
+		return invocation, foundAction, onCompleteCmds, ""
 	} else { // nav
 		// navigate given path
 		dir = invocation
-		return m.walk(dir, tokens[1:], onCompleteCmds)
+		return walk(dir, tokens[1:], onCompleteCmds)
 	}
 }
 
