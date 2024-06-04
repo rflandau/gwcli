@@ -12,33 +12,11 @@ import (
 	"gwcli/weave"
 	"reflect"
 
+	tea "github.com/charmbracelet/bubbletea"
 	grav "github.com/gravwell/gravwell/v3/client"
 	"github.com/spf13/cobra"
+	"github.com/spf13/pflag"
 )
-
-type ListAction struct {
-	done bool
-}
-
-type format uint
-
-const (
-	json format = iota
-	csv
-	table
-)
-
-func (f format) String() string {
-	switch f {
-	case json:
-		return "JSON"
-	case csv:
-		return "CSV"
-	case table:
-		return "table"
-	}
-	return fmt.Sprintf("unknown format (%d)", f)
-}
 
 // NewListCmd creates and returns a cobra.Command suitable for use as a list
 // action, complete with common flags and a generic run function operating off
@@ -54,7 +32,7 @@ func (f format) String() string {
 // See kitactions' ListKits() as an example
 //
 // Go's Generics are a godsend.
-func NewListCmd[Any any](use, short, long string, aliases []string, dataStruct Any, dataFunc func(*grav.Client) ([]Any, error)) *cobra.Command {
+func NewListCmd[Any any](use, short, long string, aliases []string, defaultColumns []string, dataStruct Any, dataFunc func(*grav.Client) ([]Any, error)) (*cobra.Command, ListAction) {
 	// assert developer provided a usable data struct
 	if reflect.TypeOf(dataStruct).Kind() != reflect.Struct {
 		panic("dataStruct must be a struct") // developer error
@@ -92,7 +70,7 @@ func NewListCmd[Any any](use, short, long string, aliases []string, dataStruct A
 			return
 		}
 
-		var format format = determineFormat(cmd)
+		var format outputFormat = determineFormat(cmd)
 		clilog.Writer.Debugf("List: format %s | row count: %d", format, len(data))
 		switch format {
 		case csv:
@@ -110,22 +88,23 @@ func NewListCmd[Any any](use, short, long string, aliases []string, dataStruct A
 	// generate the command
 	cmd := NewActionCommand(use, short, long, aliases, runFunc)
 
-	// define flags
-	cmd.Flags().Bool("csv", false, "output results as csv")
-	cmd.Flags().Bool("json", false, "output results as json")
-	cmd.Flags().Bool("table", true, "output results in a human-readable table") // default
+	// define cmd-specific flag option
+	fs := NewListFlagSet()
+	cmd.Flags().AddFlagSet(&fs)
 	cmd.MarkFlagsMutuallyExclusive("csv", "json", "table")
-	cmd.Flags().StringSlice("columns", []string{},
-		"comma-seperated list of columns to include in the output."+
-			"Use --show-columns to see the full list of columns.")
-	cmd.Flags().Bool("show-columns", false, "display the list of fully qualified column names and die.")
-	return cmd
+
+	// spin up a list action for interactive use
+	la := NewListAction(defaultColumns)
+
+	// share the flagset with the interactive action model
+
+	return cmd, la
 }
 
 // Helper function for NewListCmd's runFunc creation
 // Takes an initialized list cmd and returns the output format for listing
-func determineFormat(cmd *cobra.Command) format {
-	var format format
+func determineFormat(cmd *cobra.Command) outputFormat {
+	var format outputFormat
 	if format_csv, err := cmd.Flags().GetBool("csv"); err != nil {
 		panic(err)
 	} else if format_csv {
@@ -142,3 +121,68 @@ func determineFormat(cmd *cobra.Command) format {
 	}
 	return format
 }
+
+func NewListFlagSet() pflag.FlagSet {
+	fs := pflag.FlagSet{}
+	fs.Bool("csv", false, "output results as csv")
+	fs.Bool("json", false, "output results as json")
+	fs.Bool("table", true, "output results in a human-readable table") // default
+	fs.StringSlice("columns", []string{},
+		"comma-seperated list of columns to include in the output."+
+			"Use --show-columns to see the full list of columns.")
+	fs.Bool("show-columns", false, "display the list of fully qualified column names and die.")
+
+	return fs
+}
+
+//#region interactive mode (model) implementation
+
+type ListAction struct {
+	// data cleared by .Reset()
+	done    bool
+	format  outputFormat
+	columns []string
+	fs      pflag.FlagSet // current flagset, parsed or unparsed
+
+	// data shielded from .Reset()
+	DefaultFormat      outputFormat
+	DefaultColumns     []string             // columns to output if unspecified
+	DefaultFlagSetFunc func() pflag.FlagSet // flagset generation function used for .Reset()
+}
+
+// Constructs a ListAction suitable for interactive use
+func NewListAction(defaultColumns []string) ListAction {
+	fs := NewListFlagSet()
+	return ListAction{fs: fs,
+		DefaultFormat:      table,
+		DefaultColumns:     defaultColumns,
+		DefaultFlagSetFunc: NewListFlagSet}
+}
+
+func (la *ListAction) Update(msg tea.Msg) tea.Cmd {
+	// TODO
+	return nil
+}
+
+func (la *ListAction) View() string {
+	return ""
+}
+
+func (la *ListAction) Done() bool {
+	return la.done
+}
+
+func (la *ListAction) Reset() error {
+	la.done = false
+	la.format = la.DefaultFormat
+	la.columns = la.DefaultColumns
+	la.fs = la.DefaultFlagSetFunc()
+	return nil
+}
+
+func (ls *ListAction) SetArgs(tokens []string) (bool, error) {
+	// TODO
+	return true, nil
+}
+
+//#endregion interactive mode (model) implementation

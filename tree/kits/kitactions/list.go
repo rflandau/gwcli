@@ -15,15 +15,16 @@ import (
 )
 
 var (
-	use     string   = "list"
-	short   string   = "List all installed and staged kits"
-	long    string   = "..."
-	aliases []string = []string{}
+	use            string   = "list"
+	short          string   = "List all installed and staged kits"
+	long           string   = "..."
+	aliases        []string = []string{}
+	defaultColumns []string = []string{} // TODO
 )
 
 func NewListCmd() action.Pair {
-	cmd := treeutils.NewListCmd(use, short, long, aliases, types.IdKitState{}, ListKits)
-	return treeutils.GenerateAction(cmd, Kitlist)
+	cmd, la := treeutils.NewListCmd(use, short, long, aliases, defaultColumns, types.IdKitState{}, ListKits)
+	return treeutils.GenerateAction(cmd, &la)
 }
 
 // Retrieve and return array of kit structs via gravwell client

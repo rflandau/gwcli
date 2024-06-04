@@ -7,7 +7,7 @@ import (
 func Test_format_String(t *testing.T) {
 	tests := []struct {
 		name string
-		f    format
+		f    outputFormat
 		want string
 	}{
 		{"JSON", json, "JSON"},
