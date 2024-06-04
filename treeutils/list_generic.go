@@ -66,7 +66,7 @@ func NewListCmd[Any any](use, short, long string, aliases []string, dataStruct A
 		if sc, err := cmd.Flags().GetBool("show-columns"); err != nil {
 			panic(err)
 		} else if sc {
-			col, err := weave.StructFields(dataStruct)
+			col, err := weave.StructFields(dataStruct, true)
 			if err != nil {
 				panic(err)
 			}

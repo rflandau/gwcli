@@ -604,68 +604,85 @@ func structFieldsEqual(x reflect.StructField, y reflect.StructField) bool {
 		x.Type.Align() == y.Type.Align())
 }
 
-func TestStructFields(t *testing.T) {
-	type dblmbd struct {
-		y string
-	}
-	type mbd struct {
-		dblmbd
-		z string
-	}
-	type triple struct {
-		mbd
-		ins mbd
-		dbl dblmbd
-		a   int
-		b   uint
-	}
+func TestStructFieldsErrors(t *testing.T) {
+	t.Run("struct is nil", func(t *testing.T) {
+		c, err := StructFields(nil, true)
+		if err.Error() != ErrStructIsNil || c != nil {
+			t.Errorf("Error value mismatch: err: %v c: %v", err, c)
+		}
+	})
+	t.Run("not a struct", func(t *testing.T) {
+		m := make(map[string]int)
+		c, err := StructFields(m, true)
+		if err.Error() != ErrNotAStruct || c != nil {
+			t.Errorf("Error value mismatch: err: %v c: %v", err, c)
+		}
+	})
+}
 
-	type inner2 struct {
-		z    *string
-		none string
-	}
+type dblmbd struct {
+	Y string
+}
+type mbd struct {
+	dblmbd
+	z string
+}
+type triple struct {
+	mbd
+	ins mbd
+	dbl dblmbd
+	A   int
+	b   uint
+}
 
-	type ptr struct {
-		a        *int
-		b        *int
-		innerptr *inner2
-		inner    inner2
-		non      string
-	}
+type inner2 struct {
+	z    *string
+	None string
+}
+
+type ptr struct {
+	A        *int
+	b        *int
+	innerptr *inner2
+	Inner    inner2
+	non      string
+}
+
+func TestStructFieldsAll(t *testing.T) {
 
 	// silence "unused" warnings as we only care about types
-	a, b, z := 1, 2, "z"
-	var _ ptr = ptr{a: &a, b: &b, innerptr: &inner2{z: &z, none: ""}, inner: inner2{}, non: ""}
+	a, b, z, non := 1, 2, "Z", "NON"
+	var _ ptr = ptr{A: &a, b: &b, innerptr: &inner2{z: &z, None: "NONE"}, Inner: inner2{}, non: non}
 
 	type args struct {
 		st any
 	}
 
-	triple_want := []string{"mbd.dblmbd.y", "mbd.z", "ins.dblmbd.y", "ins.z", "dbl.y", "a", "b"}
+	triple_want := []string{"mbd.dblmbd.Y", "mbd.z", "ins.dblmbd.Y", "ins.z", "dbl.Y", "A", "b"}
 
 	tests := []struct {
 		name        string
 		args        args
 		wantColumns []string
 	}{
-		{"single level", args{st: dblmbd{y: "y string"}}, []string{"y"}},
-		{"second level", args{st: mbd{z: "z string", dblmbd: dblmbd{y: "y sting"}}}, []string{"dblmbd.y", "z"}},
+		{"single level", args{st: dblmbd{Y: "y string"}}, []string{"Y"}},
+		{"second level", args{st: mbd{z: "z string", dblmbd: dblmbd{Y: "y sting"}}}, []string{"dblmbd.Y", "z"}},
 		{"third level", args{
 			st: triple{
-				a:   -780,
+				A:   -780,
 				b:   1,
-				dbl: dblmbd{y: "y string"},
-				ins: mbd{z: "z string", dblmbd: dblmbd{y: "y string 2"}},
-				mbd: mbd{dblmbd: dblmbd{y: "y string 3"},
+				dbl: dblmbd{Y: "y string"},
+				ins: mbd{z: "z string", dblmbd: dblmbd{Y: "y string 2"}},
+				mbd: mbd{dblmbd: dblmbd{Y: "y string 3"},
 					z: "z string 2"},
 			}}, triple_want},
 		{"third level valueless", args{st: triple{}}, triple_want},
 		{"third level pointer", args{st: &triple{}}, triple_want},
-		{"pointers", args{ptr{}}, []string{"a", "b", "innerptr.z", "innerptr.none", "inner.z", "inner.none", "non"}},
+		{"pointers", args{ptr{}}, []string{"A", "b", "innerptr.z", "innerptr.None", "Inner.z", "Inner.None", "non"}},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			gotColumns, err := StructFields(tt.args.st)
+			gotColumns, err := StructFields(tt.args.st, false)
 			if err != nil {
 				t.Error(err)
 			}
@@ -674,18 +691,42 @@ func TestStructFields(t *testing.T) {
 			}
 		})
 	}
-	// validate errors
-	t.Run("struct is nil", func(t *testing.T) {
-		c, err := StructFields(nil)
-		if err.Error() != ErrStructIsNil || c != nil {
-			t.Errorf("Error value mismatch: err: %v c: %v", err, c)
-		}
-	})
-	t.Run("not a struct", func(t *testing.T) {
-		m := make(map[string]int)
-		c, err := StructFields(m)
-		if err.Error() != ErrNotAStruct || c != nil {
-			t.Errorf("Error value mismatch: err: %v c: %v", err, c)
-		}
-	})
+}
+
+func TestStructFieldsExported(t *testing.T) {
+
+	triple_want := []string{"A"}
+
+	tests := []struct {
+		name        string
+		args        any
+		wantColumns []string
+	}{
+		{"single level", dblmbd{Y: "y string"}, []string{"Y"}},
+		{"second level", mbd{z: "z string", dblmbd: dblmbd{Y: "y sting"}}, []string{}},
+		{"third level",
+			triple{
+				A:   -780,
+				b:   1,
+				dbl: dblmbd{Y: "y string"},
+				ins: mbd{z: "z string", dblmbd: dblmbd{Y: "y string 2"}},
+				mbd: mbd{dblmbd: dblmbd{Y: "y string 3"},
+					z: "z string 2"},
+			}, triple_want},
+		{"third level valueless", triple{}, triple_want},
+		{"third level pointer", &triple{}, triple_want},
+		{"pointers", ptr{}, []string{"A", "Inner.None"}},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			gotColumns, err := StructFields(tt.args, true)
+			if err != nil {
+				t.Error(err)
+			}
+			if !reflect.DeepEqual(gotColumns, tt.wantColumns) {
+				t.Errorf("StructFields() = %v, want %v", gotColumns, tt.wantColumns)
+			}
+		})
+	}
+	//#endregion exportedOnly
 }

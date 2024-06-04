@@ -175,7 +175,7 @@ func FindQualifiedField[Any any](qualCol string, st any) (field reflect.StructFi
 
 // Returns a list of all fields in the struct *definition*, as they are ordered
 // internally
-func StructFields(st any) (columns []string, err error) {
+func StructFields(st any, exportedOnly bool) (columns []string, err error) {
 	if st == nil {
 		return nil, errors.New(ErrStructIsNil)
 	}
@@ -194,7 +194,7 @@ func StructFields(st any) (columns []string, err error) {
 	//	if the field is a struct, repeat
 
 	for i := 0; i < numFields; i++ {
-		columns = append(columns, innerStructFields("", to.Field(i))...)
+		columns = append(columns, innerStructFields("", to.Field(i), exportedOnly)...)
 	}
 
 	return columns, nil
@@ -205,8 +205,13 @@ func StructFields(st any) (columns []string, err error) {
 // children, if a struct.
 // Operates recursively on the given field if it is a struct.
 // Operates down the struct, in field-order.
-func innerStructFields(qualification string, field reflect.StructField) []string {
+func innerStructFields(qualification string, field reflect.StructField, exportedOnly bool) []string {
 	var columns []string = []string{}
+
+	// do not operate on unexported fields if exportedOnly
+	if exportedOnly && !field.IsExported() {
+		return columns
+	}
 
 	// dereference
 	if field.Type.Kind() == reflect.Ptr {
@@ -221,7 +226,7 @@ func innerStructFields(qualification string, field reflect.StructField) []string
 			} else {
 				innerQual = qualification + "." + field.Name
 			}
-			columns = append(columns, innerStructFields(innerQual, field.Type.Field(k))...)
+			columns = append(columns, innerStructFields(innerQual, field.Type.Field(k), exportedOnly)...)
 		}
 	} else {
 		if qualification == "" {
