@@ -4,7 +4,8 @@
         - Auxillary to already-implemented F1 prompt reading
     - [ ] pass tokens past an action to the action as arguments
         - [ ] allow actions to define a .Validate to ensure argument status
-    - [ ] do not walk  if final step is action invokation
+    - [x] do not walk  if final step is action invokation
+    - [x] do not walk if an invalid token is parsed
 
 - [ ] Implement `dry-run` flag for shell access
     - Validate syntax and exit

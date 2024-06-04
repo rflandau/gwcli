@@ -216,7 +216,9 @@ func processInput(m *Mother) tea.Cmd {
 	given := strings.Split(strings.TrimSpace(input), " ")
 	//m.ti.Validate(given) // TODO add navigation text validation
 
-	return tea.Sequence(m.walk(given, onComplete)...)
+	var dir *cobra.Command = m.pwd
+
+	return tea.Sequence(m.walk(dir, given, onComplete)...)
 
 }
 
@@ -283,14 +285,15 @@ func (m *Mother) UnsetAction() {
 }
 
 // Recursively walk the tokens of the exploded user input until we run out or
-// find a valid destination
-func (m *Mother) walk(tokens []string, onCompleteCmds []tea.Cmd) []tea.Cmd {
+// find a valid destination.
+// When the last token, mother is moved to the current position of dir.
+// If an invalid token is given, recursion is halted and mother is not moved.
+func (m *Mother) walk(dir *cobra.Command, tokens []string, onCompleteCmds []tea.Cmd) []tea.Cmd {
 	if len(tokens) == 0 {
-		// nothing more to be done
+		// only move mother if the final command was a nav
+		m.pwd = dir
 		return onCompleteCmds
 	}
-
-	clilog.Writer.Debugf("Walking %v", tokens)
 
 	curToken := strings.TrimSpace(tokens[0])
 
@@ -301,13 +304,13 @@ func (m *Mother) walk(tokens []string, onCompleteCmds []tea.Cmd) []tea.Cmd {
 
 	// check for upwards navigation
 	if curToken == ".." {
-		m.walkUp()
-		return m.walk(tokens[1:], onCompleteCmds)
+		dir = up(dir)
+		return m.walk(dir, tokens[1:], onCompleteCmds)
 	}
 
 	// if we do not find a built in, test for a local action invocation
 	var invocation *cobra.Command = nil
-	for _, c := range m.pwd.Commands() {
+	for _, c := range dir.Commands() {
 		// check name
 		if c.Name() == curToken {
 			invocation = c
@@ -331,9 +334,8 @@ func (m *Mother) walk(tokens []string, onCompleteCmds []tea.Cmd) []tea.Cmd {
 	// check if we found a match
 	if invocation == nil {
 		// user request unhandlable
-		// TODO maybe we shouldn't move on a failure
+		// note the lack of m.pwd = dir
 		return append(onCompleteCmds, tea.Println(m.style.error.Render(fmt.Sprintf("unknown command '%s'. Press F1 or type 'help' for relevant commands.", curToken))))
-
 	}
 
 	// split on action or nav
@@ -351,26 +353,26 @@ func (m *Mother) walk(tokens []string, onCompleteCmds []tea.Cmd) []tea.Cmd {
 		return onCompleteCmds
 	} else { // nav
 		// navigate given path
-		m.pwd = invocation
-		m.walk(tokens[1:], onCompleteCmds)
+		dir = invocation
+		m.walk(dir, tokens[1:], onCompleteCmds)
 		return onCompleteCmds
 	}
-}
-
-// Using the current menu, navigate walkUp one level
-func (m *Mother) walkUp() tea.Cmd {
-	if m.pwd == m.root { // if we are at root, do nothing
-		return nil
-	}
-	// otherwise, step upward
-	m.pwd = m.pwd.Parent()
-
-	return nil
 }
 
 //#endregion
 
 //#region static helper functions
+
+// Return the parent directory to the given command
+func up(dir *cobra.Command) *cobra.Command {
+	clilog.Writer.Debugf("Up: %v -> %v", dir.Name(), dir.Parent().Name())
+	if dir.Parent() == nil { // if we are at root, do nothing
+		return dir
+	}
+	// otherwise, step upward
+
+	return dir.Parent()
+}
 
 /* Returns a tea.Println Cmd containing the path to the pwd */
 func TeaCmdPath(c *cobra.Command) tea.Cmd {
