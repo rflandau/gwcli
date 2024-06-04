@@ -1,57 +1,30 @@
 package list
 
 import (
-	"fmt"
 	"gwcli/action"
 	"gwcli/connection"
-	"gwcli/stylesheet"
 	"gwcli/treeutils"
-	"strings"
 
 	tea "github.com/charmbracelet/bubbletea"
+	grav "github.com/gravwell/gravwell/v3/client"
+
 	"github.com/gravwell/gravwell/v3/client/types"
-	"github.com/spf13/cobra"
 )
 
-func GenerateListAction() action.Pair {
-	return treeutils.GenerateAction(
-		treeutils.NewActionCommand("list",
-			"list your macros", "list prints out all macros associated to your user.\n"+
-				"(NYI) Use the x flag to get all macros system-wide or the y <user>"+
-				"parameter to all macros associated to a <user> (if you are an admin)",
-			[]string{},
-			run),
-		List)
+func NewListCmd() action.Pair {
+	cmd := treeutils.NewListCmd("list",
+		"list your macros", "list prints out all macros associated to your user.\n"+
+			"(NYI) Use the x flag to get all macros system-wide or the y <user>"+
+			"parameter to all macros associated to a <user> (if you are an admin)", []string{}, types.SearchMacro{}, listMacros)
+	return treeutils.GenerateAction(cmd, List)
 }
 
-/* cobra run command for non-interactive usage */
-func run(_ *cobra.Command, _ []string) {
-	fmt.Println(listMacros())
-}
-
-func rowMacros(macro types.SearchMacro) []string {
-	rowStr := fmt.Sprintf("%v|%v|%v|%v|%v", macro.ID, macro.Name, macro.Description, macro.Expansion, macro.Labels)
-	return strings.Split(rowStr, "|")
-}
-
-func listMacros() (string, error) {
+func listMacros(c *grav.Client) ([]types.SearchMacro, error) {
 	myinfo, err := connection.Client.MyInfo()
 	if err != nil {
-		return "", err
+		return nil, err
 	}
-	macros, err := connection.Client.GetUserMacros(myinfo.UID)
-	if err != nil {
-		return "", err
-	}
-
-	// convert macros to rows
-	var macrosCount int = len(macros)
-	var rows [][]string = make([][]string, macrosCount)
-	for i := 0; i < macrosCount; i++ {
-		rows[i] = rowMacros(macros[i])
-	}
-
-	return stylesheet.Table([]string{"ID", "NAME", "DESCRIPTION", "EXPANSION", "LABELS"}, rows), nil
+	return c.GetUserMacros(myinfo.UID)
 }
 
 //#region actor implementation
@@ -65,7 +38,7 @@ var List action.Model = &list{done: false}
 func (k *list) Update(msg tea.Msg) tea.Cmd {
 	k.done = true
 
-	return tea.Println(listMacros())
+	return tea.Println(listMacros(connection.Client))
 }
 
 func (k *list) View() string {

@@ -17,5 +17,5 @@ var (
 )
 
 func GenerateNav() *cobra.Command {
-	return treeutils.GenerateNav(use, short, long, aliases, []*cobra.Command{}, []action.Pair{list.GenerateListAction(), create.GenerateAction()})
+	return treeutils.GenerateNav(use, short, long, aliases, []*cobra.Command{}, []action.Pair{list.NewListCmd(), create.GenerateAction()})
 }
