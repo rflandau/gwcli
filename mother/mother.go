@@ -24,6 +24,16 @@ import (
 type navCmd = cobra.Command
 type actionCmd = cobra.Command // actions have associated actors
 
+type WalkStatus int
+
+const (
+	invalidCommand WalkStatus = iota
+	foundNav
+	foundAction
+	foundBuiltin
+	erroring
+)
+
 const (
 	tiWidth int    = 40
 	indent  string = "    "
@@ -216,10 +226,44 @@ func processInput(m *Mother) tea.Cmd {
 	given := strings.Split(strings.TrimSpace(input), " ")
 	//m.ti.Validate(given) // TODO add navigation text validation
 
-	var dir *cobra.Command = m.pwd
+	var (
+		endCmd *cobra.Command
+		status WalkStatus
+		err    error
+	)
+	endCmd, status, onComplete, err = m.walk(m.pwd, given, onComplete)
+	if err != nil {
+		panic(err)
+	}
+	// split on action or nav
+	switch status {
+	case foundBuiltin:
+		// if the built-in is not the first command, we don't care about it
+		// so re-test only the first token
+		if bi, ok := builtins[given[0]]; ok {
+			bi(m, given[1:])
+		}
+	case foundNav:
+		m.pwd = endCmd
+	case foundAction:
+		m.mode = handoff
 
-	return tea.Sequence(m.walk(dir, given, onComplete)...)
+		// look up the subroutines to load
+		m.active.model, _ = action.GetModel(endCmd) // save add-on subroutines
+		if m.active.model == nil {
+			onComplete = append(
+				onComplete,
+				tea.Printf("Developer issue: Did not find actor associated to '%s'."+
+					" Please submit a bug report.\n",
+					endCmd.Name()),
+			)
+		}
+		m.active.command = endCmd // save relevant command
+	case invalidCommand:
+		clilog.Writer.Errorf("walking input %v returned invalid", given)
+	}
 
+	return tea.Sequence(onComplete...)
 }
 
 //#region builtin functions
@@ -229,6 +273,10 @@ func ContextHelp(m *Mother, args []string) tea.Cmd {
 	if len(args) == 0 {
 		return TeaCmdContextHelp(m.pwd)
 	}
+
+	// walk the command tree
+	// action or nav, print help about it
+	// if invalid/no destination, print error
 
 	// TODO resolve help in the context of the following tokens
 
@@ -286,46 +334,42 @@ func (m *Mother) UnsetAction() {
 
 // Recursively walk the tokens of the exploded user input until we run out or
 // find a valid destination.
-// When the last token, mother is moved to the current position of dir.
-// If an invalid token is given, recursion is halted and mother is not moved.
-func (m *Mother) walk(dir *cobra.Command, tokens []string, onCompleteCmds []tea.Cmd) []tea.Cmd {
+// Returns the relevant command, the type of the command (action, nav, invalid),
+// a list of commands to pass to tea, and an error (if one occurred).
+func (m *Mother) walk(dir *cobra.Command, tokens []string, onCompleteCmds []tea.Cmd) (*cobra.Command, WalkStatus, []tea.Cmd, error) {
 	if len(tokens) == 0 {
-		// only move mother if the final command was a nav
-		m.pwd = dir
-		return onCompleteCmds
+		// only move if the final command was a nav
+		return dir, foundNav, onCompleteCmds, nil
 	}
 
 	curToken := strings.TrimSpace(tokens[0])
 
-	// check for a builtin command
-	if builtinFunc, ok := builtins[curToken]; ok {
-		return append(onCompleteCmds, builtinFunc(m, tokens[1:]))
+	if _, ok := builtins[curToken]; ok { // check for built-in command
+		// TODO do not execute builtin; allow caller to do that
+		return nil, foundBuiltin, onCompleteCmds, nil
 	}
 
-	// check for upwards navigation
-	if curToken == ".." {
+	if curToken == ".." { // navigate upward
 		dir = up(dir)
 		return m.walk(dir, tokens[1:], onCompleteCmds)
 	}
 
-	// if we do not find a built in, test for a local action invocation
+	// test for a local command
 	var invocation *cobra.Command = nil
 	for _, c := range dir.Commands() {
-		// check name
-		if c.Name() == curToken {
+
+		if c.Name() == curToken { // check name
 			invocation = c
 			clilog.Writer.Debugf("Match, invoking %s", invocation.Name())
-			break
-		}
-		// check aliases
-		for _, alias := range c.Aliases {
-			if alias == curToken {
-				invocation = c
-				clilog.Writer.Debugf("Alias match, invoking %s", invocation.Name())
-				break
+		} else { // check aliases
+			for _, alias := range c.Aliases {
+				if alias == curToken {
+					invocation = c
+					clilog.Writer.Debugf("Alias match, invoking %s", invocation.Name())
+					break
+				}
 			}
 		}
-		// if alias match, we also need to break the outer loop
 		if invocation != nil {
 			break
 		}
@@ -334,28 +378,16 @@ func (m *Mother) walk(dir *cobra.Command, tokens []string, onCompleteCmds []tea.
 	// check if we found a match
 	if invocation == nil {
 		// user request unhandlable
-		// note the lack of m.pwd = dir
-		return append(onCompleteCmds, tea.Println(m.style.error.Render(fmt.Sprintf("unknown command '%s'. Press F1 or type 'help' for relevant commands.", curToken))))
+		return nil, invalidCommand, append(onCompleteCmds, tea.Println(m.style.error.Render(fmt.Sprintf("unknown command '%s'. Press F1 or type 'help' for relevant commands.", curToken)))), nil
 	}
 
 	// split on action or nav
-	if action.Is(invocation) { // hand off control to child
-		m.mode = handoff
-
-		// look up the subroutines to load
-		m.active.model, _ = action.GetModel(invocation) // save add-on subroutines
-		if m.active.model == nil {
-			return append(
-				onCompleteCmds,
-				tea.Println(m.style.error.Render(fmt.Sprintf("Developer issue: Did not find actor associated to '%s'. Please submit a bug report.", curToken))))
-		}
-		m.active.command = invocation // save relevant command
-		return onCompleteCmds
+	if action.Is(invocation) {
+		return invocation, foundAction, onCompleteCmds, nil
 	} else { // nav
 		// navigate given path
 		dir = invocation
-		m.walk(dir, tokens[1:], onCompleteCmds)
-		return onCompleteCmds
+		return m.walk(dir, tokens[1:], onCompleteCmds)
 	}
 }
 
@@ -365,12 +397,11 @@ func (m *Mother) walk(dir *cobra.Command, tokens []string, onCompleteCmds []tea.
 
 // Return the parent directory to the given command
 func up(dir *cobra.Command) *cobra.Command {
-	clilog.Writer.Debugf("Up: %v -> %v", dir.Name(), dir.Parent().Name())
 	if dir.Parent() == nil { // if we are at root, do nothing
 		return dir
 	}
 	// otherwise, step upward
-
+	clilog.Writer.Debugf("Up: %v -> %v", dir.Name(), dir.Parent().Name())
 	return dir.Parent()
 }
 
