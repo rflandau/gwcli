@@ -62,6 +62,9 @@ func NewListCmd[Any any](use, short, long string, aliases []string, defaultColum
 		if err != nil {
 			panic(err)
 		}
+		if len(columns) == 0 {
+			columns = defaultColumns
+		}
 		fmt.Println(List(cmd.Flags(), columns, dataStruct, dataFunc))
 	}
 
