@@ -32,39 +32,3 @@ func listMacros(c *grav.Client) ([]types.SearchMacro, error) {
 	}
 	return c.GetUserMacros(myinfo.UID)
 }
-
-/*
-//#region actor implementation
-
-type list struct {
-	done bool
-}
-
-var List action.Model = &list{done: false}
-
-func (k *list) Update(msg tea.Msg) tea.Cmd {
-	k.done = true
-
-	return tea.Println(listMacros(connection.Client))
-}
-
-func (k *list) View() string {
-	return ""
-}
-
-func (k *list) Done() bool {
-	return k.done
-}
-
-func (k *list) Reset() error {
-	k.done = false
-	return nil
-}
-
-func (k *list) SetArgs([]string) (bool, error) {
-
-	return true, nil
-}
-
-//#endregion
-*/
