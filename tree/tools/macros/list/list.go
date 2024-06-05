@@ -5,22 +5,23 @@ import (
 	"gwcli/connection"
 	"gwcli/treeutils"
 
-	tea "github.com/charmbracelet/bubbletea"
 	grav "github.com/gravwell/gravwell/v3/client"
 
 	"github.com/gravwell/gravwell/v3/client/types"
 )
 
-var defaultColumns = []string{"UID", "Name", "Description", "Expansion"}
+var (
+	short string = "List your macros"
+	long  string = "Prints out all macros associated to your user.\n" +
+		"(NYI) Use the x flag to get all macros system-wide or the y <user>" +
+		"parameter to all macros associated to a <user> (if you are an admin)"
+	aliases        []string = []string{}
+	defaultColumns []string = []string{"UID", "Name", "Description", "Expansion"}
+)
 
 func NewListCmd() action.Pair {
-	cmd, la := treeutils.NewListCmd("list",
-		"list your macros", "list prints out all macros associated to your user.\n"+
-			"(NYI) Use the x flag to get all macros system-wide or the y <user>"+
-			"parameter to all macros associated to a <user> (if you are an admin)",
-		[]string{}, defaultColumns,
-		types.SearchMacro{},
-		listMacros)
+	cmd, la := treeutils.NewListCmd(short, long, aliases, defaultColumns,
+		types.SearchMacro{}, listMacros)
 	return treeutils.GenerateAction(cmd, &la)
 }
 
@@ -32,6 +33,7 @@ func listMacros(c *grav.Client) ([]types.SearchMacro, error) {
 	return c.GetUserMacros(myinfo.UID)
 }
 
+/*
 //#region actor implementation
 
 type list struct {
@@ -65,3 +67,4 @@ func (k *list) SetArgs([]string) (bool, error) {
 }
 
 //#endregion
+*/
