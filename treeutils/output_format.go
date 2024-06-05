@@ -8,6 +8,7 @@ const (
 	json outputFormat = iota
 	csv
 	table
+	unknown
 )
 
 func (f outputFormat) String() string {
