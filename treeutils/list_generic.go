@@ -19,6 +19,8 @@ import (
 	"github.com/spf13/pflag"
 )
 
+const use = "list"
+
 // NewListCmd creates and returns a cobra.Command suitable for use as a list
 // action, complete with common flags and a generic run function operating off
 // the given dataFunc.
@@ -33,7 +35,7 @@ import (
 // See kitactions' ListKits() as an example
 //
 // Go's Generics are a godsend.
-func NewListCmd[Any any](use, short, long string, aliases []string, defaultColumns []string, dataStruct Any, dataFunc func(*grav.Client) ([]Any, error)) (*cobra.Command, ListAction[Any]) {
+func NewListCmd[Any any](short, long string, aliases []string, defaultColumns []string, dataStruct Any, dataFunc func(*grav.Client) ([]Any, error)) (*cobra.Command, ListAction[Any]) {
 	// assert developer provided a usable data struct
 	if reflect.TypeOf(dataStruct).Kind() != reflect.Struct {
 		panic("dataStruct must be a struct") // developer error
