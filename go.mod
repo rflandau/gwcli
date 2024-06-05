@@ -4,6 +4,7 @@ go 1.19
 
 require (
 	github.com/charmbracelet/bubbletea v0.25.0
+	github.com/goccy/go-json v0.10.3
 	github.com/muesli/termenv v0.15.2
 	github.com/spf13/cobra v1.8.0
 )
