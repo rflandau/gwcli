@@ -85,3 +85,27 @@ We have a few options:
 While Option 3 seems like the best option right now, future maintainers may not agree, especially as changes occur to the upstream Cobra package. Therefore, option 2 is how interoperability is currently designed. Mother/interactive mode can function entirely off Cobra's navigation and Cobra can operate entirely as normal. The only adaptation takes place in interactive mode, when an action is invoked; Mother uses the action cobra.Command to fetch the methods that should supplant her standard model.
 
 *If you can figure a better adaption pattern, I am all ears.*
+
+## Actions
+
+Actions must satisfy the `action.Model` interface to be able to supplant Mother as the controller. This means satisfying all 5 methods: `Update(), View(), Done(), Reset(), and SetArgs()`.
+
+`Update(tea.Msg) tea.Cmd` is the primary driver of the action. While in handoff mode, Mother will invoke the child's `Update()` subroutine in place of her own.
+
+`View() string`, like Update, supplants Mother's View method while in handoff mode. Note, however, that this is a prompt and all non-interactive output should instead be printed outside of Bubble Tea's control (via `tea.Print*()`).
+
+`Done() bool` is called by mother *before handing off* each cycle. If it is true, Mother will *not* hand off and will instead reassert control and unseat the child. Generally tracked by a private variable in the child struct.
+
+`Reset() error` is called by Mother *after* a child runs, once `Done()` returns true. It resets the child to a clean state so it can be called again later.
+
+`SetArgs([]string) (bool, error)` sets fields in the child that manipulate its next run. It is called when Mother *first enters handoff mode* for a child.
+
+```mermaid
+flowchart
+    EnterHandoff>Enter<br>Handoff Mode] -->
+    SetArgs(child.SetArgs) --> MotherUpdate>Mother.Update] --> Done(child.Done?)
+    --false--> Update(child.Update) --> MotherView>Mother.View] -->View[child.View]
+    --> Done
+
+    Done --true--> ExitHandoff>Exit<br>Handoff Mode] --> Reset[child.Reset]
+```
