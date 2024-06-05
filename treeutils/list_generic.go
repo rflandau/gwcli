@@ -150,7 +150,7 @@ func List[Any any](fs *pflag.FlagSet, columns []string,
 	case csv:
 		toRet = weave.ToCSV(data, columns)
 	case json:
-		toRet = weave.ToJSON(data)
+		toRet, err = weave.ToJSON(data, columns)
 	case table:
 		toRet = weave.ToTable(data, columns)
 	default:

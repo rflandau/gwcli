@@ -6,13 +6,15 @@
 package weave
 
 import (
-	"encoding/json"
+	"context"
 	"errors"
 	"fmt"
 	"gwcli/clilog"
 	"gwcli/stylesheet"
 	"reflect"
 	"strings"
+
+	"github.com/goccy/go-json"
 )
 
 //#region errors
@@ -127,21 +129,55 @@ func ToTable[Any any](st []Any, columns []string) string {
 	return stylesheet.Table(columns, rows)
 }
 
-func ToJSON[Any any](st []Any) string {
-	// TODO upgrade to support column selection
+// Converts the given array of structs to a JSON containing their values (limited to the given columns).
+//
+// ! The nesting structure of the JSON will *not* exactly match the nesting implied by the qualified names.
+// This is because Go promotes embedded values whereas the qualification relies on the embedded type's type name.
+func ToJSON[Any any](st []Any, columns []string) (string, error) {
+	/**
+	 * Design note:
+	 * Reflection is slow and, worse, does not support dynamic struct tag re-writing.
+	 * Thus, we take advantage of goccy's go-json library and its ability to dynamically filter fields.
+	 * Even better, the qualified type names work exceptionally well for dynamically building (Sub) Field Queries.
+	 */
+
+	if columns == nil || st == nil || len(st) < 1 || len(columns) < 1 { // superfluous request
+		return "[]", nil
+	}
+
+	// generate json filter from columns
+	fq, err := ColumnsToFieldQuery(columns)
+	if err != nil {
+		return "", err
+	}
+
+	// bind filter to reusable context
+	filterctx := json.SetFieldQueryToContext(context.Background(), fq)
+
 	var bldr strings.Builder
 	bldr.WriteRune('[') // open JSON array
 	for _, s := range st {
-		b, err := json.Marshal(s)
+
+		// marshal the struct and append it to our builder
+		b, err := json.MarshalContext(filterctx, s)
 		if err != nil {
-			panic(err)
+			return "", err
 		}
 		bldr.Write(b)
 		bldr.WriteRune(',') // new item
 	}
 	toRet := strings.TrimSuffix(bldr.String(), ",") // chomp final comma
 
-	return toRet + "]" // close JSON array
+	return toRet + "]", nil // close JSON array
+}
+
+func ColumnsToFieldQuery(columns []string) (*json.FieldQuery, error) {
+	var fqs []json.FieldQueryString
+
+	// TODO
+
+	return json.BuildFieldQuery(fqs...)
+
 }
 
 // Given a fully qualified column name (ex: "outerstruct.innerstruct.field"),
@@ -257,6 +293,9 @@ func innerStructFields(qualification string, field reflect.StructField, exported
 	return columns
 }
 
+// Given a struct and the desired fields (columns), maps the full, qualified
+// field names to their complete index chain. If a field is not found in the
+// struct, its value is set to nil in the map.
 func buildColumnMap(st any, columns []string) (columnMap map[string][]int) {
 	numColumns := len(columns)
 
