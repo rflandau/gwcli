@@ -14,7 +14,7 @@ var (
 	short          string   = "List all installed and staged kits"
 	long           string   = "..."
 	aliases        []string = []string{}
-	defaultColumns []string = []string{"UID", "NAME", "GLOBAL", "VERSION"}
+	defaultColumns []string = []string{"UUID", "KitState.Name", "KitState.Description", "KitState.Version"}
 )
 
 func NewListCmd() action.Pair {
