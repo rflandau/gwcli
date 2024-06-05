@@ -76,6 +76,7 @@ func NewListCmd[Any any](short, long string, aliases []string, defaultColumns []
 	// define cmd-specific flag option
 	fs := NewListFlagSet()
 	cmd.Flags().AddFlagSet(&fs)
+	cmd.Flags().SortFlags = false // does not carry over to cmd, need repeat
 	cmd.MarkFlagsMutuallyExclusive("csv", "json", "table")
 
 	// spin up a list action for interactive use
@@ -118,6 +119,9 @@ func NewListFlagSet() pflag.FlagSet {
 		"comma-seperated list of columns to include in the output."+
 			"Use --show-columns to see the full list of columns.")
 	fs.Bool("show-columns", false, "display the list of fully qualified column names and die.")
+
+	// use above sorting
+	fs.SortFlags = false
 
 	return fs
 }
@@ -183,6 +187,10 @@ func NewListAction[Any any](defaultColumns []string, dataStruct Any, dataFunc fu
 }
 
 func (la *ListAction[T]) Update(msg tea.Msg) tea.Cmd {
+	if la.done {
+		return nil
+	}
+
 	// check for --show-columns
 	if la.showColumns {
 		cols, err := weave.StructFields(la.dataStruct, true)
@@ -197,6 +205,8 @@ func (la *ListAction[T]) Update(msg tea.Msg) tea.Cmd {
 		panic(err)
 	}
 
+	la.done = true
+
 	return tea.Println(s)
 }
 
@@ -204,10 +214,12 @@ func (la *ListAction[T]) View() string {
 	return ""
 }
 
+// Called once per cycle to test if Mother should reassert control
 func (la *ListAction[T]) Done() bool {
 	return la.done
 }
 
+// Called when the action is unseated by Mother on exiting handoff mode
 func (la *ListAction[T]) Reset() error {
 	la.done = false
 	la.columns = la.DefaultColumns
@@ -216,6 +228,7 @@ func (la *ListAction[T]) Reset() error {
 	return nil
 }
 
+// Called when the action is invoked by the user and Mother *enters* handoff mode
 func (la *ListAction[T]) SetArgs(tokens []string) (bool, error) {
 	err := la.fs.Parse(tokens)
 	if err != nil {
