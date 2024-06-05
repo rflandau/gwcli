@@ -35,3 +35,7 @@
 - [ ] Eliminate the nil at the end of table/csv output
 
 - [ ] Allow list commands to pass in additional flags to treeutils.NewListCmd()
+
+- [ ] Add support for home (~) or root (/) navigation
+
+- [ ] BUG: interactive list use prints nothing the first time each command is called
