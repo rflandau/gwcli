@@ -10,8 +10,8 @@
         - [ ] take list of columns to include/exclude from output
         - [ ] create exclude variant
             - [ ] default to all columns if no columns are given
-    - [ ] table output
-        - [ ] take list of columns to include/exclude from output
+    - [x] table output
+        - [x] take list of columns to include/exclude from output
         - [ ] create exclude variant
             - [ ] default to all columns if no columns are given
 
@@ -31,3 +31,5 @@
 - [ ] Replace the panics floating around mother with appropriate error handling
 
 - [?] Spin `weave` off into its own package
+
+- [ ] Eliminate the nil at the end of table/csv output 
