@@ -10,7 +10,6 @@ import (
 )
 
 var (
-	use            string   = "list"
 	short          string   = "List all installed and staged kits"
 	long           string   = "..."
 	aliases        []string = []string{}
@@ -18,7 +17,7 @@ var (
 )
 
 func NewListCmd() action.Pair {
-	cmd, la := treeutils.NewListCmd(use, short, long, aliases, defaultColumns, types.IdKitState{}, ListKits)
+	cmd, la := treeutils.NewListCmd(short, long, aliases, defaultColumns, types.IdKitState{}, ListKits)
 	return treeutils.GenerateAction(cmd, &la)
 }
 
