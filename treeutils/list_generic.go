@@ -67,7 +67,11 @@ func NewListCmd[Any any](short, long string, aliases []string, defaultColumns []
 		if len(columns) == 0 {
 			columns = defaultColumns
 		}
-		fmt.Println(List(cmd.Flags(), columns, dataStruct, dataFunc))
+		output, err := List(cmd.Flags(), columns, dataStruct, dataFunc)
+		if err != nil {
+			clilog.TeeError(cmd.ErrOrStderr(), err.Error())
+		}
+		fmt.Println(output)
 	}
 
 	// generate the command

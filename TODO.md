@@ -32,7 +32,7 @@
 
 - [?] Spin `weave` off into its own package
 
-- [ ] Eliminate the nil at the end of table/csv output
+- [x] Eliminate the nil at the end of table/csv output when invoked non-interactively
 
 - [ ] Allow list commands to pass in additional flags to treeutils.NewListCmd()
 
