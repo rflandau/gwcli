@@ -5,15 +5,12 @@
     - [x] CSV output
         - [x] take list of columns to include from output
         - [ ] create exclude variant
-            - [ ] default to all columns if no columns are given
-    - [ ] JSON output
+    - [x] JSON output
         - [ ] take list of columns to include/exclude from output
         - [ ] create exclude variant
-            - [ ] default to all columns if no columns are given
     - [x] table output
         - [x] take list of columns to include/exclude from output
         - [ ] create exclude variant
-            - [ ] default to all columns if no columns are given
 
 - [ ] Display suggestions beneath current prompt
 

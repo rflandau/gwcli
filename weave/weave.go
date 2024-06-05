@@ -6,6 +6,7 @@
 package weave
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 	"gwcli/clilog"
@@ -124,6 +125,23 @@ func ToTable[Any any](st []Any, columns []string) string {
 	}
 
 	return stylesheet.Table(columns, rows)
+}
+
+func ToJSON[Any any](st []Any) string {
+	// TODO upgrade to support column selection
+	var bldr strings.Builder
+	bldr.WriteRune('[') // open JSON array
+	for _, s := range st {
+		b, err := json.Marshal(s)
+		if err != nil {
+			panic(err)
+		}
+		bldr.Write(b)
+		bldr.WriteRune(',') // new item
+	}
+	toRet := strings.TrimSuffix(bldr.String(), ",") // chomp final comma
+
+	return toRet + "]" // close JSON array
 }
 
 // Given a fully qualified column name (ex: "outerstruct.innerstruct.field"),
