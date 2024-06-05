@@ -38,4 +38,4 @@
 
 - [ ] Add support for home (~) or root (/) navigation
 
-- [ ] BUG: interactive list use prints nothing the first time each command is called
+- [x] BUG: interactive list use prints nothing the first time each command is called

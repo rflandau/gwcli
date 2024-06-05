@@ -177,8 +177,9 @@ type ListAction[Any any] struct {
 
 // Constructs a ListAction suitable for interactive use
 func NewListAction[Any any](defaultColumns []string, dataStruct Any, dataFunc func(*grav.Client) ([]Any, error)) ListAction[Any] {
-	fs := NewListFlagSet()
-	return ListAction[Any]{fs: fs,
+	return ListAction[Any]{
+		columns:            defaultColumns,
+		fs:                 NewListFlagSet(),
 		DefaultFormat:      table,
 		DefaultColumns:     defaultColumns,
 		DefaultFlagSetFunc: NewListFlagSet,
