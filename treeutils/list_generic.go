@@ -11,6 +11,7 @@ import (
 	"gwcli/connection"
 	"gwcli/weave"
 	"reflect"
+	"strings"
 
 	tea "github.com/charmbracelet/bubbletea"
 	grav "github.com/gravwell/gravwell/v3/client"
@@ -32,7 +33,7 @@ import (
 // See kitactions' ListKits() as an example
 //
 // Go's Generics are a godsend.
-func NewListCmd[Any any](use, short, long string, aliases []string, defaultColumns []string, dataStruct Any, dataFunc func(*grav.Client) ([]Any, error)) (*cobra.Command, ListAction) {
+func NewListCmd[Any any](use, short, long string, aliases []string, defaultColumns []string, dataStruct Any, dataFunc func(*grav.Client) ([]Any, error)) (*cobra.Command, ListAction[Any]) {
 	// assert developer provided a usable data struct
 	if reflect.TypeOf(dataStruct).Kind() != reflect.Struct {
 		panic("dataStruct must be a struct") // developer error
@@ -44,45 +45,24 @@ func NewListCmd[Any any](use, short, long string, aliases []string, defaultColum
 		if sc, err := cmd.Flags().GetBool("show-columns"); err != nil {
 			panic(err)
 		} else if sc {
-			col, err := weave.StructFields(dataStruct, true)
+			cols, err := weave.StructFields(dataStruct, true)
 			if err != nil {
 				panic(err)
 			}
-			fmt.Fprintf(cmd.OutOrStdout(), "%+v\n", col)
+			fmt.Println(strings.Join(cols, " "))
 			return
 		}
 
-		data, err := dataFunc(connection.Client)
-		if err != nil {
-			clilog.TeeError(cmd.ErrOrStderr(), err.Error())
-			return
-		}
-
-		// process flags
-		// NOTE format flags are marked mutually exclusive on creation
-		//		we do not need to check for exclusivity here
-
-		// determine columns
-		var columns []string
+		// fetch columns
+		var (
+			columns []string
+			err     error
+		)
 		columns, err = cmd.Flags().GetStringSlice("columns")
 		if err != nil {
-			clilog.TeeError(cmd.ErrOrStderr(), err.Error())
-			return
+			panic(err)
 		}
-
-		var format outputFormat = determineFormat(cmd)
-		clilog.Writer.Debugf("List: format %s | row count: %d", format, len(data))
-		switch format {
-		case csv:
-			fmt.Println(weave.ToCSV(data, columns))
-		case json:
-			//fmt.Println(weave.ToJSON(data, columns))
-		case table:
-			fmt.Println(weave.ToTable(data, columns))
-		default:
-			clilog.TeeError(cmd.ErrOrStderr(), fmt.Sprintf("unknown output format (%d)", format))
-			return
-		}
+		fmt.Println(List(cmd.Flags(), columns, dataStruct, dataFunc))
 	}
 
 	// generate the command
@@ -94,23 +74,25 @@ func NewListCmd[Any any](use, short, long string, aliases []string, defaultColum
 	cmd.MarkFlagsMutuallyExclusive("csv", "json", "table")
 
 	// spin up a list action for interactive use
-	la := NewListAction(defaultColumns)
+	la := NewListAction(defaultColumns, dataStruct, dataFunc)
 
 	// share the flagset with the interactive action model
 
 	return cmd, la
 }
 
-// Helper function for NewListCmd's runFunc creation
-// Takes an initialized list cmd and returns the output format for listing
-func determineFormat(cmd *cobra.Command) outputFormat {
+// Given a **parsed** flagset, determines and returns output format
+func determineFormat(fs *pflag.FlagSet) outputFormat {
+	if !fs.Parsed() {
+		return unknown
+	}
 	var format outputFormat
-	if format_csv, err := cmd.Flags().GetBool("csv"); err != nil {
+	if format_csv, err := fs.GetBool("csv"); err != nil {
 		panic(err)
 	} else if format_csv {
 		format = csv
 	} else {
-		if format_json, err := cmd.Flags().GetBool("json"); err != nil {
+		if format_json, err := fs.GetBool("json"); err != nil {
 			panic(err)
 		} else if format_json {
 			format = json
@@ -135,53 +117,119 @@ func NewListFlagSet() pflag.FlagSet {
 	return fs
 }
 
+// outputs
+func List[Any any](fs *pflag.FlagSet, columns []string,
+	dataStruct Any, dataFunc func(*grav.Client) ([]Any, error)) (string, error) {
+
+	data, err := dataFunc(connection.Client)
+	if err != nil {
+		return "", err
+	}
+
+	// process flags
+	// NOTE format flags are marked mutually exclusive on creation
+	//		we do not need to check for exclusivity here
+
+	var format outputFormat = determineFormat(fs)
+	clilog.Writer.Debugf("List: format %s | row count: %d", format, len(data))
+	toRet, err := "", nil
+	switch format {
+	case csv:
+		toRet = weave.ToCSV(data, columns)
+	case json:
+		//fmt.Println(weave.ToJSON(data, columns))
+	case table:
+		toRet = weave.ToTable(data, columns)
+	default:
+		toRet = ""
+		err = fmt.Errorf(fmt.Sprintf("unknown output format (%d)", format))
+	}
+	return toRet, err
+}
+
 //#region interactive mode (model) implementation
 
-type ListAction struct {
+type ListAction[Any any] struct {
 	// data cleared by .Reset()
-	done    bool
-	format  outputFormat
-	columns []string
-	fs      pflag.FlagSet // current flagset, parsed or unparsed
+	done        bool
+	columns     []string
+	showColumns bool          // print columns and exit
+	fs          pflag.FlagSet // current flagset, parsed or unparsed
 
 	// data shielded from .Reset()
 	DefaultFormat      outputFormat
 	DefaultColumns     []string             // columns to output if unspecified
 	DefaultFlagSetFunc func() pflag.FlagSet // flagset generation function used for .Reset()
+
+	// individualized for each user of list_generic
+	dataStruct Any
+	dataFunc   func(*grav.Client) ([]Any, error)
 }
 
 // Constructs a ListAction suitable for interactive use
-func NewListAction(defaultColumns []string) ListAction {
+func NewListAction[Any any](defaultColumns []string, dataStruct Any, dataFunc func(*grav.Client) ([]Any, error)) ListAction[Any] {
 	fs := NewListFlagSet()
-	return ListAction{fs: fs,
+	return ListAction[Any]{fs: fs,
 		DefaultFormat:      table,
 		DefaultColumns:     defaultColumns,
-		DefaultFlagSetFunc: NewListFlagSet}
+		DefaultFlagSetFunc: NewListFlagSet,
+		dataStruct:         dataStruct,
+		dataFunc:           dataFunc}
 }
 
-func (la *ListAction) Update(msg tea.Msg) tea.Cmd {
-	// TODO
-	return nil
+func (la *ListAction[T]) Update(msg tea.Msg) tea.Cmd {
+	// check for --show-columns
+	if la.showColumns {
+		cols, err := weave.StructFields(la.dataStruct, true)
+		if err != nil {
+			panic(err)
+		}
+		return tea.Println(strings.Join(cols, " "))
+	}
+
+	s, err := List(&la.fs, la.columns, la.dataStruct, la.dataFunc)
+	if err != nil {
+		panic(err)
+	}
+
+	return tea.Println(s)
 }
 
-func (la *ListAction) View() string {
+func (la *ListAction[T]) View() string {
 	return ""
 }
 
-func (la *ListAction) Done() bool {
+func (la *ListAction[T]) Done() bool {
 	return la.done
 }
 
-func (la *ListAction) Reset() error {
+func (la *ListAction[T]) Reset() error {
 	la.done = false
-	la.format = la.DefaultFormat
 	la.columns = la.DefaultColumns
+	la.showColumns = false
 	la.fs = la.DefaultFlagSetFunc()
 	return nil
 }
 
-func (ls *ListAction) SetArgs(tokens []string) (bool, error) {
-	// TODO
+func (la *ListAction[T]) SetArgs(tokens []string) (bool, error) {
+	err := la.fs.Parse(tokens)
+	if err != nil {
+		return false, err
+	}
+
+	// parse column handling
+	// only need to parse columns if user did not pass in --show-columns
+	if la.showColumns, err = la.fs.GetBool("show-columns"); err != nil {
+		return false, err
+	} else if !la.showColumns {
+		// fetch columns if it exists
+		if cols, err := la.fs.GetStringSlice("columns"); err != nil {
+			panic(err)
+		} else if len(cols) > 0 {
+			la.columns = cols
+		} // else: defaults to DefaultColumns
+	}
+
 	return true, nil
 }
 
