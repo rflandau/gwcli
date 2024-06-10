@@ -296,7 +296,7 @@ func (c *create) focusPrevious() {
 // SetArgs parses the tokens against the local flagset and sets internal
 // parameters. Returns false if the token set does not contain required flags or
 // is invalid
-func (c *create) SetArgs(tokens []string) (bool, error) {
+func (c *create) SetArgs(_ *pflag.FlagSet, tokens []string) (bool, error) {
 	// parse the tokens agains the local flagset
 	err := localFlagset.Parse(tokens)
 	if err != nil {

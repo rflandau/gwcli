@@ -69,7 +69,7 @@ func NewListCmd[Any any](short, long string, aliases []string, defaultColumns []
 			columns = defaultColumns
 		}
 
-		// check for no-color (reminder: persistents degrade!)
+		// check for --no-color
 		noColor, err := cmd.Flags().GetBool("no-color")
 		if err != nil {
 			panic(err)
@@ -147,7 +147,6 @@ func List[Any any](fs *pflag.FlagSet, columns []string, color bool,
 		return "", err
 	}
 
-
 	// NOTE format flags are marked mutually exclusive on creation
 	//		we do not need to check for exclusivity here
 	var format outputFormat = determineFormat(fs)
@@ -159,10 +158,11 @@ func List[Any any](fs *pflag.FlagSet, columns []string, color bool,
 	case json:
 		toRet, err = weave.ToJSON(data, columns)
 	case table:
-		if !color {
-			toRet = weave.ToTable(data, columns) // omit table styling
-		} else {
+		if color {
 			toRet = weave.ToTable(data, columns, stylesheet.Table)
+		} else {
+			toRet = weave.ToTable(data, columns) // omit table styling
+
 		}
 	default:
 		toRet = ""
@@ -184,6 +184,7 @@ type ListAction[Any any] struct {
 	DefaultFormat      outputFormat
 	DefaultColumns     []string             // columns to output if unspecified
 	DefaultFlagSetFunc func() pflag.FlagSet // flagset generation function used for .Reset()
+	color              bool                 // inferred from the global "--no-color" flag
 
 	// individualized for each user of list_generic
 	dataStruct Any
@@ -216,7 +217,7 @@ func (la *ListAction[T]) Update(msg tea.Msg) tea.Cmd {
 		return tea.Println(strings.Join(cols, " "))
 	}
 
-	s, err := List(&la.fs, la.columns, true, la.dataStruct, la.dataFunc)
+	s, err := List(&la.fs, la.columns, la.color, la.dataStruct, la.dataFunc)
 	if err != nil {
 		panic(err)
 	}
@@ -245,24 +246,34 @@ func (la *ListAction[T]) Reset() error {
 }
 
 // Called when the action is invoked by the user and Mother *enters* handoff mode
-func (la *ListAction[T]) SetArgs(tokens []string) (bool, error) {
-	err := la.fs.Parse(tokens)
+// Mother parses flags and provides us a handle to check against
+func (la *ListAction[T]) SetArgs(inherited *pflag.FlagSet, tokens []string) (bool, error) {
+	var err error
+	err = la.fs.Parse(tokens)
 	if err != nil {
-		return false, err
+		panic(err)
 	}
+	fs := la.fs
 
 	// parse column handling
 	// only need to parse columns if user did not pass in --show-columns
-	if la.showColumns, err = la.fs.GetBool("show-columns"); err != nil {
+	if la.showColumns, err = fs.GetBool("show-columns"); err != nil {
 		return false, err
 	} else if !la.showColumns {
 		// fetch columns if it exists
-		if cols, err := la.fs.GetStringSlice("columns"); err != nil {
+		if cols, err := fs.GetStringSlice("columns"); err != nil {
 			panic(err)
 		} else if len(cols) > 0 {
 			la.columns = cols
 		} // else: defaults to DefaultColumns
 	}
+
+	nc, err := inherited.GetBool("no-color")
+	if err != nil {
+		la.color = false
+		clilog.Writer.Warnf("Failed to fetch no-color from inherited: %v", err)
+	}
+	la.color = !nc
 
 	return true, nil
 }

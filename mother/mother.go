@@ -272,8 +272,11 @@ func processInput(m *Mother) tea.Cmd {
 					" Please submit a bug report.\n",
 					wr.endCommand.Name()))...)
 		}
+		m.active.command = wr.endCommand
 
-		if valid, err := m.active.model.SetArgs(wr.remainingTokens); err != nil {
+		// NOTE: the inherited flags here may have a combination of parsed and !parsed flags
+		// persistent commands defined below root may not be parsed
+		if valid, err := m.active.model.SetArgs(m.active.command.InheritedFlags(), wr.remainingTokens); err != nil {
 			m.UnsetAction()
 
 			errString := fmt.Sprintf("Failed to set args %v\nactive model %v\nactive command%v", wr.remainingTokens, m.active.model, wr.endCommand)

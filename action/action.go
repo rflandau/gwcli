@@ -20,6 +20,7 @@ import (
 
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/spf13/cobra"
+	"github.com/spf13/pflag"
 )
 
 //#regions errors
@@ -35,7 +36,7 @@ type Model interface {
 	View() string
 	Done() bool
 	Reset() error
-	SetArgs([]string) (bool, error)
+	SetArgs(*pflag.FlagSet, []string) (bool, error)
 }
 
 // Temp tuple used to construct the Action Map

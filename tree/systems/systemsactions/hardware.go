@@ -7,6 +7,7 @@ import (
 
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/spf13/cobra"
+	"github.com/spf13/pflag"
 )
 
 func NewHardwareList() action.Pair {
@@ -50,6 +51,6 @@ func (k *hwlist) Reset() error {
 	return nil
 }
 
-func (k *hwlist) SetArgs([]string) (bool, error) {
+func (k *hwlist) SetArgs(*pflag.FlagSet, []string) (bool, error) {
 	return true, nil
 }

@@ -7,6 +7,7 @@ import (
 
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/spf13/cobra"
+	"github.com/spf13/pflag"
 )
 
 func NewDiskInfo() action.Pair {
@@ -48,6 +49,6 @@ func (k *diskInfo) Reset() error {
 	return nil
 }
 
-func (k *diskInfo) SetArgs([]string) (bool, error) {
+func (k *diskInfo) SetArgs(*pflag.FlagSet, []string) (bool, error) {
 	return true, nil
 }
