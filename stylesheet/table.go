@@ -6,48 +6,57 @@ import (
 )
 
 const ( // colors
-	strongMagenta    string = "CC22CC"
-	veryLightMagenta string = "FF77FF"
+	borders = "#bb9af7"
+	header = "#7aa2f7"
+	row1 = "#c0caf5"
+	row2 = "#9aa5ce"
 )
 
 var (
-	baseRowStyle = lipgloss.NewStyle().Padding(0, 1).Width(30)
+	baseCell = lipgloss.NewStyle().Padding(0, 1).Width(30)
 
-	tblStyle = struct {
+	tbl = struct {
+		// cells
+		headerCells       lipgloss.Style
+		evenCells lipgloss.Style
+		oddCells  lipgloss.Style
+
+		// borders
 		borderType   lipgloss.Border
-		borderStyle  lipgloss.Style
-		header       lipgloss.Style
-		evenRowStyle lipgloss.Style
-		oddRowStyle  lipgloss.Style
+		border  lipgloss.Style
+		
 	}{
-		borderType:  lipgloss.NormalBorder(),
-		borderStyle: lipgloss.NewStyle().Foreground(lipgloss.Color("99")),
-		header: lipgloss.NewStyle().
-			Foreground(lipgloss.Color("99")).
+		//cells
+		headerCells: lipgloss.NewStyle().
+			Foreground(lipgloss.Color(header)).
 			AlignHorizontal(lipgloss.Center).
-			AlignVertical(lipgloss.Center),
-		evenRowStyle: baseRowStyle.
-			Foreground(lipgloss.Color(strongMagenta)),
-		oddRowStyle: baseRowStyle.
-			Foreground(lipgloss.Color(veryLightMagenta))}
+			AlignVertical(lipgloss.Center).Bold(true),
+		evenCells: baseCell.
+			Foreground(lipgloss.Color(row1)),//.Background(lipgloss.Color("#000")),
+		oddCells: baseCell.
+			Foreground(lipgloss.Color(row2)),
+		
+		// borders
+		borderType:  lipgloss.NormalBorder(),
+		border: lipgloss.NewStyle().Foreground(lipgloss.Color(borders)),
+		}
 )
 
-func Table(header []string, rows [][]string) string {
+// Generate a styled table skeleton
+func Table() *table.Table {
 	tbl := table.New().
-		Border(tblStyle.borderType).
-		BorderStyle(tblStyle.borderStyle).
+		Border(tbl.borderType).
+		BorderStyle(tbl.border).
 		StyleFunc(func(row, col int) lipgloss.Style {
 			switch {
 			case row == 0:
-				return tblStyle.header
+				return tbl.headerCells
 			case row%2 == 0:
-				return tblStyle.evenRowStyle
+				return tbl.evenCells
 			default:
-				return tblStyle.oddRowStyle
+				return tbl.oddCells
 			}
-		}).BorderRow(false)
-	// populate data
-	tbl.Headers(header...)
-	tbl.Rows(rows...)
-	return tbl.Render()
+		}).BorderRow(true)
+
+	return tbl
 }
