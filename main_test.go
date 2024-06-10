@@ -10,6 +10,15 @@ import (
 	"os"
 	"strings"
 	"testing"
+
+	grav "github.com/gravwell/gravwell/v3/client"
+	"github.com/gravwell/gravwell/v3/utils/weave"
+)
+
+const ( // mock credentials
+	user     = "admin"
+	password = "changeme"
+	server   = "localhost:80"
 )
 
 var realStderr, mockStderr, realStdout, mockStdout *os.File
@@ -18,6 +27,18 @@ var realStderr, mockStderr, realStdout, mockStdout *os.File
 
 func TestNonInteractive(t *testing.T) {
 	defer restoreIO() // each test should result before checking results, but ensure a deferred restore
+
+	realStdout = os.Stdout
+	realStderr = os.Stderr
+
+	// connect to the server
+	client, err := grav.NewOpts(grav.Opts{Server: server, UseHttps: false, InsecureNoEnforceCerts: true})
+	if err != nil {
+		panic(err)
+	}
+	if err = client.Login(user, password); err != nil{
+		panic(err)
+	}
 
 	t.Run("bad usage: no credentials", func(t *testing.T) {
 		stdoutData, stderrData, err := mockIO()
@@ -40,13 +61,56 @@ func TestNonInteractive(t *testing.T) {
 		}
 	})
 
+	t.Run("tools macros list --csv", func(t *testing.T) {
+		// generate results manually, for comparison
+		myInfo, err := client.MyInfo()
+		if err != nil {
+			panic(err)
+		}
+		macros, err := client.GetUserMacros(myInfo.UID)
+		if err != nil {
+			panic(err)
+		}
+		columns := []string{}
+		want := weave.ToCSV(macros, columns)
+
+		// prepare IO
+		stdoutData, stderrData, err := mockIO()
+		if err != nil {
+			restoreIO()
+			panic(err)
+		}
+
+		// prepare arguments
+		args := []string{"--no-interactive", "-u admin",
+			"-p changeme", "-s " + server,
+			"tools", "macros", "list",
+			"--csv", "--columns=\"" + strings.Join(columns, ",") + "\""}
+
+		// run the test body
+		errCode := tree.Execute(args)
+		restoreIO()
+		if errCode != 0 {
+			t.Errorf("non-zero error code: %v", errCode)
+		}
+		results := <-stdoutData
+		resultsErr := <-stderrData
+		if resultsErr != "" {
+			t.Errorf("non-empty stderr:\n(%v)", resultsErr)
+		}
+
+		// compare against expected
+		if results != want {
+			t.Errorf("output mismatch\nwant:\n(%v)\ngot:\n(%v)\n", want, results)
+		}
+	})
+
 }
 
 //#endregion
 
-func mockIO() (stdoutData chan string, stderrData chan string, err error){
+func mockIO() (stdoutData chan string, stderrData chan string, err error) {
 	// capture stdout
-	realStdout = os.Stdout
 	var readMockStdout *os.File
 	readMockStdout, mockStdout, err = os.Pipe()
 	if err != nil {
@@ -61,7 +125,6 @@ func mockIO() (stdoutData chan string, stderrData chan string, err error){
 	os.Stdout = mockStdout
 
 	// capture stderr
-	realStderr = os.Stderr
 	var readMockStderr *os.File
 	readMockStderr, mockStderr, err = os.Pipe()
 	if err != nil {
@@ -74,7 +137,6 @@ func mockIO() (stdoutData chan string, stderrData chan string, err error){
 		stderrData <- buf.String()
 	}()
 	os.Stderr = mockStderr
-
 
 	return stdoutData, stderrData, nil
 }
