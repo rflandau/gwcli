@@ -15,7 +15,6 @@ import (
 	"gwcli/tree/systems"
 	"gwcli/tree/tools"
 	"gwcli/treeutils"
-	"os"
 	"time"
 
 	"github.com/spf13/cobra"
@@ -102,7 +101,7 @@ const ( // mousetrap
  * appropriately, and launches the program according to the given parameters
  * (via cobra.Command.Execute()).
  */
-func Execute() {
+func Execute(args []string) int {
 	rootCmd := treeutils.GenerateNav(use, short, long, []string{}, []*cobra.Command{systems.NewSystemsNav(), search.NewSearchCmd(), tools.GenerateTree(), kits.NewKitsNav()}, nil)
 	rootCmd.PersistentPreRunE = EnforceLogin
 	rootCmd.Version = "prototype"
@@ -122,8 +121,16 @@ func Execute() {
 	// configure root's Run to launch Mother
 	rootCmd.Run = treeutils.NavRun
 
+	// if args were given (ex: we are in testing mode)
+	// use those instead of os.Args
+	if args != nil {
+		rootCmd.SetArgs(args)
+	}
+
 	err := rootCmd.Execute()
 	if err != nil {
-		os.Exit(1)
+		return 1
 	}
+
+	return 0
 }

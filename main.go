@@ -7,6 +7,7 @@ package main
 import (
 	"gwcli/clilog"
 	"gwcli/tree"
+	"os"
 
 	"github.com/gravwell/gravwell/v3/ingest/log"
 )
@@ -16,5 +17,5 @@ func init() {
 }
 
 func main() {
-	tree.Execute()
+	os.Exit(tree.Execute(nil))
 }
