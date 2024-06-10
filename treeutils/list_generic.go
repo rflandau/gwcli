@@ -9,12 +9,12 @@ import (
 	"fmt"
 	"gwcli/clilog"
 	"gwcli/connection"
-	"gwcli/weave"
 	"reflect"
 	"strings"
 
 	tea "github.com/charmbracelet/bubbletea"
 	grav "github.com/gravwell/gravwell/v3/client"
+	"github.com/gravwell/gravwell/v3/utils/weave"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 )
