@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"gwcli/clilog"
 	"gwcli/connection"
+	"gwcli/stylesheet"
 	"reflect"
 	"strings"
 
@@ -67,7 +68,14 @@ func NewListCmd[Any any](short, long string, aliases []string, defaultColumns []
 		if len(columns) == 0 {
 			columns = defaultColumns
 		}
-		output, err := List(cmd.Flags(), columns, dataStruct, dataFunc)
+
+		// check for no-color (reminder: persistents degrade!)
+		noColor, err := cmd.Flags().GetBool("no-color")
+		if err != nil {
+			panic(err)
+		}
+
+		output, err := List(cmd.Flags(), columns, !noColor, dataStruct, dataFunc)
 		if err != nil {
 			clilog.TeeError(cmd.ErrOrStderr(), err.Error())
 		}
@@ -131,7 +139,7 @@ func NewListFlagSet() pflag.FlagSet {
 }
 
 // outputs
-func List[Any any](fs *pflag.FlagSet, columns []string,
+func List[Any any](fs *pflag.FlagSet, columns []string, color bool,
 	dataStruct Any, dataFunc func(*grav.Client) ([]Any, error)) (string, error) {
 
 	data, err := dataFunc(connection.Client)
@@ -139,10 +147,9 @@ func List[Any any](fs *pflag.FlagSet, columns []string,
 		return "", err
 	}
 
-	// process flags
+
 	// NOTE format flags are marked mutually exclusive on creation
 	//		we do not need to check for exclusivity here
-
 	var format outputFormat = determineFormat(fs)
 	clilog.Writer.Debugf("List: format %s | row count: %d", format, len(data))
 	toRet, err := "", nil
@@ -152,7 +159,11 @@ func List[Any any](fs *pflag.FlagSet, columns []string,
 	case json:
 		toRet, err = weave.ToJSON(data, columns)
 	case table:
-		toRet = weave.ToTable(data, columns)
+		if !color {
+			toRet = weave.ToTable(data, columns) // omit table styling
+		} else {
+			toRet = weave.ToTable(data, columns, stylesheet.Table)
+		}
 	default:
 		toRet = ""
 		err = fmt.Errorf(fmt.Sprintf("unknown output format (%d)", format))
@@ -205,7 +216,7 @@ func (la *ListAction[T]) Update(msg tea.Msg) tea.Cmd {
 		return tea.Println(strings.Join(cols, " "))
 	}
 
-	s, err := List(&la.fs, la.columns, la.dataStruct, la.dataFunc)
+	s, err := List(&la.fs, la.columns, true, la.dataStruct, la.dataFunc)
 	if err != nil {
 		panic(err)
 	}
