@@ -128,14 +128,19 @@ func (m Mother) Init() tea.Cmd {
  */
 func (m Mother) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
+	var kill bool // kill key received
+
 	// always handle kill keys
 	keyMsg, isKeyMsg := msg.(tea.KeyMsg)
 	if isKeyMsg {
 		for _, v := range killKeys {
-			// TODO if we receive a kill key in a child command, kill just the child
 			if keyMsg.Type == v {
-				m.mode = quitting
-				return m, tea.Batch(tea.Quit, connection.End, tea.Println("Bye"))
+				kill = true
+				clilog.Writer.Infof("kill key %s triggered", v.String())
+				if m.mode == prompting {
+					m.mode = quitting
+					return m, tea.Batch(tea.Quit, connection.End, tea.Println("Bye"))
+				}
 			}
 		}
 		if keyMsg.Type == tea.KeyEsc {
@@ -150,7 +155,8 @@ func (m Mother) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	// a child is running
 	if m.mode == handoff {
-		if m.active.model == nil || m.active.command == nil { // sanity check
+		// sanity check
+		if m.active.model == nil || m.active.command == nil { 
 			clilog.Writer.Warnf(
 				"Mother is in handoff mode but has inconsistent actives %#v",
 				m.active)
@@ -167,12 +173,12 @@ func (m Mother) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 		}
 		// test for child state
-		if !m.active.model.Done() { // child still processing
+		if !kill && !m.active.model.Done() { // child still processing
 			clilog.Writer.Debugf("Handing off Update to %s\n", m.active.command.Name())
 			return m, m.active.model.Update(msg)
 		} else {
 			// child has finished processing, regain control and return to normal processing
-			clilog.Writer.Debugf("Child %s done. Mother reasserting...", m.active.command.Name())
+			clilog.Writer.Debugf("Mother reasserting control (child '%v')...", m.active.command.Name())
 			m.UnsetAction()
 		}
 	}
