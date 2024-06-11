@@ -19,3 +19,5 @@
 - [ ] Allow list commands to pass in additional flags to treeutils.NewListCmd()
 
 - [ ] Add support for home (~) or root (/) navigation
+
+- [ ] Do not display an unknown command error on empty input
