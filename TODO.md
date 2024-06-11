@@ -16,8 +16,6 @@
 
 - [ ] Colourize Cobra help
 
-- [ ] Disable Cobra displaying help on failed PersistentPreRun
-
 - [ ] Allow list commands to pass in additional flags to treeutils.NewListCmd()
 
 - [ ] Add support for home (~) or root (/) navigation

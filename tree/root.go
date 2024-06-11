@@ -103,6 +103,7 @@ const ( // mousetrap
  */
 func Execute(args []string) int {
 	rootCmd := treeutils.GenerateNav(use, short, long, []string{}, []*cobra.Command{systems.NewSystemsNav(), search.NewSearchCmd(), tools.GenerateTree(), kits.NewKitsNav()}, nil)
+	rootCmd.SilenceUsage = true
 	rootCmd.PersistentPreRunE = EnforceLogin
 	rootCmd.Version = "prototype"
 
