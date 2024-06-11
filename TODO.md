@@ -8,9 +8,6 @@
 
 - [ ] Display suggestions beneath current prompt
 
-- [ ] Implement arrow-key-scrollable history
-
-
 - [ ] displaying help should not establish a connection
     - especially important for nav-runs executed with --no-interactive mode 
 
