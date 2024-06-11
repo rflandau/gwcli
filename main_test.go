@@ -47,8 +47,7 @@ func TestNonInteractive(t *testing.T) {
 			panic(err)
 		}
 
-		errCode := tree.Execute([]string{"--no-interactive"})
-		t.Logf("error code: %d\n", errCode)
+		tree.Execute([]string{"--no-interactive"})
 		restoreIO()
 		results := <-stdoutData
 		resultsErr := <-stderrData
@@ -71,7 +70,7 @@ func TestNonInteractive(t *testing.T) {
 		if err != nil {
 			panic(err)
 		}
-		columns := []string{}
+		columns := []string{"UID", "Global", "Name"}
 		want := weave.ToCSV(macros, columns)
 
 		// prepare IO
@@ -81,11 +80,7 @@ func TestNonInteractive(t *testing.T) {
 			panic(err)
 		}
 
-		// prepare arguments
-		args := []string{"--no-interactive", "-u admin",
-			"-p changeme", "-s " + server,
-			"tools", "macros", "list",
-			"--csv", "--columns=\"" + strings.Join(columns, ",") + "\""}
+		args := strings.Split("-u admin -p changeme --no-interactive -s localhost:80 tools macros list --csv --columns=UID,Global,Name", " ")
 
 		// run the test body
 		errCode := tree.Execute(args)
@@ -100,7 +95,7 @@ func TestNonInteractive(t *testing.T) {
 		}
 
 		// compare against expected
-		if results != want {
+		if strings.TrimSpace(results) != strings.TrimSpace(want) {
 			t.Errorf("output mismatch\nwant:\n(%v)\ngot:\n(%v)\n", want, results)
 		}
 	})
