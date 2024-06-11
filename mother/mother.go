@@ -73,7 +73,6 @@ type Mother struct {
 	active struct {
 		command *actionCmd   // command user called
 		model   action.Model // Elm Arch associated to command
-		args    []string     // arguments pass to action
 	}
 }
 
@@ -147,9 +146,20 @@ func (m Mother) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	// a child is running
 	if m.mode == handoff {
 		if m.active.model == nil || m.active.command == nil { // sanity check
-			panic(fmt.Sprintf(
+			clilog.Writer.Warnf(
 				"Mother is in handoff mode but has inconsistent actives %#v",
-				m.active))
+				m.active)
+			if m.active.command == nil {
+				clilog.Writer.Warnf("nil command, unable to recover. Dying...")
+				panic("inconsistent handoff mode. Please submit a bug report.")
+			}
+			// m.active.model == nil, !m.active.command
+			var err error
+			m.active.model, err = action.GetModel(m.active.command)
+			if err != nil {
+				clilog.Writer.Errorf("failed to recover model from command: %v", err)
+				panic("inconsistent handoff mode. Please submit a bug report. ")
+			}
 		}
 		// test for child state
 		if !m.active.model.Done() { // child still processing
@@ -536,7 +546,7 @@ func TeaCmdContextHelp(c *cobra.Command) tea.Cmd {
 				for _, sc := range child.Commands() {
 					_, err := subchildren.WriteString(stylesheet.ColorCommandName(sc) + " ")
 					if err != nil {
-						panic(err)
+						clilog.Writer.Warnf("Failed to generate list of subchildren: %v", err)
 					}
 				}
 
