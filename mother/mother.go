@@ -49,9 +49,10 @@ var builtins map[string](func(*Mother, []string) tea.Cmd)
 func init() {
 	// need init to avoid an initialization cycle
 	builtins = map[string](func(*Mother, []string) tea.Cmd){
-		"help": ContextHelp,
-		"quit": quit,
-		"exit": quit}
+		"help":    ContextHelp,
+		"history": ListHistory,
+		"quit":    quit,
+		"exit":    quit}
 }
 
 /* tea.Model implementation, carrying all data required for interactive use */
@@ -74,6 +75,8 @@ type Mother struct {
 		command *actionCmd   // command user called
 		model   action.Model // Elm Arch associated to command
 	}
+
+	history *history
 }
 
 // internal new command to allow tests to pass in a renderer
@@ -97,6 +100,8 @@ func new(root *navCmd, pwd *navCmd, _ *lipgloss.Renderer) Mother {
 	m.style.action = stylesheet.ActionStyle
 	m.style.error = lipgloss.NewStyle().Foreground(lipgloss.Color("#CC444")).Bold(true)
 	//}
+
+	m.history = NewHistory()
 
 	return m
 }
@@ -226,16 +231,14 @@ func (m Mother) View() string {
  * ! Be sure each path that clears the prompt also outputs it via tea.Println
  */
 func processInput(m *Mother) tea.Cmd {
-	input := m.ti.Value()
-	clilog.Writer.Debugf("Processing input '%s'\n", input)
-
-	if m.ti.Err != nil {
+	onComplete := make([]tea.Cmd, 1) // tea.Cmds to execute on completion
+	var input string
+	var err error
+	onComplete[0], input, err = m.pushToHistory()
+	if err != nil {
+		clilog.Writer.Warnf("pushToHistory returned %v", err)
 		return nil
 	}
-
-	onComplete := make([]tea.Cmd, 1)
-	onComplete[0] = tea.Println(m.promptString()) // save off prompt string to output as history
-	m.ti.Reset()                                  // empty out the input
 
 	// tokenize input
 	given := strings.Split(strings.TrimSpace(input), " ")
@@ -309,6 +312,22 @@ func processInput(m *Mother) tea.Cmd {
 	return tea.Sequence(onComplete...)
 }
 
+// pushToHistory generates and stores historical record of the prompt (as a
+// Println and in the history array) and then clears the prompt, returning
+// cleaned, usable user input
+func (m *Mother) pushToHistory() (println tea.Cmd, userIn string, err error) {
+	userIn = m.ti.Value()
+	clilog.Writer.Debugf("Processing input '%s'\n", userIn)
+	if m.ti.Err != nil {
+		return nil, userIn, m.ti.Err
+	}
+	p := m.promptString()
+
+	m.history.Insert(userIn)           // add prompt string to history
+	m.ti.Reset()                       // empty out the input
+	return tea.Println(p), userIn, nil // print prompt
+}
+
 //#region builtin functions
 
 // Built-in, interactive help invocation
@@ -340,6 +359,18 @@ func ContextHelp(m *Mother, args []string) tea.Cmd {
 	clilog.Writer.Debugf("Doing nothing (%#v)", wr)
 
 	return nil
+}
+
+func ListHistory(m *Mother, _ []string) tea.Cmd {
+	toPrint := strings.Builder{}
+	rs := m.history.GetAllRecords()
+
+	// print the oldest record first, so newest record is directly over prompt
+	for i := len(rs); i > 0; i-- {
+		toPrint.WriteString(rs[i] + "\n")
+	}
+
+	return tea.Println(toPrint.String())
 }
 
 //#endregion
