@@ -184,7 +184,20 @@ func (m Mother) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if msg.Type == tea.KeyF1 { // help
 			return m, m.f1Help()
 		}
+		if msg.Type ==tea.KeyUp{
+			m.ti.SetValue(m.history.GetRecord())
+			// update cursor position
+			// TODO
+			return m, nil
+		}
+		if msg.Type ==tea.KeyDown{
+			//m.ti.SetValue(m.history.GetRecord())
+			// update cursor position
+			// TODO
+			return m, nil
+		}
 		if msg.Type == tea.KeyEnter { // submit
+			m.history.UnsetFetch()
 			cmd := processInput(&m)
 			return m, cmd
 		}
@@ -366,11 +379,12 @@ func ListHistory(m *Mother, _ []string) tea.Cmd {
 	rs := m.history.GetAllRecords()
 
 	// print the oldest record first, so newest record is directly over prompt
-	for i := len(rs); i > 0; i-- {
+	for i := len(rs)-1; i > 0; i-- {
 		toPrint.WriteString(rs[i] + "\n")
 	}
 
-	return tea.Println(toPrint.String())
+	// chomp last newline
+	return tea.Println(strings.TrimSpace(toPrint.String()))
 }
 
 //#endregion
