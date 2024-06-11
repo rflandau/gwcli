@@ -1,3 +1,4 @@
+// Figured history requires its own test suite because it has a lot of edge cases
 package mother
 
 import (
@@ -19,7 +20,7 @@ func TestHistoryLimits(t *testing.T) {
 func TestNewHistory(t *testing.T) {
 	t.Run("New", func(t *testing.T) {
 		h := NewHistory()
-		if h.fetchIndex != unset {
+		if h.fetchedIndex != unset {
 			t.Errorf("fetch index did not start unset")
 		}
 		if h.insertionIndex != 0 {
@@ -45,7 +46,7 @@ func Test_history_Insert(t *testing.T) {
 		if h.insertionIndex != 1 {
 			t.Errorf("insertion index not incremeneted")
 		}
-		if h.fetchIndex != unset {
+		if h.fetchedIndex != unset {
 			t.Errorf("fetch index altered during insert")
 		}
 	})
@@ -57,7 +58,7 @@ func Test_history_Insert(t *testing.T) {
 		if h.insertionIndex != 1 {
 			t.Errorf("insertion index was incremeneted")
 		}
-		if h.fetchIndex != unset {
+		if h.fetchedIndex != unset {
 			t.Errorf("fetch index altered during insert")
 		}
 	})
@@ -81,7 +82,7 @@ func Test_history_Insert(t *testing.T) {
 		if h.insertionIndex != 4 {
 			t.Errorf("insertion index mismatch: expected %v, got %v", 4, h.insertionIndex)
 		}
-		if h.fetchIndex != unset {
+		if h.fetchedIndex != unset {
 			t.Errorf("fetch index altered during insert")
 		}
 	})
@@ -92,41 +93,116 @@ func Test_history_GetRecord(t *testing.T) {
 	t.Run("empty fetches", func(t *testing.T) {
 		h := NewHistory()
 		// fetchIndex should be altered even if the newest record is empty
-		t.Run("first fetch, setter", func(t *testing.T) {
-			r := h.GetRecord()
+		t.Run("first fetch sets fetchedIndex", func(t *testing.T) {
+			r := h.GetOlderRecord()
 			if r != "" {
 				t.Errorf("empty history did not fetch empty string (got: %s)", r)
 			}
 
 			// fetching immediately on creation should wrap fetchIndex to arrayEnd,
 			//	as history does not know if we just started or overflowed
-			if h.fetchIndex != arrayEnd {
-				t.Errorf("empty history did not unflow on decrement (fetchIndex: %d)", h.fetchIndex)
+			if h.fetchedIndex != arrayEnd {
+				t.Errorf("empty history did not unflow on decrement (fetchIndex: %d)", h.fetchedIndex)
 			}
 		})
 		// fetchIndex should not be altered on the second empty record
-		t.Run("second fetch", func(t *testing.T) {
-			r := h.GetRecord()
+		t.Run("second fetch does not alter fetchedIndex", func(t *testing.T) {
+			r := h.GetOlderRecord()
 			if r != "" {
 				t.Errorf("empty history did not fetch empty string (got: %s)", r)
 			}
-			if h.fetchIndex != arrayEnd {
-				t.Errorf("second decrement occured despite empty history (fetchIndex: %d, expected: %d)", h.fetchIndex, arrayEnd)
+			if h.fetchedIndex != arrayEnd {
+				t.Errorf("second decrement occured despite empty history (fetchIndex: %d, expected: %d)", h.fetchedIndex, arrayEnd)
 			}
 		})
-		t.Run("unset, repeat first fetch", func(t *testing.T) {
+		t.Run("unset, repeat first fetch sets fetchedIndex", func(t *testing.T) {
 			h.UnsetFetch()
-			r := h.GetRecord()
+			r := h.GetOlderRecord()
 			if r != "" {
 				t.Errorf("empty history did not fetch empty string (got: %s)", r)
 			}
 
 			// fetching immediately on creation should wrap fetchIndex to arrayEnd,
 			//	as history does not know if we just started or overflowed
-			if h.fetchIndex != arrayEnd {
-				t.Errorf("empty history did not unflow on decrement (fetchIndex: %d)", h.fetchIndex)
+			if h.fetchedIndex != arrayEnd {
+				t.Errorf("empty history did not unflow on decrement (fetchIndex: %d)", h.fetchedIndex)
 			}
 		})
+	})
+	t.Run("arbitrary Older/Newer manipulation", func(t *testing.T) {
+		h := NewHistory()
+		h.Insert("A")
+		h.Insert("B")
+		h.Insert("C")
+		t.Run("GetOlderRecord returns C, B, A (in that order)", func(t *testing.T) {
+			if r := h.GetOlderRecord(); r != "C" {
+				t.Fatalf("expected: %v, got: %v", "C", r)
+			}
+			if r := h.GetOlderRecord(); r != "B" {
+				t.Fatalf("expected: %v, got: %v", "B", r)
+			}
+			if r := h.GetOlderRecord(); r != "A" {
+				t.Fatalf("expected: %v, got: %v", "A", r)
+			}
+		})
+
+		randOlderRecordFunc := func(t *testing.T) {
+			roll := rand.Intn(int(arraySize)*2)
+			t.Logf("Rolled %d", roll)
+			for i := 0; i < roll; i++{
+				if r := h.GetOlderRecord(); r != ""{
+					t.Fatalf("iteration #%d: found non-empty value %s", i, r)
+				}
+			}
+		}
+		t.Run("any number of GetOlderRecords returns empty record #1", randOlderRecordFunc)
+		t.Run("any number of GetOlderRecords returns empty record #2", randOlderRecordFunc)
+		t.Run("any number of GetOlderRecords returns empty record #3", randOlderRecordFunc)
+
+		t.Run("GetNewerRecord returns A, B, C (in that order)", func(t *testing.T) {
+			if r := h.GetNewerRecord(); r != "A" {
+				t.Fatalf("expected: %v, got: %v", "A", r)
+			}
+			if r := h.GetNewerRecord(); r != "B" {
+				t.Fatalf("expected: %v, got: %v", "B", r)
+			}
+			if r := h.GetNewerRecord(); r != "C" {
+				t.Fatalf("expected: %v, got: %v", "C", r)
+			}
+		})
+
+		t.Run("GetOlderRecord returns B", func(t *testing.T) {
+			if r := h.GetOlderRecord(); r != "B" {
+				t.Fatalf("expected: %v, got: %v", "B", r)
+			}
+		})
+		h.GetNewerRecord() // C
+
+		randNewerRecordFunc := func(t *testing.T) {
+			roll := rand.Intn(int(arraySize)*2)
+			t.Logf("Rolled %d", roll)
+			for i := 0; i < roll; i++{
+				if r := h.GetNewerRecord(); r != ""{
+					t.Fatalf("iteration #%d: found non-empty value %s", i, r)
+				}
+			}
+		}
+		t.Run("any number of GetNewerRecords returns empty record #1", randNewerRecordFunc)
+		t.Run("any number of GetNewerRecords returns empty record #2", randNewerRecordFunc)
+		t.Run("any number of GetNewerRecords returns empty record #3", randNewerRecordFunc)
+
+		t.Run("GetOlderRecord returns C, B, A (in that order)", func(t *testing.T) {
+			if r := h.GetOlderRecord(); r != "C" {
+				t.Fatalf("expected: %v, got: %v", "C", r)
+			}
+			if r := h.GetOlderRecord(); r != "B" {
+				t.Fatalf("expected: %v, got: %v", "B", r)
+			}
+			if r := h.GetOlderRecord(); r != "A" {
+				t.Fatalf("expected: %v, got: %v", "A", r)
+			}
+		})
+
 	})
 	t.Run("at limit", func(t *testing.T) {
 		h := NewHistory()
@@ -135,7 +211,7 @@ func Test_history_GetRecord(t *testing.T) {
 			h.Insert(fmt.Sprintf("%v", i))
 		}
 		t.Run("first GetRecord", func(t *testing.T) {
-			if r := h.GetRecord(); r != fmt.Sprintf("%v", arrayEnd) ||
+			if r := h.GetOlderRecord(); r != fmt.Sprintf("%v", arrayEnd) ||
 				r != h.commands[arrayEnd] {
 			t.Errorf("GetRecord did not return last record. Expected %s, got %s. Commands: %v",
 				fmt.Sprintf("%v", arrayEnd), r, h.commands)
@@ -143,7 +219,7 @@ func Test_history_GetRecord(t *testing.T) {
 		})
 		t.Run("second GetRecord", func(t *testing.T) {
 			want := fmt.Sprintf("%v", arrayEnd-1)
-			if r := h.GetRecord(); r != want || r != h.commands[arrayEnd-1] {
+			if r := h.GetOlderRecord(); r != want || r != h.commands[arrayEnd-1] {
 			t.Errorf("GetRecord did not return second-to-last record. Expected %s, got %s. Commands: %v",
 				want, r, h.commands)
 			}
@@ -151,10 +227,10 @@ func Test_history_GetRecord(t *testing.T) {
 		t.Run("edge of underflow", func(t *testing.T){
 			want := fmt.Sprintf("%v", 0)
 			for i := arrayEnd-1; i > 1; i--{
-				_ = h.GetRecord()
+				_ = h.GetOlderRecord()
 			}
-			r := h.GetRecord();
-			if h.fetchIndex != 0{
+			r := h.GetOlderRecord();
+			if h.fetchedIndex != 0{
 				t.Fatalf("fetch index error. r: %s, h: %+v",r, h)
 			}
 			if  r != want {
@@ -164,8 +240,8 @@ func Test_history_GetRecord(t *testing.T) {
 		})
 		t.Run("underflow", func(t *testing.T){
 			want := fmt.Sprintf("%v", 999)
-			r := h.GetRecord();
-			if h.fetchIndex != 999{
+			r := h.GetOlderRecord();
+			if h.fetchedIndex != 999{
 				t.Fatalf("fetch index error. r: %s, h: %+v",r, h)
 			}
 			if  r != want {

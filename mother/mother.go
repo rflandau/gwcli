@@ -185,15 +185,15 @@ func (m Mother) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, m.f1Help()
 		}
 		if msg.Type ==tea.KeyUp{
-			m.ti.SetValue(m.history.GetRecord())
+			m.ti.SetValue(m.history.GetOlderRecord())
 			// update cursor position
-			// TODO
+			m.ti.CursorEnd()
 			return m, nil
 		}
 		if msg.Type ==tea.KeyDown{
-			//m.ti.SetValue(m.history.GetRecord())
+			m.ti.SetValue(m.history.GetNewerRecord())
 			// update cursor position
-			// TODO
+			m.ti.CursorEnd()
 			return m, nil
 		}
 		if msg.Type == tea.KeyEnter { // submit
