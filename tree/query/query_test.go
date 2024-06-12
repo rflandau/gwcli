@@ -44,6 +44,11 @@ func TestGenerateQueryString(t *testing.T) {
 			wantQuery: "tag=gravwell", wantErr: false,
 		},
 		{
+			name:      "basic multiwork argument query",
+			args:      args{[]string{}, []string{"tag=dpkg words status"}},
+			wantQuery: "tag=dpkg words status", wantErr: false,
+		},
+		{
 			name:      "empty query",
 			args:      args{[]string{}, []string{}},
 			wantQuery: "", wantErr: true,
@@ -52,6 +57,12 @@ func TestGenerateQueryString(t *testing.T) {
 			name:      "uuid " + uuid1str,
 			args:      args{[]string{"-r", uuid1str}, []string{}},
 			wantQuery: "tag=gravwell", wantErr: false,
+			skip: uuid1str == "", // skip if constant is unset
+		},
+		{
+			name:      "invalid uuid 'all-hail-the-gopher'",
+			args:      args{[]string{"-r", "all-hail-the-gopher"}, []string{}},
+			wantQuery: "", wantErr: true,
 			skip: uuid1str == "", // skip if constant is unset
 		},
 	}
