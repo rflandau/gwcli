@@ -20,6 +20,27 @@ import (
 	"github.com/spf13/cobra"
 )
 
+// global PersistenPreRunE.
+//
+// Ensures the logger is set up and the user has logged into the gravwell instance,
+// completeing these actions if either is false
+func ppre(cmd *cobra.Command, args []string) error {
+	// set up the logger, if it is not already initialized
+	if clilog.Writer == nil {
+		path, err := cmd.Flags().GetString("log")
+		if err != nil {
+			return err
+		}
+		lvl, err := cmd.Flags().GetString("loglevel")
+		if err != nil {
+			return err
+		}
+		clilog.Init(path, lvl)
+	}
+
+	return EnforceLogin(cmd, args)
+}
+
 /**
  * Logs the client into the Gravwell instance dictated by the --server flag.
  * Safe (ineffectual) to call if already logged in.
@@ -77,6 +98,11 @@ func GenerateFlags(root *cobra.Command) {
 	root.MarkFlagsRequiredTogether("username", "password")                       // tie username+password together
 	root.PersistentFlags().Bool("no-color", false, "Disables colourized output") // TODO via lipgloss.NoColor
 	root.PersistentFlags().StringP("server", "s", "localhost:80", "<host>:<port>\nDefault: 'localhost:80'")
+	root.PersistentFlags().StringP("log", "l", "gwcli.log", "Log location for developer logs.\n"+
+		"Default: './gwcli.log'")
+	root.PersistentFlags().String("loglevel", "DEBUG", "Log level for developer logs (-l).\n"+
+		"Possible values: 'OFF', 'DEBUG', 'INFO', 'WARN', 'ERROR', 'CRITICAL', 'FATAL'\n"+
+		"Default: './gwcli.log'")
 	// TODO JSON global flag output
 	// TODO make the logger terse by default
 }
@@ -104,7 +130,7 @@ const ( // mousetrap
 func Execute(args []string) int {
 	rootCmd := treeutils.GenerateNav(use, short, long, []string{}, []*cobra.Command{systems.NewSystemsNav(), search.NewSearchCmd(), tools.GenerateTree(), kits.NewKitsNav()}, nil)
 	rootCmd.SilenceUsage = true
-	rootCmd.PersistentPreRunE = EnforceLogin
+	rootCmd.PersistentPreRunE = ppre
 	rootCmd.Version = "prototype"
 
 	// associate flags
