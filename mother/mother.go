@@ -46,6 +46,8 @@ var killKeys = [...]tea.KeyType{tea.KeyCtrlC}
 // takes a reference to Mother and tokens [1:]
 var builtins map[string](func(*Mother, []string) tea.Cmd)
 
+var builtinHelp map[string]string
+
 func init() {
 	// need init to avoid an initialization cycle
 	builtins = map[string](func(*Mother, []string) tea.Cmd){
@@ -53,6 +55,16 @@ func init() {
 		"history": ListHistory,
 		"quit":    quit,
 		"exit":    quit}
+
+	builtinHelp = map[string]string{
+		"help": "Display context-sensitive help. Equivalent to pressing F1.\n"+
+			"Calling `help` bare provides currently available navigations.\n"+
+			"Help can also be passed a path to display help on remote directories or actions.\n"+
+			"Ex: `help .. kits list`",
+		"history": "List previous commands. Navigate history via ↑/↓",
+		"quit": "Kill the application",
+		"exit": "Kill the application",
+	}
 }
 
 /* tea.Model implementation, carrying all data required for interactive use */
@@ -361,8 +373,12 @@ func ContextHelp(m *Mother, args []string) tea.Cmd {
 		return TeaCmdContextHelp(wr.endCommand)
 	case foundBuiltin:
 		if _, ok := builtins[args[0]]; ok {
-			// TODO fill in help information for each built-in command
-			return tea.Printf("help for %v", args[0])
+			str, found := builtinHelp[args[0]]
+			if !found {
+				str = "no help defined for '" + args[0] + "'"
+			}
+
+			return tea.Printf(str)
 		}
 
 	}
