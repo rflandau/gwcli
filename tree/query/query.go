@@ -1,6 +1,7 @@
 package query
 
 import (
+	"errors"
 	"fmt"
 	"gwcli/action"
 	"gwcli/clilog"
@@ -12,6 +13,7 @@ import (
 	"time"
 
 	"github.com/charmbracelet/bubbles/textarea"
+	"github.com/google/uuid"
 	"github.com/gravwell/gravwell/v3/client/types"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
@@ -19,6 +21,10 @@ import (
 
 // the Gravwell client can only consume time formatted as follows
 const timeFormat = "2006-01-02T15:04:05.999999999Z07:00"
+
+var (
+	ErrSuperfluousQuery = "query is empty and therefore ineffectual"
+)
 
 var localFS pflag.FlagSet
 
@@ -30,6 +36,8 @@ func GenerateAction() action.Pair {
 			"All arguments after `query` will be passed to the instance as the string to query.", []string{}, run)
 
 	localFS = initialLocalFlagSet()
+
+	cmd.Example = "./gwcli -u USERNAME -p PASSWORD query tag=gravwell"
 
 	cmd.Flags().AddFlagSet(&localFS)
 
@@ -148,12 +156,25 @@ func GenerateQueryString(cmd *cobra.Command, args []string) (query string, err e
 	if ref, err = cmd.Flags().GetString("reference"); err != nil {
 		return "", err
 	} else if strings.TrimSpace(ref) != "" {
-		clilog.Writer.Infof("Search ref uuid '%v'", ref)
-		// TODO look up query by ref, if given
-		// return query, nil
+		if err := uuid.Validate(ref); err != nil {
+			return "", err
+		}
+		uuid, err := uuid.Parse(ref)
+		if err != nil {
+			return "", err
+		}
+		sl, err := connection.Client.GetSearchLibrary(uuid)
+		if err != nil {
+			return "", err
+		}
+		return sl.Query, nil
 	}
 
-	query = strings.Join(args, " ")
+	query = strings.TrimSpace(strings.Join(args, " "))
+	if query == "" { // superfluous query, don't bother
+		return "", errors.New(ErrSuperfluousQuery)
+	}
+
 	// validate search query
 	if err = connection.Client.ParseSearch(query); err != nil {
 		query = ""
