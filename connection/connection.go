@@ -18,12 +18,15 @@ var Client *grav.Client
 /**
  * Initializes Client using the given connection string of the form <host>:<port>
  */
-func Initialize(conn string) (err error) { // TODO accept more arguments to fill out opt struct
+func Initialize(conn string, UseHttps, InsecureNoEnforceCerts bool) (err error) {
 	l, err := objlog.NewJSONLogger("rest_client.json")
 	if err != nil {
 		return err
 	}
-	opts := grav.Opts{Server: conn, UseHttps: false, InsecureNoEnforceCerts: true, ObjLogger: l}
+	opts := grav.Opts{Server: conn,
+		UseHttps: UseHttps,
+		InsecureNoEnforceCerts: InsecureNoEnforceCerts,
+		ObjLogger: l}
 	Client, err = grav.NewOpts(opts)
 	if err != nil {
 		return err

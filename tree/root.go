@@ -51,7 +51,11 @@ func EnforceLogin(cmd *cobra.Command, args []string) error {
 		if err != nil {
 			return err
 		}
-		if err = connection.Initialize(server); err != nil {
+		insecure, err := cmd.Flags().GetBool("insecure")
+		if err != nil {
+			return err
+		}
+		if err = connection.Initialize(server, !insecure, insecure); err != nil {
 			return err
 		}
 	}
@@ -97,14 +101,15 @@ func GenerateFlags(root *cobra.Command) {
 	root.PersistentFlags().StringP("password", "p", "", "login credential")
 	root.MarkFlagsRequiredTogether("username", "password")                       // tie username+password together
 	root.PersistentFlags().Bool("no-color", false, "Disables colourized output") // TODO via lipgloss.NoColor
-	root.PersistentFlags().StringP("server", "s", "localhost:80", "<host>:<port>\nDefault: 'localhost:80'")
+	root.PersistentFlags().StringP("server", "s", "localhost:80", "<host>:<port>\n"+
+		"Default: 'localhost:80'")
 	root.PersistentFlags().StringP("log", "l", "gwcli.log", "Log location for developer logs.\n"+
 		"Default: './gwcli.log'")
 	root.PersistentFlags().String("loglevel", "DEBUG", "Log level for developer logs (-l).\n"+
 		"Possible values: 'OFF', 'DEBUG', 'INFO', 'WARN', 'ERROR', 'CRITICAL', 'FATAL'\n"+
 		"Default: './gwcli.log'")
+	root.PersistentFlags().Bool("insecure", false, "Do not use HTTPS and do not enforce certs")
 	// TODO JSON global flag output
-	// TODO make the logger terse by default
 }
 
 const ( // usage
