@@ -7,9 +7,8 @@ import (
 
 const ( // colors
 	borders = "#bb9af7"
-	header = "#7aa2f7"
-	row1 = "#c0caf5"
-	row2 = "#9aa5ce"
+	row1    = "#c0caf5"
+	row2    = "#9aa5ce"
 )
 
 var (
@@ -17,29 +16,28 @@ var (
 
 	tbl = struct {
 		// cells
-		headerCells       lipgloss.Style
-		evenCells lipgloss.Style
-		oddCells  lipgloss.Style
+		headerCells lipgloss.Style
+		evenCells   lipgloss.Style
+		oddCells    lipgloss.Style
 
 		// borders
-		borderType   lipgloss.Border
-		border  lipgloss.Style
-		
+		borderType lipgloss.Border
+		border     lipgloss.Style
 	}{
 		//cells
 		headerCells: lipgloss.NewStyle().
-			Foreground(lipgloss.Color(header)).
+			Foreground(PrimaryColor).
 			AlignHorizontal(lipgloss.Center).
 			AlignVertical(lipgloss.Center).Bold(true),
 		evenCells: baseCell.
-			Foreground(lipgloss.Color(row1)),//.Background(lipgloss.Color("#000")),
+			Foreground(lipgloss.Color(row1)), //.Background(lipgloss.Color("#000")),
 		oddCells: baseCell.
 			Foreground(lipgloss.Color(row2)),
-		
+
 		// borders
-		borderType:  lipgloss.NormalBorder(),
-		border: lipgloss.NewStyle().Foreground(lipgloss.Color(borders)),
-		}
+		borderType: lipgloss.NormalBorder(),
+		border:     lipgloss.NewStyle().Foreground(lipgloss.Color(borders)),
+	}
 )
 
 // Generate a styled table skeleton
