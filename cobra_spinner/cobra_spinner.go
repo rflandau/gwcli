@@ -1,7 +1,11 @@
+// CobraSpinner provides a unified spinner to displaying while waiting for async
+// operations. Do not use in a script context.
+//
+// Call New() to get a program, p.Run() to allow the program to take over the terminal (after
+// spinning up the reaper goroutine), and p.Quit() from the reaper when done waiting.
 package cobraspinner
 
 import (
-	"fmt"
 	"gwcli/stylesheet"
 
 	"github.com/charmbracelet/bubbles/spinner"
@@ -24,14 +28,15 @@ func (cs CobraSpinner) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 func (cs CobraSpinner) View() string {
-	return fmt.Sprintf("%s", cs.spnr.View())
+	return cs.spnr.View()
 }
 
-// Generate a simple bubble tea model for the wait spinner
-func New() CobraSpinner {
-	s := spinner.New(
-		spinner.WithSpinner(spinner.Moon),
-		spinner.WithStyle(lipgloss.NewStyle().Foreground(stylesheet.PrimaryColor)))
-
-	return CobraSpinner{spnr: s}
+// Create a new BubbleTea program with just a spinner
+//
+// When you are done waiting, call p.Quit() from another goroutine.
+func New() (p *tea.Program) {
+	return tea.NewProgram(CobraSpinner{
+		spnr: spinner.New(
+			spinner.WithSpinner(spinner.Moon),
+			spinner.WithStyle(lipgloss.NewStyle().Foreground(stylesheet.PrimaryColor)))})
 }
