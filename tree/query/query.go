@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"gwcli/action"
 	"gwcli/clilog"
+	cobraspinner "gwcli/cobra_spinner"
 	"gwcli/connection"
 	"gwcli/treeutils"
 	"os"
@@ -26,7 +27,7 @@ var localFS pflag.FlagSet
 func GenerateAction() action.Pair {
 	cmd := treeutils.NewActionCommand("query", "submit a query",
 		"Generate and send a query to the remote server. Results can be received via this cli or later on the web GUI.\n"+
-			"All arguments after `query` will be passed to the instance as the search command.", []string{}, run)
+			"All arguments after `query` will be passed to the instance as the string to query.", []string{}, run)
 
 	localFS = initialLocalFlagSet()
 
@@ -57,6 +58,14 @@ func initialLocalFlagSet() pflag.FlagSet {
 //#region cobra command
 
 func run(cmd *cobra.Command, args []string) {
+	var err error
+
+	// fetch required flags
+	duration, err := cmd.Flags().GetDuration("duration")
+	if err != nil {
+		clilog.TeeError(cmd.ErrOrStderr(), err.Error())
+		return
+	}
 
 	if schedule, err := cmd.Flags().GetString("schedule"); err != nil {
 		clilog.TeeError(cmd.ErrOrStderr(), err.Error())
@@ -69,30 +78,9 @@ func run(cmd *cobra.Command, args []string) {
 		return
 	}
 
-	// fetch required flags
-	duration, err := cmd.Flags().GetDuration("duration")
+	q, err := GenerateQueryString(cmd, args)
 	if err != nil {
 		clilog.TeeError(cmd.ErrOrStderr(), err.Error())
-		return
-	}
-
-	// parse query from args or use reference (if given)
-	var ref string // query library uuid
-	if ref, err = cmd.Flags().GetString("reference"); err != nil {
-		clilog.TeeError(cmd.ErrOrStderr(), err.Error())
-		return
-	} else if strings.TrimSpace(ref) != "" {
-		clilog.Writer.Infof("Search ref uuid '%v'", ref)
-		// TODO look up query by ref, if given
-
-	}
-
-	q := strings.Join(args, " ")
-	// validate search query
-	if err := connection.Client.ParseSearch(q); err != nil {
-		clilog.TeeError(
-			cmd.ErrOrStderr(),
-			fmt.Sprintf("'%s' is not a valid query: %s", q, err.Error()))
 		return
 	}
 
@@ -112,11 +100,23 @@ func run(cmd *cobra.Command, args []string) {
 		clilog.TeeError(cmd.ErrOrStderr(), err.Error())
 		return
 	}
-	if err := connection.Client.WaitForSearch(s); err != nil {
+
+	// spin up a spinner
+	spnrP := cobraspinner.New()
+	go func() {
+		if err := connection.Client.WaitForSearch(s); err != nil {
+			clilog.TeeError(cmd.ErrOrStderr(), err.Error())
+			return
+		}
+		spnrP.Quit()
+	}()
+
+	if _, err := spnrP.Run(); err != nil {
 		clilog.TeeError(cmd.ErrOrStderr(), err.Error())
 		return
 	}
 
+	// TODO allow user to provide row count via --head to set last
 	results, err := connection.Client.GetTextResults(s, 0, 500)
 	if err != nil {
 		clilog.TeeError(cmd.ErrOrStderr(), err.Error())
@@ -140,6 +140,26 @@ func run(cmd *cobra.Command, args []string) {
 		}
 		//fmt.Printf("%#v\n", results)
 	}
+}
+
+// Pulls a query from args or a reference uuid, depending on if the latter is given
+func GenerateQueryString(cmd *cobra.Command, args []string) (query string, err error) {
+	var ref string // query library uuid
+	if ref, err = cmd.Flags().GetString("reference"); err != nil {
+		return "", err
+	} else if strings.TrimSpace(ref) != "" {
+		clilog.Writer.Infof("Search ref uuid '%v'", ref)
+		// TODO look up query by ref, if given
+		// return query, nil
+	}
+
+	query = strings.Join(args, " ")
+	// validate search query
+	if err = connection.Client.ParseSearch(query); err != nil {
+		query = ""
+		err = fmt.Errorf("'%s' is not a valid query: %s", query, err.Error())
+	}
+	return
 }
 
 //#endregion
