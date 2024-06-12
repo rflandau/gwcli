@@ -13,26 +13,26 @@ var Writer *log.Logger
  * Safe (ineffectual) if the writer has already been initialized.
  */
 func Init(path string, lvl string) error {
-	// TODO make the logger terse by default
 	var err error
 	if Writer != nil {
 		return nil
 	}
 
-	level, err := log.LevelFromString(lvl)
-	if err != nil {
-		return err
-	}
 	Writer, err = log.NewFile(path)
 	if err != nil {
 		Writer.Close()
 		return err
 	}
 
-	if err = Writer.SetLevel(level); err != nil {
+	if err = Writer.SetLevelString(lvl); err != nil {
 		Writer.Close()
 		return err
 	}
+
+	Writer.Debugf("Logger initialized at %v level, hostname %v", Writer.GetLevel(), Writer.Hostname())
+
+	Writer.SetAppname(".")
+	Writer.SetHostname(".") // autopopulates if empty
 
 	return nil
 }
