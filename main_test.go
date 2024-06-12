@@ -80,7 +80,7 @@ func TestNonInteractive(t *testing.T) {
 			panic(err)
 		}
 
-		args := strings.Split("-u admin -p changeme --no-interactive -s localhost:80 tools macros list --csv --columns=UID,Global,Name", " ")
+		args := strings.Split("-u admin -p changeme --insecure --no-interactive tools macros list --csv --columns=UID,Global,Name", " ")
 
 		// run the test body
 		errCode := tree.Execute(args)
@@ -99,6 +99,8 @@ func TestNonInteractive(t *testing.T) {
 			t.Errorf("output mismatch\nwant:\n(%v)\ngot:\n(%v)\n", want, results)
 		}
 	})
+
+	// TODO add a test for script-form query
 
 }
 
