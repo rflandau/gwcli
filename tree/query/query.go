@@ -1,12 +1,15 @@
 package query
 
 import (
+	"fmt"
 	"gwcli/action"
 	"gwcli/clilog"
+	"gwcli/connection"
 	"gwcli/treeutils"
 	"time"
 
 	"github.com/charmbracelet/bubbles/textarea"
+	"github.com/gravwell/gravwell/v3/client/types"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 )
@@ -22,6 +25,12 @@ func GenerateAction() action.Pair {
 
 	localFS = initialLocalFlagSet()
 
+	cmd.Flags().AddFlagSet(&localFS)
+
+	cmd.MarkFlagsOneRequired("duration")
+
+	cmd.MarkFlagsRequiredTogether("name", "description", "schedule")
+
 	return treeutils.GenerateAction(cmd, Query)
 }
 
@@ -29,12 +38,13 @@ func GenerateAction() action.Pair {
 func initialLocalFlagSet() pflag.FlagSet {
 	fs := pflag.FlagSet{}
 
-	fs.DurationP("scheduled", "s", time.Second*30, "schedule this search to be run at a later date, over the given duration")
+	fs.DurationP("duration", "t", time.Hour*1, "the amount of time over which the query should be run.")
+	fs.StringP("reference", "r", "", "a reference to a query library item to execute instead of a provided query.")
 
-	// TODO
-	//fs.StringP("name", "n", "", "the shorthand that will be expanded")
-	//fs.StringP("description", "d", "", "(flavour) description")
-	//fs.StringP("expansion", "e", "", "value for the macro to expand to")
+	// scheduled searches
+	fs.StringP("name", "n", "", "name for a scheduled search")
+	fs.StringP("description", "d", "", "(flavour) description")
+	fs.StringP("schedule", "s", "", "schedule this search to be run at a later date, over the given duration.")
 
 	return fs
 }
@@ -46,6 +56,26 @@ func initialLocalFlagSet() pflag.FlagSet {
 func run(cmd *cobra.Command, args []string) {
 	// fetch query from cli
 	clilog.Writer.Debugf("Passed arguments found: %v", args)
+
+	if schedule, err := cmd.Flags().GetString("schedule"); err != nil {
+		fmt.Fprintln(cmd.ErrOrStderr(), err); return
+	} else if schedule != ""{
+		// TODO implement scheduled searches
+	}
+
+	// fetch required flags
+	duration, err := cmd.Flags().GetDuration("duration")
+	if err != nil {
+		fmt.Fprintln(cmd.ErrOrStderr(), err); return
+	}
+	
+	// parse query from args or use reference (if given)
+
+
+	start := time.Now()
+
+	sreq := types.StartSearchRequest{SearchStart: start.String(), SearchEnd: start.Add(duration).String()}
+	connection.Client.StartSearchEx(sreq)
 }
 
 	
@@ -61,5 +91,7 @@ type query struct {
 }
 
 var Query action.Model
+
+// ParseSearch validator
 
 //#endregion
