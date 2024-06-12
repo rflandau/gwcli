@@ -8,9 +8,11 @@ package tree
 
 import (
 	"fmt"
+	"gwcli/action"
 	"gwcli/clilog"
 	"gwcli/connection"
 	"gwcli/tree/kits"
+	"gwcli/tree/query"
 	"gwcli/tree/search"
 	"gwcli/tree/systems"
 	"gwcli/tree/tools"
@@ -101,7 +103,7 @@ func GenerateFlags(root *cobra.Command) {
 	root.PersistentFlags().StringP("password", "p", "", "login credential")
 	root.MarkFlagsRequiredTogether("username", "password")                       // tie username+password together
 	root.PersistentFlags().Bool("no-color", false, "Disables colourized output") // TODO via lipgloss.NoColor
-	root.PersistentFlags().StringP("server", "s", "localhost:80", "<host>:<port>\n"+
+	root.PersistentFlags().String("server", "localhost:80", "<host>:<port>\n"+
 		"Default: 'localhost:80'")
 	root.PersistentFlags().StringP("log", "l", "gwcli.log", "Log location for developer logs.\n"+
 		"Default: './gwcli.log'")
@@ -133,7 +135,16 @@ const ( // mousetrap
  * (via cobra.Command.Execute()).
  */
 func Execute(args []string) int {
-	rootCmd := treeutils.GenerateNav(use, short, long, []string{}, []*cobra.Command{systems.NewSystemsNav(), search.NewSearchCmd(), tools.GenerateTree(), kits.NewKitsNav()}, nil)
+	rootCmd := treeutils.GenerateNav(use, short, long, []string{}, 
+		[]*cobra.Command{
+			systems.NewSystemsNav(), 
+			search.NewSearchCmd(), 
+			tools.GenerateTree(), 
+			kits.NewKitsNav(),
+		},
+		[]action.Pair{
+			query.GenerateAction(),
+		})
 	rootCmd.SilenceUsage = true
 	rootCmd.PersistentPreRunE = ppre
 	rootCmd.Version = "prototype"
