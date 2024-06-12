@@ -230,7 +230,6 @@ func (m Mother) View() string {
 
 	s := strings.Builder{}
 	s.WriteString(CommandPath(&m) + m.ti.View()) // prompt
-	// TODO currently superfluous
 	if m.ti.Err != nil {
 		// write out previous error and clear it
 		s.WriteString("\n")
@@ -261,14 +260,7 @@ func processInput(m *Mother) tea.Cmd {
 
 	// tokenize input
 	given := strings.Split(strings.TrimSpace(input), " ")
-	//m.ti.Validate(given) // TODO add navigation text validation
 
-	/*var (
-		endCmd     *cobra.Command
-		status     walkStatus
-		inputError string
-	)*/
-	//endCmd, status, onComplete, inputError = walk(m.pwd, given, onComplete)
 	wr := walk(m.pwd, given, onComplete)
 
 	if wr.errString != "" {
