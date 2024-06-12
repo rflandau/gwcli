@@ -36,7 +36,7 @@ func TestNonInteractive(t *testing.T) {
 	if err != nil {
 		panic(err)
 	}
-	if err = client.Login(user, password); err != nil{
+	if err = client.Login(user, password); err != nil {
 		panic(err)
 	}
 
