@@ -133,10 +133,9 @@ func (m Mother) Init() tea.Cmd {
 	return textinput.Blink
 }
 
-/** Inputs are handled in two places:
- * Persistent keystrokes (ex: F1, CTRL+C) are handled here (as kill keys).
- * Input commands (ex: 'help', 'quit', <command>) are handled in processInput()
- */
+// Mother's Update is always the entrypoint for BubbleTea to drive.
+// It checks for kill keys (to disallow a runaway/ill-designed child), then either passes off
+// control (if in handoff mode) or handles the input itself (if in prompt mode).
 func (m Mother) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	if kill, cmds := m.checkKillKey(msg); kill { // handle kill keys above all else
 		return m, tea.Sequence(cmds...)
