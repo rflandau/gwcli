@@ -57,13 +57,13 @@ func init() {
 		"exit":    quit}
 
 	builtinHelp = map[string]string{
-		"help": "Display context-sensitive help. Equivalent to pressing F1.\n"+
-			"Calling `help` bare provides currently available navigations.\n"+
-			"Help can also be passed a path to display help on remote directories or actions.\n"+
+		"help": "Display context-sensitive help. Equivalent to pressing F1.\n" +
+			"Calling `help` bare provides currently available navigations.\n" +
+			"Help can also be passed a path to display help on remote directories or actions.\n" +
 			"Ex: `help .. kits list`",
 		"history": "List previous commands. Navigate history via ↑/↓",
-		"quit": "Kill the application",
-		"exit": "Kill the application",
+		"quit":    "Kill the application",
+		"exit":    "Kill the application",
 	}
 }
 
@@ -168,7 +168,7 @@ func (m Mother) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	// a child is running
 	if m.mode == handoff {
 		// sanity check
-		if m.active.model == nil || m.active.command == nil { 
+		if m.active.model == nil || m.active.command == nil {
 			clilog.Writer.Warnf(
 				"Mother is in handoff mode but has inconsistent actives %#v",
 				m.active)
@@ -202,13 +202,13 @@ func (m Mother) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if msg.Type == tea.KeyF1 { // help
 			return m, m.f1Help()
 		}
-		if msg.Type ==tea.KeyUp{
+		if msg.Type == tea.KeyUp {
 			m.ti.SetValue(m.history.GetOlderRecord())
 			// update cursor position
 			m.ti.CursorEnd()
 			return m, nil
 		}
-		if msg.Type ==tea.KeyDown{
+		if msg.Type == tea.KeyDown {
 			m.ti.SetValue(m.history.GetNewerRecord())
 			// update cursor position
 			m.ti.CursorEnd()
@@ -393,7 +393,7 @@ func ListHistory(m *Mother, _ []string) tea.Cmd {
 	rs := m.history.GetAllRecords()
 
 	// print the oldest record first, so newest record is directly over prompt
-	for i := len(rs)-1; i > 0; i-- {
+	for i := len(rs) - 1; i > 0; i-- {
 		toPrint.WriteString(rs[i] + "\n")
 	}
 
