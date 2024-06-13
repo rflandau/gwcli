@@ -5,6 +5,7 @@ package main
 
 import (
 	"bytes"
+	"gwcli/connection"
 	"gwcli/tree"
 	"io"
 	"os"
@@ -31,7 +32,7 @@ func TestNonInteractive(t *testing.T) {
 	realStdout = os.Stdout
 	realStderr = os.Stderr
 
-	// connect to the server
+	// connect to the server for manually calls
 	client, err := grav.NewOpts(grav.Opts{Server: server, UseHttps: false, InsecureNoEnforceCerts: true})
 	if err != nil {
 		panic(err)
@@ -59,6 +60,10 @@ func TestNonInteractive(t *testing.T) {
 			t.Fatalf("Expected stderr to begin with '%s', got:\n(stdout:\n%s)\n(stderr:\n%s)", expFirstLine, results, resultsErr)
 		}
 	})
+
+	// need to reset the client used by gwcli between runs
+	connection.End()
+	connection.Client = nil
 
 	t.Run("tools macros list --csv", func(t *testing.T) {
 		// generate results manually, for comparison
