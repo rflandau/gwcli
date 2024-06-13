@@ -10,6 +10,7 @@ import (
 	"gwcli/treeutils"
 	"os"
 	"strings"
+	"sync/atomic"
 	"time"
 
 	"github.com/charmbracelet/bubbles/help"
@@ -209,8 +210,9 @@ type query struct {
 	mode  mode
 	error string
 
-	curSearch  *grav.Search // nil or ongoing/recently-completed search
-	searchDone chan string  // notification we can stop waiting
+	curSearch   *grav.Search // nil or ongoing/recently-completed search
+	searchDone  atomic.Bool
+	searchError chan error
 
 	help struct {
 		model help.Model
@@ -223,8 +225,8 @@ var Query action.Model = Initial()
 
 func Initial() *query {
 	q := &query{
-		mode:       inactive,
-		searchDone: make(chan string),
+		mode:        inactive,
+		searchError: make(chan error),
 	}
 
 	// configure text area
@@ -256,13 +258,23 @@ func (q *query) Update(msg tea.Msg) tea.Cmd {
 	switch q.mode {
 	case quitting:
 		return nil
-	case waiting: // display spinner and wait
-		// TODO
 	case inactive:
 		clilog.Writer.Debugf("Activating query model...")
 		q.mode = prompting
-		cmds = append(cmds, q.ta.Focus(), textarea.Blink)
-		return tea.Batch(cmds...)
+		q.ta.Focus()
+		return textarea.Blink
+	case waiting: // display spinner and wait
+		if q.searchDone.Load() {
+			// search is done, check error, display results and exit
+			if err := <-q.searchError; err != nil { // failure, return to text input
+				q.error = err.Error()
+				q.mode = prompting
+				var cmd tea.Cmd
+				q.ta, cmd = q.ta.Update(msg)
+				return tea.Batch(append(cmds, cmd)...)
+			}
+			// TODO successful path
+		}
 	}
 
 	switch msg := msg.(type) {
@@ -283,8 +295,14 @@ func (q *query) Update(msg tea.Msg) tea.Cmd {
 					q.error = err.Error()
 					return tea.Batch()
 				}
+				// spin up goroutine to wait on the search while we show a spinner
+				go func() {
+					err := connection.Client.WaitForSearch(s)
+					// notify we are done and buffer the error for retrieval
+					q.searchDone.Store(true)
+					q.searchError <- err
+				}()
 				q.curSearch = &s
-
 				q.mode = waiting
 				return tea.Batch(cmds...)
 			}
@@ -293,19 +311,14 @@ func (q *query) Update(msg tea.Msg) tea.Cmd {
 
 	var cmd tea.Cmd
 	q.ta, cmd = q.ta.Update(msg)
-	return cmd
+	cmds = append(cmds, cmd)
+	return tea.Batch(cmds...)
 }
 
 func (q *query) View() string {
-
-	ch := make(chan string)
-	go func() {
-		ch <- q.ta.View()
-		close(ch)
-	}() // TODO sometimes ta.View gets hard stuck
 	h := q.help.model.View(q.help.keys)
 
-	ta := <-ch
+	ta := q.ta.View()
 
 	return fmt.Sprintf("Query:\n%s\n%s", ta, h)
 }
@@ -322,8 +335,8 @@ func (q *query) Reset() error {
 	return nil
 }
 
+// No arguments currently handled
 func (q *query) SetArgs(_ *pflag.FlagSet, _ []string) (bool, error) {
-
 	return true, nil
 }
 
