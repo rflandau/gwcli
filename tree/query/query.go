@@ -262,7 +262,6 @@ func (q *query) Update(msg tea.Msg) tea.Cmd {
 	case quitting:
 		return nil
 	case inactive:
-		clilog.Writer.Debugf("Activating query model...")
 		q.mode = prompting
 		var cmd tea.Cmd
 		q.ta, cmd = q.ta.Update(msg)
@@ -283,7 +282,6 @@ func (q *query) Update(msg tea.Msg) tea.Cmd {
 
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
-		clilog.Writer.Debugf("Recv'd key msg %v", msg)
 		if key.Matches(msg, q.help.keys.Submit) {
 			qry := q.ta.Value()
 			if qry == "" {

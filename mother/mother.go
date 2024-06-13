@@ -150,7 +150,6 @@ func (m Mother) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, m.active.model.Update(msg)
 		} else {
 			// child has finished processing, regain control and return to normal processing
-			clilog.Writer.Debugf("Mother reasserting control (child '%v')...", m.active.command.Name())
 			m.UnsetAction()
 		}
 	}
@@ -365,7 +364,6 @@ func processInput(m *Mother) tea.Cmd {
 // cleaned, usable user input
 func (m *Mother) pushToHistory() (println tea.Cmd, userIn string, err error) {
 	userIn = m.ti.Value()
-	clilog.Writer.Debugf("Processing input '%s'\n", userIn)
 	if m.ti.Err != nil {
 		return nil, userIn, m.ti.Err
 	}
@@ -380,7 +378,6 @@ func (m *Mother) pushToHistory() (println tea.Cmd, userIn string, err error) {
 
 // Built-in, interactive help invocation
 func ContextHelp(m *Mother, args []string) tea.Cmd {
-	clilog.Writer.Debugf("Help with args(%d) '%v'", len(args), args)
 	if len(args) == 0 {
 		return TeaCmdContextHelp(m.pwd)
 	}
@@ -449,7 +446,6 @@ func (m *Mother) f1Help() tea.Cmd {
 	}
 	// check if prompt has relevant info
 	var children []*cobra.Command = m.pwd.Commands()
-	clilog.Writer.Debugf("Context Help || prompt: '%s'|pwd:'%s'|children:'%v'", prompt, m.pwd.Name(), children)
 	for _, child := range children {
 		if child.Name() == prompt {
 			return tea.Sequence(tea.Println(m.promptString()), TeaCmdContextHelp(child))
