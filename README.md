@@ -2,6 +2,26 @@
 
 A redesigned Gravwell client for terminal, supporting both TUI-served interactivity and non-interactive script calls. 
 
+# Usage
+
+`./gwcli -u USERNAME -p PASSWORD`
+
+The CLI can be used interactively or as a script tool.
+
+Calling an action directly (ex: `./gwcli -u USERNAME -p PASSWORD query tag=gravwell`) will invoke the action and return the results.
+
+Calling gwcli bare or from a menu (ex: `./gwlic -u USERNAME -p PASSWORD tools macros`) will start an interactive prompt at that directory (unless `--no-interactive` is given, in which case it will fail out).
+
+Check `-h` for full details on flags and commands. 
+
+## Special Keys
+
+In interactive mode, certain keys have special functionality.
+
+CTRL+C (SIGINT) is caught and will return the user to the main prompt (if an action is running) or exit the prompt.
+
+ESC will do the former and nothing otherwise.
+
 # Design
 
 ## Terminology

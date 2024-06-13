@@ -40,7 +40,10 @@ const (
 )
 
 // keys kill the program in Update no matter its other states
-var killKeys = [...]tea.KeyType{tea.KeyCtrlC}
+var globalKillKeys = [...]tea.KeyType{tea.KeyCtrlC}
+
+// keys that kill the child if it exists, otherwise do nothing
+var childOnlykillKeys = [...]tea.KeyType{tea.KeyEscape}
 
 // special, global actions
 // takes a reference to Mother and tokens [1:]
@@ -104,14 +107,10 @@ func new(root *navCmd, pwd *navCmd, _ *lipgloss.Renderer) Mother {
 	m.ti.Focus()
 	m.ti.Width = tiWidth
 
-	// stylesheet
-	/*if r != nil { // given renderer
-		// TODO
-	} else { */ // auto-selected renderer
+	// style
 	m.style.nav = stylesheet.NavStyle
 	m.style.action = stylesheet.ActionStyle
 	m.style.error = lipgloss.NewStyle().Foreground(lipgloss.Color("#CC444")).Bold(true)
-	//}
 
 	m.history = NewHistory()
 
@@ -139,37 +138,15 @@ func (m Mother) Init() tea.Cmd {
  * Input commands (ex: 'help', 'quit', <command>) are handled in processInput()
  */
 func (m Mother) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
-
-	var kill bool // kill key received
-
-	// always handle kill keys
-	keyMsg, isKeyMsg := msg.(tea.KeyMsg)
-	if isKeyMsg {
-		for _, v := range killKeys {
-			if keyMsg.Type == v {
-				kill = true
-				clilog.Writer.Infof("kill key %s triggered", v.String())
-				if m.mode == prompting {
-					m.mode = quitting
-					return m, tea.Batch(tea.Quit, connection.End, tea.Println("Bye"))
-				}
-			}
-		}
-		if keyMsg.Type == tea.KeyEsc {
-			if m.active.model != nil {
-				// kick out the child and return to normal processing
-				clilog.Writer.Debugf("Escape. Mother reasserting...")
-				m.UnsetAction()
-				return m, nil
-			}
-		}
+	if kill, cmds := m.checkKillKey(msg); kill { // handle kill keys above all else
+		return m, tea.Sequence(cmds...)
 	}
 
 	// a child is running
 	if m.mode == handoff {
 		activeChildSanityCheck(m)
 		// test for child state
-		if !kill && !m.active.model.Done() { // child still processing
+		if !m.active.model.Done() { // child still processing
 			clilog.Writer.Debugf("Handing off Update to %s\n", m.active.command.Name())
 			return m, m.active.model.Update(msg)
 		} else {
@@ -211,6 +188,47 @@ func (m Mother) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	return m, cmd
 }
 
+// Checks if the given message is a kill key, including child-only kill keys iff mother is in
+// handoff mode.
+func (m *Mother) checkKillKey(msg tea.Msg) (bool, []tea.Cmd) {
+	keyMsg, isKeyMsg := msg.(tea.KeyMsg)
+	if !isKeyMsg {
+		return false, []tea.Cmd{}
+	}
+
+	if m.mode == handoff { // kill the child
+		if m.active.model == nil {
+			clilog.Writer.Warnf(
+				"Mother is in handoff mode but has inconsistent actives %#v",
+				m.active)
+		}
+		allKKeys := append(globalKillKeys[:], childOnlykillKeys[:]...)
+		for _, kKey := range allKKeys {
+			if keyMsg.Type == kKey {
+				clilog.Writer.Infof("Kill Key %v invoked. Killing child %v", kKey.String(), m.active.command.Name())
+				m.UnsetAction()
+				return true, []tea.Cmd{}
+			}
+		}
+
+		// not a kill key
+		return false, []tea.Cmd{}
+	}
+
+	// die
+	for _, kKey := range globalKillKeys {
+		if keyMsg.Type == kKey {
+			clilog.Writer.Infof("Kill Key %v invoked. Dying...", kKey.String())
+			return true, []tea.Cmd{tea.Quit, connection.End, tea.Println("Bye")}
+		}
+	}
+
+	// was not a kill key
+	return false, []tea.Cmd{}
+}
+
+//#region Update helper functions
+
 // helper function for m.Update.
 // Validates that mother's active states have not become corrupted by a bug elsewhere in the code.
 // Panics if it detects an error
@@ -232,6 +250,8 @@ func activeChildSanityCheck(m Mother) {
 		}
 	}
 }
+
+//#endregion Update helper functions
 
 func (m Mother) View() string {
 	// allow child command to retain control if it exists
