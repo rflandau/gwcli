@@ -235,6 +235,7 @@ func Initial() *query {
 	q.ta.Prompt = "->"
 	q.ta.SetWidth(70)
 	q.ta.SetHeight(5)
+	q.ta.Focus()
 
 	// set up help
 	q.help.model = help.New()
@@ -249,6 +250,9 @@ func Initial() *query {
 		),
 	}
 
+	// sometimes the first ta view hangs, so get that out of the way on startup
+	go func() { q.ta.View() }()
+
 	return q
 }
 
@@ -261,8 +265,9 @@ func (q *query) Update(msg tea.Msg) tea.Cmd {
 	case inactive:
 		clilog.Writer.Debugf("Activating query model...")
 		q.mode = prompting
-		q.ta.Focus()
-		return textarea.Blink
+		var cmd tea.Cmd
+		q.ta, cmd = q.ta.Update(msg)
+		return tea.Batch(append(cmds, cmd)...)
 	case waiting: // display spinner and wait
 		if q.searchDone.Load() {
 			// search is done, check error, display results and exit
@@ -311,8 +316,7 @@ func (q *query) Update(msg tea.Msg) tea.Cmd {
 
 	var cmd tea.Cmd
 	q.ta, cmd = q.ta.Update(msg)
-	cmds = append(cmds, cmd)
-	return tea.Batch(cmds...)
+	return tea.Batch(append(cmds, cmd)...)
 }
 
 func (q *query) View() string {
