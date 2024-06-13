@@ -9,7 +9,7 @@ import (
 	"strings"
 	"unicode"
 
-	grav "github.com/gravwell/gravwell/v3/client/types"
+	"github.com/gravwell/gravwell/v3/client/types"
 
 	"github.com/charmbracelet/bubbles/help"
 	"github.com/charmbracelet/bubbles/key"
@@ -49,7 +49,7 @@ func initialLocalFlagSet() pflag.FlagSet {
 
 func createMacro(name, desc, value string) error {
 	// via the web gui, adding a macro requies a name and value (plus optional desc)
-	macro := grav.SearchMacro{Name: name, Description: desc, Expansion: value}
+	macro := types.SearchMacro{Name: name, Description: desc, Expansion: value}
 
 	_, err := connection.Client.AddMacro(macro)
 	if err != nil {
@@ -136,7 +136,7 @@ func Initial() *create {
 	}
 	// the first ti (name) requires extra initialization (focus and validation)
 	c.ti[0].Validate = func(s string) error {
-		if err := grav.CheckMacroName(s); err != nil {
+		if err := types.CheckMacroName(s); err != nil {
 			return err
 		}
 		return nil
@@ -336,7 +336,7 @@ func (c *create) SetArgs(_ *pflag.FlagSet, tokens []string) (bool, error) {
 type helpKeyMap struct {
 	Next key.Binding // tab
 	Prev key.Binding // shift+tab
-	Help key.Binding // '?'
+	Help key.Binding // F1
 	Quit key.Binding // esc
 }
 
