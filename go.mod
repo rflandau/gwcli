@@ -6,6 +6,7 @@ toolchain go1.22.4
 
 require (
 	github.com/charmbracelet/bubbletea v0.26.4
+	github.com/google/uuid v1.6.0
 	github.com/muesli/termenv v0.15.2
 	github.com/spf13/cobra v1.8.0
 )
@@ -25,7 +26,6 @@ require (
 	github.com/gobwas/glob v0.2.3 // indirect
 	github.com/gofrs/flock v0.8.1 // indirect
 	github.com/google/renameio v1.0.1 // indirect
-	github.com/google/uuid v1.6.0 // indirect
 	github.com/gorilla/websocket v1.5.1 // indirect
 	github.com/gravwell/gcfg v1.2.9-0.20221122204101-04b4a74a3018 // indirect
 	github.com/klauspost/compress v1.17.8 // indirect
