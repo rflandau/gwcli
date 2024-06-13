@@ -8,6 +8,8 @@
 package connection
 
 import (
+	"strings"
+
 	tea "github.com/charmbracelet/bubbletea"
 	grav "github.com/gravwell/gravwell/v3/client"
 	"github.com/gravwell/gravwell/v3/client/objlog"
@@ -24,9 +26,9 @@ func Initialize(conn string, UseHttps, InsecureNoEnforceCerts bool) (err error) 
 		return err
 	}
 	opts := grav.Opts{Server: conn,
-		UseHttps: UseHttps,
+		UseHttps:               UseHttps,
 		InsecureNoEnforceCerts: InsecureNoEnforceCerts,
-		ObjLogger: l}
+		ObjLogger:              l}
 	Client, err = grav.NewOpts(opts)
 	if err != nil {
 		return err
@@ -40,12 +42,21 @@ func Login(user, pass string) (err error) {
 
 /* Logs out the current user and closes the connection to the server. */
 func End() tea.Msg {
-	var errString string
-	errString = Client.Logout().Error()
-	if errString != "" {
-		errString += "|"
+	if Client == nil {
+		return ""
 	}
-	errString += Client.Close().Error()
+
+	var errString strings.Builder
+	if err := Client.Logout(); err != nil {
+		errString.WriteString(err.Error())
+	}
+
+	if err := Client.Close(); err != nil {
+		if errString.String() != "" {
+			errString.WriteRune('|')
+		}
+		errString.Write([]byte(err.Error()))
+	}
 
 	return errString
 }
