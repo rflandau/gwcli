@@ -241,11 +241,10 @@ func Initial() *query {
 	q.help.model = help.New()
 	q.help.keys = helpKeyMap{
 		Submit: key.NewBinding(
-			key.WithKeys("ctrl+enter"),
-			key.WithHelp("ctrl+enter", "submit query"),
+			key.WithKeys("alt+enter"),
+			key.WithHelp("alt+enter", "submit query"),
 		),
 		Quit: key.NewBinding(
-			key.WithKeys("esc"),
 			key.WithHelp("esc", "return to navigation"),
 		),
 	}
