@@ -86,6 +86,7 @@ var NavRun = func(cmd *cobra.Command, args []string) {
 	if _, err := interactive.Run(); err != nil {
 		panic(err)
 	}
+	interactive.ReleaseTerminal() // should be redundant
 }
 
 //#endregion
