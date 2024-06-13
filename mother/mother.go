@@ -167,23 +167,7 @@ func (m Mother) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	// a child is running
 	if m.mode == handoff {
-		// sanity check
-		if m.active.model == nil || m.active.command == nil {
-			clilog.Writer.Warnf(
-				"Mother is in handoff mode but has inconsistent actives %#v",
-				m.active)
-			if m.active.command == nil {
-				clilog.Writer.Warnf("nil command, unable to recover. Dying...")
-				panic("inconsistent handoff mode. Please submit a bug report.")
-			}
-			// m.active.model == nil, !m.active.command
-			var err error
-			m.active.model, err = action.GetModel(m.active.command)
-			if err != nil {
-				clilog.Writer.Errorf("failed to recover model from command: %v", err)
-				panic("inconsistent handoff mode. Please submit a bug report. ")
-			}
-		}
+		activeChildSanityCheck(m)
 		// test for child state
 		if !kill && !m.active.model.Done() { // child still processing
 			clilog.Writer.Debugf("Handing off Update to %s\n", m.active.command.Name())
@@ -225,6 +209,28 @@ func (m Mother) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	m.ti, cmd = m.ti.Update(msg)
 
 	return m, cmd
+}
+
+// helper function for m.Update.
+// Validates that mother's active states have not become corrupted by a bug elsewhere in the code.
+// Panics if it detects an error
+func activeChildSanityCheck(m Mother) {
+	if m.active.model == nil || m.active.command == nil {
+		clilog.Writer.Warnf(
+			"Mother is in handoff mode but has inconsistent actives %#v",
+			m.active)
+		if m.active.command == nil {
+			clilog.Writer.Warnf("nil command, unable to recover. Dying...")
+			panic("inconsistent handoff mode. Please submit a bug report.")
+		}
+		// m.active.model == nil, !m.active.command
+		var err error
+		m.active.model, err = action.GetModel(m.active.command)
+		if err != nil {
+			clilog.Writer.Errorf("failed to recover model from command: %v", err)
+			panic("inconsistent handoff mode. Please submit a bug report. ")
+		}
+	}
 }
 
 func (m Mother) View() string {
