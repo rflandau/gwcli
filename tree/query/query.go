@@ -12,8 +12,12 @@ import (
 	"strings"
 	"time"
 
+	"github.com/charmbracelet/bubbles/help"
+	"github.com/charmbracelet/bubbles/key"
 	"github.com/charmbracelet/bubbles/textarea"
+	tea "github.com/charmbracelet/bubbletea"
 	"github.com/google/uuid"
+	grav "github.com/gravwell/gravwell/v3/client"
 	"github.com/gravwell/gravwell/v3/client/types"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
@@ -86,24 +90,13 @@ func run(cmd *cobra.Command, args []string) {
 		return
 	}
 
-	q, err := GenerateQueryString(cmd, args)
+	q, err := FetchQueryString(cmd, args)
 	if err != nil {
 		clilog.TeeError(cmd.ErrOrStderr(), err.Error())
 		return
 	}
 
-	start := time.Now()
-	sreq := types.StartSearchRequest{
-		SearchStart:  start.Format(timeFormat),
-		SearchEnd:    start.Add(duration).Format(timeFormat),
-		Background:   false,
-		SearchString: q, // pull query from the commandline
-	}
-	go func() {
-		clilog.Writer.Infof("Executing foreground search '%v' from %v -> %v",
-			sreq.SearchString, sreq.SearchStart, sreq.SearchEnd)
-	}()
-	s, err := connection.Client.StartSearchEx(sreq)
+	s, err := tryQuery(q, duration)
 	if err != nil {
 		clilog.TeeError(cmd.ErrOrStderr(), err.Error())
 		return
@@ -151,7 +144,7 @@ func run(cmd *cobra.Command, args []string) {
 }
 
 // Pulls a query from args or a reference uuid, depending on if the latter is given
-func GenerateQueryString(cmd *cobra.Command, args []string) (query string, err error) {
+func FetchQueryString(cmd *cobra.Command, args []string) (query string, err error) {
 	var ref string // query library uuid
 	if ref, err = cmd.Flags().GetString("reference"); err != nil {
 		return "", err
@@ -174,26 +167,183 @@ func GenerateQueryString(cmd *cobra.Command, args []string) (query string, err e
 	if query == "" { // superfluous query, don't bother
 		return "", errors.New(ErrSuperfluousQuery)
 	}
-
-	// validate search query
-	if err = connection.Client.ParseSearch(query); err != nil {
-		query = ""
-		err = fmt.Errorf("'%s' is not a valid query: %s", query, err.Error())
-	}
 	return
 }
 
 //#endregion
 
-//#region actor implementation
+// Validates and (if valid) submits the given query to the connected server instance
+func tryQuery(qry string, duration time.Duration) (grav.Search, error) {
+	var err error
+	// validate search query
+	if err = connection.Client.ParseSearch(qry); err != nil {
+		return grav.Search{}, fmt.Errorf("'%s' is not a valid query: %s", qry, err.Error())
+	}
 
-type query struct {
-	done bool
-	ta   textarea.Model
+	start := time.Now()
+	sreq := types.StartSearchRequest{
+		SearchStart:  start.Format(timeFormat),
+		SearchEnd:    start.Add(duration).Format(timeFormat),
+		Background:   false,
+		SearchString: qry, // pull query from the commandline
+	}
+	go func() {
+		clilog.Writer.Infof("Executing foreground search '%v' from %v -> %v",
+			sreq.SearchString, sreq.SearchStart, sreq.SearchEnd)
+	}()
+	return connection.Client.StartSearchEx(sreq)
 }
 
-var Query action.Model
+//#region actor implementation
 
-// ParseSearch validator
+type mode int8
+
+const (
+	inactive  mode = iota // prepared, but not utilized
+	prompting             // accepting user input
+	quitting              // leaving prompt
+	waiting               // search submitted; waiting for results
+)
+
+type query struct {
+	mode  mode
+	error string
+
+	curSearch  *grav.Search // nil or ongoing/recently-completed search
+	searchDone chan string  // notification we can stop waiting
+
+	help struct {
+		model help.Model
+		keys  helpKeyMap
+	}
+	ta textarea.Model
+}
+
+var Query action.Model = Initial()
+
+func Initial() *query {
+	q := &query{
+		mode:       inactive,
+		searchDone: make(chan string),
+	}
+
+	// configure text area
+	q.ta = textarea.New()
+	q.ta.ShowLineNumbers = true
+	q.ta.Prompt = "->"
+	q.ta.SetWidth(70)
+	q.ta.SetHeight(5)
+
+	// set up help
+	q.help.model = help.New()
+	q.help.keys = helpKeyMap{
+		Submit: key.NewBinding(
+			key.WithKeys("ctrl+enter"),
+			key.WithHelp("ctrl+enter", "submit query"),
+		),
+		Quit: key.NewBinding(
+			key.WithKeys("esc"),
+			key.WithHelp("esc", "return to navigation"),
+		),
+	}
+
+	return q
+}
+
+func (q *query) Update(msg tea.Msg) tea.Cmd {
+	var cmds []tea.Cmd
+
+	switch q.mode {
+	case quitting:
+		return nil
+	case waiting: // display spinner and wait
+		// TODO
+	case inactive:
+		clilog.Writer.Debugf("Activating query model...")
+		q.mode = prompting
+		cmds = append(cmds, q.ta.Focus(), textarea.Blink)
+		return tea.Batch(cmds...)
+	}
+
+	switch msg := msg.(type) {
+	case tea.KeyMsg:
+		clilog.Writer.Debugf("Recv'd key msg %v", msg)
+		if key.Matches(msg, q.help.keys.Submit) {
+			qry := q.ta.Value()
+			if qry == "" {
+				// superfluous request
+				q.error = "empty request"
+				// falls through to standard update
+			} else {
+				clilog.Writer.Infof("Submitting query '%v'...", qry)
+				// TODO take duration from second viewport
+				var duration time.Duration = 1 * time.Hour
+				s, err := tryQuery(qry, duration)
+				if err != nil {
+					q.error = err.Error()
+					return tea.Batch()
+				}
+				q.curSearch = &s
+
+				q.mode = waiting
+				return tea.Batch(cmds...)
+			}
+		}
+	}
+
+	var cmd tea.Cmd
+	q.ta, cmd = q.ta.Update(msg)
+	return cmd
+}
+
+func (q *query) View() string {
+
+	ch := make(chan string)
+	go func() {
+		ch <- q.ta.View()
+		close(ch)
+	}() // TODO sometimes ta.View gets hard stuck
+	h := q.help.model.View(q.help.keys)
+
+	ta := <-ch
+
+	return fmt.Sprintf("Query:\n%s\n%s", ta, h)
+}
+
+func (q *query) Done() bool {
+	return q.mode == quitting
+}
+
+func (q *query) Reset() error {
+	q.mode = inactive
+	q.error = ""
+	q.curSearch = nil
+	q.ta.Reset()
+	return nil
+}
+
+func (q *query) SetArgs(_ *pflag.FlagSet, _ []string) (bool, error) {
+
+	return true, nil
+}
+
+//#endregion
+
+//#region help display
+
+type helpKeyMap struct {
+	Submit key.Binding // ctrl+enter
+	//Help   key.Binding // '?'
+	Quit key.Binding // esc
+}
+
+func (k helpKeyMap) ShortHelp() []key.Binding {
+	return []key.Binding{k.Submit, k.Quit}
+}
+
+// unused
+func (k helpKeyMap) FullHelp() [][]key.Binding {
+	return [][]key.Binding{}
+}
 
 //#endregion

@@ -73,7 +73,7 @@ func TestGenerateQueryString(t *testing.T) {
 			}
 			cmd := generateCobraCommand(tt.args.flagArgs)
 
-			gotQuery, err := GenerateQueryString(cmd, tt.args.args)
+			gotQuery, err := FetchQueryString(cmd, tt.args.args)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("GenerateQueryString() error = %v, wantErr %v", err, tt.wantErr)
 				return
