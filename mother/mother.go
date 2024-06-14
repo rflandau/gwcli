@@ -197,7 +197,7 @@ func (m *Mother) checkKillKey(msg tea.Msg) (bool, []tea.Cmd) {
 			if keyMsg.Type == kKey {
 				clilog.Writer.Infof("Kill Key %v invoked. Killing child %v", kKey.String(), m.active.command.Name())
 				m.UnsetAction()
-				return true, []tea.Cmd{}
+				return true, []tea.Cmd{textinput.Blink}
 			}
 		}
 
