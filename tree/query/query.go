@@ -4,10 +4,9 @@ import (
 	"errors"
 	"fmt"
 	"gwcli/action"
+	"gwcli/busywait"
 	"gwcli/clilog"
-	cobraspinner "gwcli/cobra_spinner"
 	"gwcli/connection"
-	"gwcli/stylesheet"
 	"gwcli/treeutils"
 	"os"
 	"strings"
@@ -19,7 +18,6 @@ import (
 	"github.com/charmbracelet/bubbles/spinner"
 	"github.com/charmbracelet/bubbles/textarea"
 	tea "github.com/charmbracelet/bubbletea"
-	"github.com/charmbracelet/lipgloss"
 	"github.com/google/uuid"
 	grav "github.com/gravwell/gravwell/v3/client"
 	"github.com/gravwell/gravwell/v3/client/types"
@@ -107,7 +105,7 @@ func run(cmd *cobra.Command, args []string) {
 	}
 
 	// spin up a spinner
-	spnrP := cobraspinner.New()
+	spnrP := busywait.CobraNew()
 	go func() {
 		if err := connection.Client.WaitForSearch(s); err != nil {
 			clilog.TeeError(cmd.ErrOrStderr(), err.Error())
@@ -232,8 +230,7 @@ func Initial() *query {
 	q := &query{
 		mode:        inactive,
 		searchError: make(chan error),
-		spnr: spinner.New(spinner.WithSpinner(spinner.Moon),
-			spinner.WithStyle(lipgloss.NewStyle().Foreground(stylesheet.PrimaryColor))),
+		spnr:        busywait.NewSpinner(),
 	}
 
 	// configure text area
