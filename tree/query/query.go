@@ -234,9 +234,11 @@ func Initial() *query {
 	q := &query{
 		mode:        inactive,
 		searchError: make(chan error),
+		curSearch:   nil,
 		spnr:        busywait.NewSpinner(),
+		error:       "",
+		duration:    defaultDuration,
 	}
-	q.Reset()
 
 	// configure text area
 	q.ta = textarea.New()
