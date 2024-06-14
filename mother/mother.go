@@ -81,12 +81,6 @@ type Mother struct {
 	root *navCmd
 	pwd  *navCmd
 
-	style struct {
-		nav    lipgloss.Style
-		action lipgloss.Style
-		error  lipgloss.Style
-	}
-
 	ti textinput.Model
 
 	active struct {
@@ -109,11 +103,6 @@ func new(root *navCmd, pwd *navCmd, _ *lipgloss.Renderer) Mother {
 	m.ti.Placeholder = "help"
 	m.ti.Focus()
 	m.ti.Width = tiWidth
-
-	// style
-	m.style.nav = stylesheet.NavStyle
-	m.style.action = stylesheet.ActionStyle
-	m.style.error = lipgloss.NewStyle().Foreground(lipgloss.Color("#CC444")).Bold(true)
 
 	m.history = NewHistory()
 
@@ -258,17 +247,7 @@ func (m Mother) View() string {
 	if m.active.model != nil {
 		return m.active.model.View()
 	}
-
-	s := strings.Builder{}
-	s.WriteString(CommandPath(&m) + m.ti.View()) // prompt
-	if m.ti.Err != nil {
-		// write out previous error and clear it
-		s.WriteString("\n")
-		s.WriteString(m.style.error.Render(m.ti.Err.Error()))
-		m.ti.Err = nil
-		// this will be cleared from view automagically on next key input
-	}
-	return s.String()
+	return CommandPath(&m) + m.ti.View()
 }
 
 //#endregion
@@ -280,6 +259,12 @@ func (m Mother) View() string {
  * ! Be sure each path that clears the prompt also outputs it via tea.Println
  */
 func processInput(m *Mother) tea.Cmd {
+	// sanity check error state of the ti
+	if m.ti.Err != nil {
+		clilog.Writer.Warnf("text input has a reported error: %v", m.ti.Err)
+		m.ti.Err = nil
+	}
+
 	onComplete := make([]tea.Cmd, 1) // tea.Cmds to execute on completion
 	var input string
 	var err error
@@ -298,7 +283,7 @@ func processInput(m *Mother) tea.Cmd {
 		return tea.Sequence(
 			append(
 				onComplete,
-				tea.Println(m.style.error.Render(wr.errString)),
+				tea.Println(stylesheet.ErrStyle.Render(wr.errString)),
 			)...)
 	}
 	// split on action or nav
@@ -401,7 +386,7 @@ func ContextHelp(m *Mother, args []string) tea.Cmd {
 	wr := walk(m.pwd, args, make([]tea.Cmd, 1))
 
 	if wr.errString != "" { // erroneous input
-		return tea.Println(m.style.error.Render(wr.errString))
+		return tea.Println(stylesheet.ErrStyle.Render(wr.errString))
 	}
 	switch wr.status {
 	case foundNav, foundAction:
@@ -659,7 +644,7 @@ func TeaCmdContextHelp(c *cobra.Command) tea.Cmd {
 }
 
 func CommandPath(m *Mother) string {
-	return m.style.nav.Render(m.pwd.CommandPath())
+	return stylesheet.NavStyle.Render(m.pwd.CommandPath())
 }
 
 //#endregion
