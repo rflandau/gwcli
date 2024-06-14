@@ -7,6 +7,7 @@ import (
 	"gwcli/clilog"
 	cobraspinner "gwcli/cobra_spinner"
 	"gwcli/connection"
+	"gwcli/stylesheet"
 	"gwcli/treeutils"
 	"os"
 	"strings"
@@ -15,8 +16,10 @@ import (
 
 	"github.com/charmbracelet/bubbles/help"
 	"github.com/charmbracelet/bubbles/key"
+	"github.com/charmbracelet/bubbles/spinner"
 	"github.com/charmbracelet/bubbles/textarea"
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/charmbracelet/lipgloss"
 	"github.com/google/uuid"
 	grav "github.com/gravwell/gravwell/v3/client"
 	"github.com/gravwell/gravwell/v3/client/types"
@@ -211,8 +214,10 @@ type query struct {
 	error string
 
 	curSearch   *grav.Search // nil or ongoing/recently-completed search
-	searchDone  atomic.Bool
-	searchError chan error
+	searchDone  atomic.Bool  // waiting thread has returned
+	searchError chan error   // result to be fetched after SearchDone
+
+	spnr spinner.Model // wait spinner
 
 	help struct {
 		model help.Model
@@ -227,6 +232,8 @@ func Initial() *query {
 	q := &query{
 		mode:        inactive,
 		searchError: make(chan error),
+		spnr: spinner.New(spinner.WithSpinner(spinner.Moon),
+			spinner.WithStyle(lipgloss.NewStyle().Foreground(stylesheet.PrimaryColor))),
 	}
 
 	// configure text area
@@ -256,16 +263,13 @@ func Initial() *query {
 }
 
 func (q *query) Update(msg tea.Msg) tea.Cmd {
-	var cmds []tea.Cmd
 
 	switch q.mode {
 	case quitting:
 		return nil
 	case inactive:
 		q.mode = prompting
-		var cmd tea.Cmd
-		q.ta, cmd = q.ta.Update(msg)
-		return tea.Batch(append(cmds, cmd)...)
+		return textarea.Blink
 	case waiting: // display spinner and wait
 		if q.searchDone.Load() {
 			// search is done, check error, display results and exit
@@ -274,10 +278,29 @@ func (q *query) Update(msg tea.Msg) tea.Cmd {
 				q.mode = prompting
 				var cmd tea.Cmd
 				q.ta, cmd = q.ta.Update(msg)
-				return tea.Batch(append(cmds, cmd)...)
+				return cmd
 			}
-			// TODO successful path
+
+			results, err := connection.Client.GetTextResults(*q.curSearch, 0, 500)
+			if err != nil {
+				q.mode = prompting
+				q.error = err.Error()
+				return nil
+			}
+
+			var cmds []tea.Cmd = make([]tea.Cmd, results.EntryCount)
+
+			for i, e := range results.Entries {
+				cmds[i] = tea.Printf("%s\n", e.Data)
+			}
+
+			q.mode = quitting
+			return tea.Sequence(cmds...)
 		}
+		// still waiting
+		var cmd tea.Cmd
+		q.spnr, cmd = q.spnr.Update(msg)
+		return cmd
 	}
 
 	switch msg := msg.(type) {
@@ -295,33 +318,41 @@ func (q *query) Update(msg tea.Msg) tea.Cmd {
 				s, err := tryQuery(qry, duration)
 				if err != nil {
 					q.error = err.Error()
-					return tea.Batch()
+					return nil
 				}
-				// spin up goroutine to wait on the search while we show a spinner
+				// spin up a goroutine to wait on the search while we show a spinner
 				go func() {
 					err := connection.Client.WaitForSearch(s)
 					// notify we are done and buffer the error for retrieval
 					q.searchDone.Store(true)
 					q.searchError <- err
 				}()
+
 				q.curSearch = &s
 				q.mode = waiting
-				return tea.Batch(cmds...)
+				return q.spnr.Tick // start the wait spinner
 			}
 		}
 	}
 
 	var cmd tea.Cmd
 	q.ta, cmd = q.ta.Update(msg)
-	return tea.Batch(append(cmds, cmd)...)
+	return cmd
 }
 
 func (q *query) View() string {
-	h := q.help.model.View(q.help.keys)
+	var errOrSpnr string
+	if q.mode == waiting { // if waiting, show a spinner instead of help
+		errOrSpnr = q.spnr.View()
+	} else {
+		errOrSpnr = q.error
+	}
+	q.error = "" // clear out the error
 
+	help := q.help.model.View(q.help.keys)
 	ta := q.ta.View()
 
-	return fmt.Sprintf("Query:\n%s\n%s", ta, h)
+	return fmt.Sprintf("Query:\n%s\n%s\n%s", ta, help, errOrSpnr)
 }
 
 func (q *query) Done() bool {
