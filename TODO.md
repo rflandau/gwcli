@@ -28,5 +28,3 @@
 - [ ] BUG: Spinner only spins on the first submitted query; it is frozen on future queries
 
 - [ ] add append flag to query to append results to the file instead of overwriting
-
-- [ ] BUG: returning from Query (possible others?) does not refresh view (likey because Mother does not resubmit a Blink)
