@@ -22,3 +22,11 @@
 - [ ] If an action that required arguments (ex: query) is called bare and --script is not supplied, invoke Mother
 
 - [ ] BUG (may be an issue with my terminal, specifically): Invoking -h works correctly, but puts garbage ("11;rgb:0000/0000/00003;1R") on the next shell prompt.
+
+- [ ] Handle CTRL+left/right word jumping
+
+- [ ] BUG: Spinner only spins on the first submitted query; it is frozen on future queries
+
+- [ ] add append flag to query to append results to the file instead of overwriting
+
+- [ ] BUG: returning from Query (possible others?) does not refresh view (likey because Mother does not resubmit a Blink)
