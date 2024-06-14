@@ -6,6 +6,7 @@ import (
 	"gwcli/busywait"
 	"gwcli/clilog"
 	"gwcli/connection"
+	"gwcli/stylesheet/colorizer"
 	"gwcli/treeutils"
 	"os"
 	"strings"
@@ -282,7 +283,6 @@ func (q *query) Update(msg tea.Msg) tea.Cmd {
 			}
 
 			// success
-
 			results, err := connection.Client.GetTextResults(*q.curSearch, 0, 500)
 			if err != nil {
 				q.mode = prompting
@@ -290,6 +290,15 @@ func (q *query) Update(msg tea.Msg) tea.Cmd {
 				return nil
 			}
 
+			if q.outFile != nil {
+				for _, e := range results.Entries {
+					if _, err := q.outFile.Write(e.Data); err != nil {
+						return colorizer.ErrPrintf("Failed to write to %s: %v", q.outFile.Name(), err)
+					}
+				}
+			}
+
+			// print to screen
 			var cmds []tea.Cmd = make([]tea.Cmd, results.EntryCount)
 
 			for i, e := range results.Entries {

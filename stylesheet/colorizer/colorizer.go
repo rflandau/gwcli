@@ -1,8 +1,10 @@
-package stylesheet
+// colorizer provides utilities for applying the stylesheet
+package colorizer
 
 import (
 	"fmt"
 	"gwcli/action"
+	"gwcli/stylesheet"
 
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/spf13/cobra"
@@ -10,15 +12,15 @@ import (
 
 // tea.Printf wrapper that colors the output as an error
 func ErrPrintf(format string, a ...interface{}) tea.Cmd {
-	return tea.Printf(ErrStyle.Render(fmt.Sprintf(format, a...)))
+	return tea.Printf(stylesheet.ErrStyle.Render(fmt.Sprintf(format, a...)))
 }
 
 // Given a command, returns its name appropriately colored by its group (action or nav).
 // Defaults to nav color.
 func ColorCommandName(c *cobra.Command) string {
 	if action.Is(c) {
-		return ActionStyle.Render(c.Name())
+		return stylesheet.ActionStyle.Render(c.Name())
 	} else {
-		return NavStyle.Render(c.Name())
+		return stylesheet.NavStyle.Render(c.Name())
 	}
 }

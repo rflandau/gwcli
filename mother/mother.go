@@ -12,6 +12,7 @@ import (
 	"gwcli/clilog"
 	"gwcli/connection"
 	"gwcli/stylesheet"
+	"gwcli/stylesheet/colorizer"
 	"strings"
 
 	tea "github.com/charmbracelet/bubbletea"
@@ -636,7 +637,7 @@ func TeaCmdContextHelp(c *cobra.Command) tea.Cmd {
 				name = stylesheet.NavStyle.Render(child.Name())
 				// build and color subchildren
 				for _, sc := range child.Commands() {
-					_, err := subchildren.WriteString(stylesheet.ColorCommandName(sc) + " ")
+					_, err := subchildren.WriteString(colorizer.ColorCommandName(sc) + " ")
 					if err != nil {
 						clilog.Writer.Warnf("Failed to generate list of subchildren: %v", err)
 					}
