@@ -20,3 +20,5 @@
 - [ ] Do not display an unknown command error on empty input
 
 - [ ] If an action that required arguments (ex: query) is called bare and --script is not supplied, invoke Mother
+
+- [ ] BUG (may be an issue with my terminal, specifically): Invoking -h works correctly, but puts garbage ("11;rgb:0000/0000/00003;1R") on the next shell prompt.
