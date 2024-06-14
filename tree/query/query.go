@@ -1,7 +1,6 @@
 package query
 
 import (
-	"errors"
 	"fmt"
 	"gwcli/action"
 	"gwcli/busywait"
@@ -27,6 +26,10 @@ import (
 
 // the Gravwell client can only consume time formatted as follows
 const timeFormat = "2006-01-02T15:04:05.999999999Z07:00"
+
+const ( // defaults
+	defaultDuration = 1 * time.Hour
+)
 
 var (
 	ErrSuperfluousQuery = "query is empty and therefore ineffectual"
@@ -92,9 +95,12 @@ func run(cmd *cobra.Command, args []string) {
 		return
 	}
 
-	q, err := FetchQueryString(cmd, args)
+	q, err := FetchQueryString(cmd.Flags(), args)
 	if err != nil {
 		clilog.TeeError(cmd.ErrOrStderr(), err.Error())
+		return
+	} else if q == "" { // superfluous query, don't bother
+		clilog.TeeError(cmd.ErrOrStderr(), ErrSuperfluousQuery)
 		return
 	}
 
@@ -126,29 +132,26 @@ func run(cmd *cobra.Command, args []string) {
 		return
 	}
 
-	if outfile, err := cmd.Flags().GetString("output"); err != nil {
+	of, err := openOutFile(cmd.Flags())
+	if err != nil {
 		clilog.TeeError(cmd.ErrOrStderr(), err.Error())
 		return
-	} else if outfile != "" {
-		f, err := os.Create(outfile)
-		if err != nil {
-			clilog.TeeError(cmd.ErrOrStderr(), err.Error())
-			return
-		}
-		defer f.Close()
-		f.WriteString(fmt.Sprintf("%v", results))
-	} else {
-		for _, e := range results.Entries {
-			fmt.Printf("%s\n", e.Data)
-		}
-		//fmt.Printf("%#v\n", results)
 	}
+	defer of.Close()
+
+	of.WriteString(fmt.Sprintf("%v", results))
+
+	for _, e := range results.Entries {
+		fmt.Printf("%s\n", e.Data)
+	}
+	//fmt.Printf("%#v\n", results)
+
 }
 
 // Pulls a query from args or a reference uuid, depending on if the latter is given
-func FetchQueryString(cmd *cobra.Command, args []string) (query string, err error) {
+func FetchQueryString(fs *pflag.FlagSet, args []string) (query string, err error) {
 	var ref string // query library uuid
-	if ref, err = cmd.Flags().GetString("reference"); err != nil {
+	if ref, err = fs.GetString("reference"); err != nil {
 		return "", err
 	} else if strings.TrimSpace(ref) != "" {
 		if err := uuid.Validate(ref); err != nil {
@@ -165,11 +168,7 @@ func FetchQueryString(cmd *cobra.Command, args []string) (query string, err erro
 		return sl.Query, nil
 	}
 
-	query = strings.TrimSpace(strings.Join(args, " "))
-	if query == "" { // superfluous query, don't bother
-		return "", errors.New(ErrSuperfluousQuery)
-	}
-	return
+	return strings.TrimSpace(strings.Join(args, " ")), nil
 }
 
 //#endregion
@@ -222,6 +221,10 @@ type query struct {
 		keys  helpKeyMap
 	}
 	ta textarea.Model
+
+	outFile *os.File
+
+	duration time.Duration
 }
 
 var Query action.Model = Initial()
@@ -232,6 +235,7 @@ func Initial() *query {
 		searchError: make(chan error),
 		spnr:        busywait.NewSpinner(),
 	}
+	q.Reset()
 
 	// configure text area
 	q.ta = textarea.New()
@@ -276,6 +280,8 @@ func (q *query) Update(msg tea.Msg) tea.Cmd {
 				q.ta, cmd = q.ta.Update(msg)
 				return cmd
 			}
+
+			// success
 
 			results, err := connection.Client.GetTextResults(*q.curSearch, 0, 500)
 			if err != nil {
@@ -358,13 +364,37 @@ func (q *query) Done() bool {
 func (q *query) Reset() error {
 	q.mode = inactive
 	q.error = ""
+	localFS = initialLocalFlagSet()
 	q.curSearch = nil
 	q.ta.Reset()
+	q.duration = defaultDuration
 	return nil
 }
 
-// No arguments currently handled
-func (q *query) SetArgs(_ *pflag.FlagSet, _ []string) (bool, error) {
+// Consume flags and associated them to the local flagset
+func (q *query) SetArgs(_ *pflag.FlagSet, tokens []string) (bool, error) {
+	// parse the tokens agains the local flagset
+	err := localFS.Parse(tokens)
+	if err != nil {
+		return false, err
+	}
+
+	if tQry, err := FetchQueryString(&localFS, tokens); err != nil {
+		return false, err
+	} else {
+		q.ta.SetValue(tQry)
+	}
+
+	if d, err := localFS.GetDuration("duration"); err != nil {
+		return false, err
+	} else if d != 0 {
+		q.duration = d
+	}
+
+	if q.outFile, err = openOutFile(&localFS); err != nil {
+		return false, err
+	}
+
 	return true, nil
 }
 
@@ -388,3 +418,18 @@ func (k helpKeyMap) FullHelp() [][]key.Binding {
 }
 
 //#endregion
+
+// Checks --output for a file path. If found, creates a file at that path and returns its handle.
+// If --output is not set, returned file will be nil.
+func openOutFile(fs *pflag.FlagSet) (*os.File, error) {
+	var f *os.File
+	if outfile, err := fs.GetString("output"); err != nil {
+		return nil, err
+	} else if outfile != "" {
+		f, err = os.Create(outfile)
+		if err != nil {
+			return nil, err
+		}
+	}
+	return f, nil
+}
