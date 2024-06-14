@@ -209,7 +209,7 @@ const (
 
 type query struct {
 	mode  mode
-	error string
+	error string // errors are mostly cleared by the next key input
 
 	curSearch   *grav.Search // nil or ongoing/recently-completed search
 	searchDone  atomic.Bool  // waiting thread has returned
@@ -260,7 +260,6 @@ func Initial() *query {
 }
 
 func (q *query) Update(msg tea.Msg) tea.Cmd {
-
 	switch q.mode {
 	case quitting:
 		return nil
@@ -302,6 +301,7 @@ func (q *query) Update(msg tea.Msg) tea.Cmd {
 
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
+		q.error = "" // clear out the error
 		if key.Matches(msg, q.help.keys.Submit) {
 			qry := q.ta.Value()
 			if qry == "" {
@@ -344,7 +344,6 @@ func (q *query) View() string {
 	} else {
 		errOrSpnr = q.error
 	}
-	q.error = "" // clear out the error
 
 	help := q.help.model.View(q.help.keys)
 	ta := q.ta.View()
