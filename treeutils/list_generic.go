@@ -251,7 +251,7 @@ func (la *ListAction[T]) SetArgs(inherited *pflag.FlagSet, tokens []string) (boo
 	var err error
 	err = la.fs.Parse(tokens)
 	if err != nil {
-		panic(err)
+		return false, err
 	}
 	fs := la.fs
 
@@ -262,7 +262,7 @@ func (la *ListAction[T]) SetArgs(inherited *pflag.FlagSet, tokens []string) (boo
 	} else if !la.showColumns {
 		// fetch columns if it exists
 		if cols, err := fs.GetStringSlice("columns"); err != nil {
-			panic(err)
+			return false, err
 		} else if len(cols) > 0 {
 			la.columns = cols
 		} // else: defaults to DefaultColumns
