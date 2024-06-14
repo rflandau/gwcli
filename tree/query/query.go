@@ -285,6 +285,7 @@ func (q *query) Update(msg tea.Msg) tea.Cmd {
 			}
 
 			// success
+			q.mode = quitting
 			results, err := connection.Client.GetTextResults(*q.curSearch, 0, 500)
 			if err != nil {
 				q.mode = prompting
@@ -297,7 +298,9 @@ func (q *query) Update(msg tea.Msg) tea.Cmd {
 					if _, err := q.outFile.Write(e.Data); err != nil {
 						return colorizer.ErrPrintf("Failed to write to %s: %v", q.outFile.Name(), err)
 					}
+					q.outFile.WriteString("\n")
 				}
+				return nil
 			}
 
 			// print to screen
@@ -307,7 +310,6 @@ func (q *query) Update(msg tea.Msg) tea.Cmd {
 				cmds[i] = tea.Printf("%s\n", e.Data)
 			}
 
-			q.mode = quitting
 			return tea.Sequence(cmds...)
 		}
 		// still waiting
@@ -390,7 +392,7 @@ func (q *query) SetArgs(_ *pflag.FlagSet, tokens []string) (bool, error) {
 		return false, err
 	}
 
-	if tQry, err := FetchQueryString(&localFS, tokens); err != nil {
+	if tQry, err := FetchQueryString(&localFS, localFS.Args()); err != nil {
 		return false, err
 	} else {
 		q.ta.SetValue(tQry)
