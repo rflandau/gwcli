@@ -290,7 +290,7 @@ func (q *query) Update(msg tea.Msg) tea.Cmd {
 			if err != nil {
 				q.mode = prompting
 				q.error = err.Error()
-				return nil
+				return textarea.Blink // we need to send a (any) msg to mother to trigger a redraw
 			}
 
 			if q.outFile != nil {
@@ -300,7 +300,7 @@ func (q *query) Update(msg tea.Msg) tea.Cmd {
 					}
 					q.outFile.WriteString("\n")
 				}
-				return nil
+				return textarea.Blink // we need to send a (any) msg to mother to trigger a redraw
 			}
 
 			// print to screen
