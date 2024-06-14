@@ -5,12 +5,6 @@ import (
 	"github.com/charmbracelet/lipgloss/table"
 )
 
-const ( // colors
-	borders = "#bb9af7"
-	row1    = "#c0caf5"
-	row2    = "#9aa5ce"
-)
-
 var (
 	baseCell = lipgloss.NewStyle().Padding(0, 1).Width(30)
 
@@ -30,13 +24,13 @@ var (
 			AlignHorizontal(lipgloss.Center).
 			AlignVertical(lipgloss.Center).Bold(true),
 		evenCells: baseCell.
-			Foreground(lipgloss.Color(row1)), //.Background(lipgloss.Color("#000")),
+			Foreground(row1Color),
 		oddCells: baseCell.
-			Foreground(lipgloss.Color(row2)),
+			Foreground(row2Color),
 
 		// borders
 		borderType: lipgloss.NormalBorder(),
-		border:     lipgloss.NewStyle().Foreground(lipgloss.Color(borders)),
+		border:     lipgloss.NewStyle().Foreground(borderColor),
 	}
 )
 
