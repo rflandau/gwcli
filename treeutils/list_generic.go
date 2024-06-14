@@ -7,6 +7,7 @@ package treeutils
 
 import (
 	"fmt"
+	"gwcli/action"
 	"gwcli/clilog"
 	"gwcli/connection"
 	"gwcli/stylesheet"
@@ -245,24 +246,25 @@ func (la *ListAction[T]) Reset() error {
 	return nil
 }
 
+var _ action.Model = &ListAction[any]{}
+
 // Called when the action is invoked by the user and Mother *enters* handoff mode
 // Mother parses flags and provides us a handle to check against
-func (la *ListAction[T]) SetArgs(inherited *pflag.FlagSet, tokens []string) (bool, error) {
-	var err error
+func (la *ListAction[T]) SetArgs(inherited *pflag.FlagSet, tokens []string) (invalid string, onStart []tea.Cmd, err error) {
 	err = la.fs.Parse(tokens)
 	if err != nil {
-		return false, err
+		return "", nil, err
 	}
 	fs := la.fs
 
 	// parse column handling
 	// only need to parse columns if user did not pass in --show-columns
 	if la.showColumns, err = fs.GetBool("show-columns"); err != nil {
-		return false, err
+		return "", nil, err
 	} else if !la.showColumns {
 		// fetch columns if it exists
 		if cols, err := fs.GetStringSlice("columns"); err != nil {
-			return false, err
+			return "", nil, err
 		} else if len(cols) > 0 {
 			la.columns = cols
 		} // else: defaults to DefaultColumns
@@ -275,7 +277,7 @@ func (la *ListAction[T]) SetArgs(inherited *pflag.FlagSet, tokens []string) (boo
 	}
 	la.color = !nc
 
-	return true, nil
+	return "", nil, nil
 }
 
 //#endregion interactive mode (model) implementation

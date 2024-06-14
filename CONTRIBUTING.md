@@ -91,7 +91,7 @@ Actions must satisfy the `action.Model` interface to be able to supplant Mother 
 
 `Reset() error` is called by Mother *after* a child runs, once `Done()` returns true. It resets the child to a clean state so it can be called again later.
 
-`SetArgs([]string) (bool, error)` sets fields in the child that manipulate its next run. It is called when Mother *first enters handoff mode* for a child.
+`SetArgs([]string) (string, []tea.Cmd, error)` sets fields in the child that manipulate its next run. It is called when Mother *first enters handoff mode* for a child. It returns, respectively: the reason this argument set is invalid (or ""), tea.Cmds the child needs run on startup (eg: right now), errors outside of the users control. The startup Cmds somewhat take the place of tea.Model.Init().
 
 ```mermaid
 flowchart

@@ -51,6 +51,6 @@ func (k *hwlist) Reset() error {
 	return nil
 }
 
-func (k *hwlist) SetArgs(*pflag.FlagSet, []string) (bool, error) {
-	return true, nil
+func (k *hwlist) SetArgs(*pflag.FlagSet, []string) (invalid string, onStart []tea.Cmd, err error) {
+	return "", nil, nil
 }

@@ -333,7 +333,7 @@ func processInput(m *Mother) tea.Cmd {
 
 		// NOTE: the inherited flags here may have a combination of parsed and !parsed flags
 		// persistent commands defined below root may not be parsed
-		if valid, err := m.active.model.SetArgs(m.active.command.InheritedFlags(), wr.remainingTokens); err != nil {
+		if invalid, cmds, err := m.active.model.SetArgs(m.active.command.InheritedFlags(), wr.remainingTokens); err != nil {
 			m.UnsetAction()
 
 			errString := fmt.Sprintf("Failed to set args %v: %v", wr.remainingTokens, err)
@@ -342,15 +342,16 @@ func processInput(m *Mother) tea.Cmd {
 			return tea.Sequence(append(
 				onComplete,
 				tea.Println(errString))...)
-		} else if !valid {
+		} else if invalid != "" {
 			return tea.Sequence(append(
 				onComplete,
 				tea.Println("invalid arguments. See help for invocation requirements"))...)
+		} else if cmds != nil {
+			onComplete = append(onComplete, cmds...)
 		}
 
 		clilog.Writer.Debugf("Handing off control to %s", m.active.command.Name())
 
-		//m.active.command = wr.endCommand
 	case invalidCommand:
 		clilog.Writer.Errorf("walking input %v returned invalid", given)
 	}

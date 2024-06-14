@@ -49,6 +49,6 @@ func (k *diskInfo) Reset() error {
 	return nil
 }
 
-func (k *diskInfo) SetArgs(*pflag.FlagSet, []string) (bool, error) {
-	return true, nil
+func (k *diskInfo) SetArgs(*pflag.FlagSet, []string) (invalid string, onStart []tea.Cmd, err error) {
+	return "", nil, nil
 }

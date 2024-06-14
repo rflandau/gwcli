@@ -376,33 +376,33 @@ func (q *query) Reset() error {
 }
 
 // Consume flags and associated them to the local flagset
-func (q *query) SetArgs(_ *pflag.FlagSet, tokens []string) (bool, error) {
+func (q *query) SetArgs(_ *pflag.FlagSet, tokens []string) (string, []tea.Cmd, error) {
 	// parse the tokens agains the local flagset
 	err := localFS.Parse(tokens)
 	if err != nil {
-		return false, err
+		return "", []tea.Cmd{}, err
 	}
 
 	// fetch and set normal flags
 	if d, err := localFS.GetDuration("duration"); err != nil {
-		return false, err
+		return "", []tea.Cmd{}, err
 	} else if d != 0 {
 		q.duration = d
 	}
 	if q.outFile, err = openOutFile(&localFS); err != nil {
-		return false, err
+		return "", []tea.Cmd{}, err
 	}
 
 	// fetch and set a query, if given
 	if tQry, err := FetchQueryString(&localFS, localFS.Args()); err != nil {
-		return false, err
+		return "", []tea.Cmd{}, err
 	} else if tQry != "" {
 		q.ta.SetValue(tQry)
-		q.submitQuery()
 		// if the query is valid, submitQuery will place us directly into waiting mode
+		return "", []tea.Cmd{q.submitQuery()}, nil
 	}
 
-	return true, nil
+	return "", nil, nil
 }
 
 //#region interactive-specific helper subroutines

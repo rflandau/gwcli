@@ -36,7 +36,7 @@ type Model interface {
 	View() string
 	Done() bool
 	Reset() error
-	SetArgs(*pflag.FlagSet, []string) (bool, error)
+	SetArgs(*pflag.FlagSet, []string) (invalid string, onStart []tea.Cmd, err error)
 }
 
 // Temp tuple used to construct the Action Map
