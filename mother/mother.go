@@ -15,10 +15,12 @@ import (
 	"strings"
 
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/gravwell/gravwell/v3/ingest/log"
 
 	"github.com/charmbracelet/bubbles/textinput"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/spf13/cobra"
+	"github.com/spf13/pflag"
 )
 
 type navCmd = cobra.Command
@@ -146,7 +148,6 @@ func (m Mother) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		activeChildSanityCheck(m)
 		// test for child state
 		if !m.active.model.Done() { // child still processing
-			clilog.Writer.Debugf("Handing off Update to %s\n", m.active.command.Name())
 			return m, m.active.model.Update(msg)
 		} else {
 			// child has finished processing, regain control and return to normal processing
@@ -257,13 +258,6 @@ func (m Mother) View() string {
 		return m.active.model.View()
 	}
 
-	// if there was a fatal error, print it out and return
-	/*
-		if m.err != nil {
-			return fmt.Sprintf("\nErr: %v\n\n", m.err)
-		}
-	*/
-
 	s := strings.Builder{}
 	s.WriteString(CommandPath(&m) + m.ti.View()) // prompt
 	if m.ti.Err != nil {
@@ -334,6 +328,22 @@ func processInput(m *Mother) tea.Cmd {
 		}
 		m.active.command = wr.endCommand
 
+		var fStr strings.Builder
+
+		// don't bother visiting if it won't be printed
+		if clilog.Writer.GetLevel() == log.DEBUG {
+			m.active.command.InheritedFlags().Visit(func(f *pflag.Flag) {
+				fStr.WriteString(
+					fmt.Sprintf("%s - %s", f.Name, f.Value),
+				)
+			})
+		}
+
+		clilog.Writer.Debugf("Passing args (%v) and inherited flags (%#v) into %s\n",
+			wr.remainingTokens,
+			fStr.String(),
+			m.active.command.Name())
+
 		// NOTE: the inherited flags here may have a combination of parsed and !parsed flags
 		// persistent commands defined below root may not be parsed
 		if valid, err := m.active.model.SetArgs(m.active.command.InheritedFlags(), wr.remainingTokens); err != nil {
@@ -351,7 +361,9 @@ func processInput(m *Mother) tea.Cmd {
 				tea.Println("invalid arguments. See help for invocation requirements"))...)
 		}
 
-		m.active.command = wr.endCommand
+		clilog.Writer.Debugf("Handing off control to %s", m.active.command.Name())
+
+		//m.active.command = wr.endCommand
 	case invalidCommand:
 		clilog.Writer.Errorf("walking input %v returned invalid", given)
 	}
