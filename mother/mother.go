@@ -142,6 +142,7 @@ func (m Mother) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		} else {
 			// child has finished processing, regain control and return to normal processing
 			m.UnsetAction()
+			return m, textinput.Blink
 		}
 	}
 
