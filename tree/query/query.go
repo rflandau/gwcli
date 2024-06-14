@@ -260,7 +260,16 @@ func Initial() *query {
 		),
 	}
 
-	// sometimes the first ta view hangs, so get that out of the way on startup
+	// Actions, particularly actions with Help and TextArea/TextInputs hang the first time one is
+	// called every time the program is launched. They eventually redraw, fixing the issue, but
+	// sometimes require a msg (generally in the form of user input) to redraw.
+	// What is weird is that it is *not* that each one hangs, but that the first hangs and then all
+	// actions are fine after that.
+	// This errant view call gets that out of the way in the back so the UX is seamless.
+	// This is likely due to some lazy initialization within Bubble Tea OR (more likely) us not
+	// sending a msg (ex: a blink) back to Mother during handoff. Not clear if this message should
+	// be coming from Mother herself or from the recently in-control child.
+	// TODO figure out why this works and what the proper fix is
 	go func() { q.ta.View() }()
 
 	return q
@@ -269,7 +278,7 @@ func Initial() *query {
 func (q *query) Update(msg tea.Msg) tea.Cmd {
 	switch q.mode {
 	case quitting:
-		return nil
+		return textarea.Blink
 	case inactive:
 		q.mode = prompting
 		return textarea.Blink
@@ -322,31 +331,12 @@ func (q *query) Update(msg tea.Msg) tea.Cmd {
 	case tea.KeyMsg:
 		q.error = "" // clear out the error
 		if key.Matches(msg, q.help.keys.Submit) {
-			qry := q.ta.Value()
-			if qry == "" {
+			if q.ta.Value() == "" {
 				// superfluous request
 				q.error = "empty request"
 				// falls through to standard update
 			} else {
-				clilog.Writer.Infof("Submitting query '%v'...", qry)
-				// TODO take duration from second viewport
-				var duration time.Duration = 1 * time.Hour
-				s, err := tryQuery(qry, duration)
-				if err != nil {
-					q.error = err.Error()
-					return nil
-				}
-				// spin up a goroutine to wait on the search while we show a spinner
-				go func() {
-					err := connection.Client.WaitForSearch(s)
-					// notify we are done and buffer the error for retrieval
-					q.searchDone.Store(true)
-					q.searchError <- err
-				}()
-
-				q.curSearch = &s
-				q.mode = waiting
-				return q.spnr.Tick // start the wait spinner
+				return q.submitQuery()
 			}
 		}
 	}
@@ -381,6 +371,7 @@ func (q *query) Reset() error {
 	q.curSearch = nil
 	q.ta.Reset()
 	q.duration = defaultDuration
+	q.searchDone.Store(false)
 	return nil
 }
 
@@ -392,23 +383,52 @@ func (q *query) SetArgs(_ *pflag.FlagSet, tokens []string) (bool, error) {
 		return false, err
 	}
 
-	if tQry, err := FetchQueryString(&localFS, localFS.Args()); err != nil {
-		return false, err
-	} else {
-		q.ta.SetValue(tQry)
-	}
-
+	// fetch and set normal flags
 	if d, err := localFS.GetDuration("duration"); err != nil {
 		return false, err
 	} else if d != 0 {
 		q.duration = d
 	}
-
 	if q.outFile, err = openOutFile(&localFS); err != nil {
 		return false, err
 	}
 
+	// fetch and set a query, if given
+	if tQry, err := FetchQueryString(&localFS, localFS.Args()); err != nil {
+		return false, err
+	} else if tQry != "" {
+		q.ta.SetValue(tQry)
+		q.submitQuery()
+		// if the query is valid, submitQuery will place us directly into waiting mode
+	}
+
 	return true, nil
+}
+
+//#region interactive-specific helper subroutines
+
+func (q *query) submitQuery() tea.Cmd {
+	qry := q.ta.Value() // clarity
+
+	clilog.Writer.Infof("Submitting query '%v'...", qry)
+	// TODO take duration from second viewport
+	var duration time.Duration = 1 * time.Hour
+	s, err := tryQuery(qry, duration)
+	if err != nil {
+		q.error = err.Error()
+		return nil
+	}
+	// spin up a goroutine to wait on the search while we show a spinner
+	go func() {
+		err := connection.Client.WaitForSearch(s)
+		// notify we are done and buffer the error for retrieval
+		q.searchDone.Store(true)
+		q.searchError <- err
+	}()
+
+	q.curSearch = &s
+	q.mode = waiting
+	return q.spnr.Tick // start the wait spinner
 }
 
 //#endregion
