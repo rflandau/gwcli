@@ -349,8 +349,8 @@ func processInput(m *Mother) tea.Cmd {
 		if valid, err := m.active.model.SetArgs(m.active.command.InheritedFlags(), wr.remainingTokens); err != nil {
 			m.UnsetAction()
 
-			errString := fmt.Sprintf("Failed to set args %v\nactive model %v\nactive command%v", wr.remainingTokens, m.active.model, wr.endCommand)
-			clilog.Writer.Errorf("%v", errString)
+			errString := fmt.Sprintf("Failed to set args %v: %v", wr.remainingTokens, err)
+			clilog.Writer.Errorf("%v\nactive model %v\nactive command%v", errString, m.active.model, wr.endCommand)
 
 			return tea.Sequence(append(
 				onComplete,
