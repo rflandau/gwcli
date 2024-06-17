@@ -2,6 +2,7 @@
 package query
 
 import (
+	"errors"
 	"fmt"
 	"gwcli/action"
 	"gwcli/busywait"
@@ -10,8 +11,10 @@ import (
 	"gwcli/stylesheet"
 	"gwcli/stylesheet/colorizer"
 	"os"
+	"strings"
 	"sync/atomic"
 	"time"
+	"unicode"
 
 	"github.com/charmbracelet/bubbles/help"
 	"github.com/charmbracelet/bubbles/key"
@@ -40,42 +43,212 @@ const (
 
 //#region editorView
 
-// editorView represents the composable view box containing the query editor
+// editorView represents the composable view box containing the query editor and any errors therein
 type editorView struct {
-	ta textarea.Model
+	ta   textarea.Model
+	err  string
+	keys map[string]key.Binding
+}
+
+func initialEdiorView(height, width uint) editorView {
+	ev := editorView{}
+
+	// configure text area
+	ev.ta = textarea.New()
+	ev.ta.ShowLineNumbers = true
+	ev.ta.Prompt = stylesheet.PromptPrefix
+	ev.ta.SetWidth(int(width))
+	ev.ta.SetHeight(int(height))
+	ev.ta.Focus()
+	// set up the help keys
+	ev.keys = map[string]key.Binding{
+		"submit": key.NewBinding(
+			key.WithKeys("alt+enter"),
+			key.WithHelp("alt+enter", "submit query"),
+		)}
+
+	return ev
+}
+
+func (ev *editorView) update(msg tea.Msg) (cmd tea.Cmd, submit bool) {
+	switch msg := msg.(type) {
+	case tea.KeyMsg:
+		switch {
+		case key.Matches(msg, ev.keys["submit"]):
+			if ev.ta.Value() == "" {
+				// superfluous request
+				ev.err = "empty request"
+				// falls through to standard update
+			} else {
+				return nil, true
+			}
+		}
+	}
+	var t tea.Cmd
+	ev.ta, t = ev.ta.Update(msg)
+	return t, false
 }
 
 func (va *editorView) view() string {
-	return fmt.Sprintf("Query:\n%s", va.ta.View())
+	return fmt.Sprintf("Query:\n%s\n%s", va.ta.View(), va.err)
 }
 
 //#endregion editorView
 
 //#region modifView
 
+const selectionRune = '»'
+
+type modifSelection = uint
+
+const (
+	lowBound modifSelection = iota
+	duration
+	outFile
+	highBound
+)
+
 // modifView represents the composable view box containing all configurable features of the query
 type modifView struct {
 	width      uint
 	height     uint
+	selected   uint // tracks which modifier is currently active w/in this view
 	durationTI textinput.Model
+	outfileTi  textinput.Model
+	keys       []key.Binding
+}
+
+// generate the second view to be composed with the query editor
+func initialModifView(height, width uint) modifView {
+
+	mv := modifView{
+		width:    width,
+		height:   height,
+		selected: duration,
+	}
+
+	// build duration ti
+	mv.durationTI = textinput.New()
+	mv.durationTI.Width = int(width)
+	mv.durationTI.Blur()
+	mv.durationTI.Prompt = stylesheet.PromptPrefix
+	mv.durationTI.Placeholder = "1h00m00s00ms00us00ns"
+	mv.durationTI.Validate = func(s string) error {
+		// checks that the string is composed of valid characters for duration parsing
+		// (0-9 and h,m,s,u,n)
+		// ! does not confirm that it is a valid duration!
+		validChars := map[rune]interface{}{'h': nil, 'm': nil, 's': nil, 'u': nil, 'n': nil}
+		for _, r := range s {
+			if unicode.IsDigit(r) {
+				continue
+			}
+			if _, f := validChars[r]; !f {
+				return errors.New("only digits or the characters h, m, s, u, and n are allowed")
+			}
+		}
+		return nil
+	}
+
+	// build outFile ti
+	mv.outfileTi = textinput.New()
+	mv.outfileTi.Width = int(width)
+	mv.outfileTi.Blur()
+	mv.outfileTi.Prompt = stylesheet.PromptPrefix
+
+	return mv
+
+}
+
+// Unfocuses this view, blurring all text inputs
+func (mv *modifView) blur() {
+	mv.durationTI.Blur()
+	mv.outfileTi.Blur()
+}
+
+func (mv *modifView) update(msg tea.Msg) []tea.Cmd {
+	switch msg := msg.(type) {
+	case tea.KeyMsg:
+		switch msg.Type {
+		case tea.KeyUp:
+			mv.selected -= 1
+			if mv.selected <= lowBound {
+				mv.selected = highBound - 1
+			}
+			mv.focusSelected()
+		case tea.KeyDown:
+			mv.selected += 1
+			if mv.selected >= highBound {
+				mv.selected = lowBound + 1
+			}
+			mv.focusSelected()
+		}
+	}
+	var cmds []tea.Cmd = []tea.Cmd{}
+	var t tea.Cmd
+	mv.durationTI, t = mv.durationTI.Update(msg)
+	if t != nil {
+		cmds = append(cmds, t)
+	}
+	mv.outfileTi, t = mv.outfileTi.Update(msg)
+	if t != nil {
+		cmds = append(cmds, t)
+	}
+
+	return cmds
+}
+
+// Focuses the text input associated with the current selection, blurring all others
+func (mv *modifView) focusSelected() {
+	switch mv.selected {
+	case duration:
+		mv.durationTI.Focus()
+		mv.outfileTi.Blur()
+	case outFile:
+		mv.durationTI.Blur()
+		mv.outfileTi.Focus()
+	default:
+		clilog.Writer.Errorf("Failed to update modifier view focus: unknown selected field %d",
+			mv.selected)
+	}
+}
+
+func (mv *modifView) view() string {
+	var bldr strings.Builder
+
+	bldr.WriteString("Duration:\n")
+	if mv.selected == duration {
+		bldr.WriteRune(selectionRune)
+	} else {
+		bldr.WriteRune(' ')
+	}
+	bldr.WriteString(mv.durationTI.View() + "\n")
+
+	bldr.WriteString("Output Path:\n")
+	if mv.selected == outFile {
+		bldr.WriteRune(selectionRune)
+	} else {
+		bldr.WriteRune(' ')
+	}
+	bldr.WriteString(mv.outfileTi.View() + "\n")
+
+	return bldr.String()
 }
 
 //#region modifView
 
 // interactive model definition
 type query struct {
-	mode  mode
-	error string // errors are mostly cleared by the next key input
+	mode mode
 
 	// total screen sizes for composing subviews
 	width  uint
 	height uint
 
-	viewLeft editorView
+	editor editorView
 
-	viewRight modifView
+	modifiers modifView
 
-	focusedLeft bool
+	focusedEditor bool
 
 	curSearch   *grav.Search // nil or ongoing/recently-completed search
 	searchDone  atomic.Bool  // waiting thread has returned
@@ -87,6 +260,8 @@ type query struct {
 		model help.Model
 		keys  helpKeyMap
 	}
+
+	keys map[string]key.Binding // global keys, always active no matter the focused view
 
 	outFile *os.File
 
@@ -101,25 +276,22 @@ func Initial() *query {
 		searchError: make(chan error),
 		curSearch:   nil,
 		spnr:        busywait.NewSpinner(),
-		error:       "",
 		duration:    defaultDuration,
 	}
 
 	// configure max dimensions
-	q.width = 100
-	q.height = 10
+	q.width = 80
+	q.height = 6
 
-	q.viewRight = initialViewB(q.height)
+	q.editor = initialEdiorView(q.height, stylesheet.TIWidth)
+	q.modifiers = initialModifView(q.height, q.width-stylesheet.TIWidth)
 
-	q.focusedLeft = true
+	q.focusedEditor = true
 
-	// configure text area
-	q.viewLeft.ta = textarea.New()
-	q.viewLeft.ta.ShowLineNumbers = true
-	q.viewLeft.ta.Prompt = "->"
-	q.viewLeft.ta.SetWidth(stylesheet.TIWidth)
-	q.viewLeft.ta.SetHeight(5)
-	q.viewLeft.ta.Focus()
+	q.keys = map[string]key.Binding{
+		"cycle": key.NewBinding(key.WithKeys("tab"), key.WithHelp("tab", "cycle view")),
+		"quit":  key.NewBinding(key.WithHelp("esc", "return to navigation")),
+	}
 
 	// set up help
 	q.help.model = help.New()
@@ -127,10 +299,6 @@ func Initial() *query {
 		Cycle: key.NewBinding(
 			key.WithKeys("tab"),
 			key.WithKeys("tab", "cycle viewport"),
-		),
-		Submit: key.NewBinding(
-			key.WithKeys("alt+enter"),
-			key.WithHelp("alt+enter", "submit query"),
 		),
 		Quit: key.NewBinding(
 			key.WithHelp("esc", "return to navigation"),
@@ -147,24 +315,9 @@ func Initial() *query {
 	// sending a msg (ex: a blink) back to Mother during handoff. Not clear if this message should
 	// be coming from Mother herself or from the recently in-control child.
 	// TODO figure out why this works and what the proper fix is
-	go func() { q.viewLeft.ta.View() }()
+	go func() { q.editor.ta.View() }()
 
 	return q
-}
-
-// generate the second view to be composed with the query editor
-func initialViewB(height uint) modifView {
-	var width uint = 20
-	ti := textinput.New()
-	ti.Width = int(width)
-	ti.Blur()
-
-	return modifView{
-		width:      width,
-		height:     height,
-		durationTI: ti,
-	}
-
 }
 
 func (q *query) Update(msg tea.Msg) tea.Cmd {
@@ -178,10 +331,10 @@ func (q *query) Update(msg tea.Msg) tea.Cmd {
 		if q.searchDone.Load() {
 			// search is done, check error, display results and exit
 			if err := <-q.searchError; err != nil { // failure, return to text input
-				q.error = err.Error()
+				q.editor.err = err.Error()
 				q.mode = prompting
 				var cmd tea.Cmd
-				q.viewLeft.ta, cmd = q.viewLeft.ta.Update(msg)
+				q.editor.ta, cmd = q.editor.ta.Update(msg)
 				return cmd
 			}
 
@@ -190,7 +343,7 @@ func (q *query) Update(msg tea.Msg) tea.Cmd {
 			results, err := connection.Client.GetTextResults(*q.curSearch, 0, 500)
 			if err != nil {
 				q.mode = prompting
-				q.error = err.Error()
+				q.editor.err = err.Error()
 				return textarea.Blink // we need to send a (any) msg to mother to trigger a redraw
 			}
 
@@ -221,42 +374,45 @@ func (q *query) Update(msg tea.Msg) tea.Cmd {
 
 	// default, prompting mode
 
-	switch msg := msg.(type) {
-	case tea.KeyMsg:
-		q.error = "" // clear out the error
+	keyMsg, isKeyMsg := msg.(tea.KeyMsg)
+
+	// handle global keys
+	if isKeyMsg {
 		switch {
-		case key.Matches(msg, q.help.keys.Submit):
-			if q.viewLeft.ta.Value() == "" {
-				// superfluous request
-				q.error = "empty request"
-				// falls through to standard update
-			} else {
-				return q.submitQuery()
-			}
-		case key.Matches(msg, q.help.keys.Cycle):
+		case key.Matches(keyMsg, q.help.keys.Cycle):
 			q.switchFocus()
 		}
 	}
 
-	var cmdLeft, cmdRight tea.Cmd
-	q.viewLeft.ta, cmdLeft = q.viewLeft.ta.Update(msg)
-	q.viewRight.durationTI, cmdRight = q.viewRight.durationTI.Update(msg)
-	return tea.Batch(cmdLeft, cmdRight)
+	// pass message to the active view
+	var cmds []tea.Cmd
+	if q.focusedEditor { // editor view active
+		c, submit := q.editor.update(msg)
+		if submit {
+			return q.submitQuery()
+		}
+		cmds = []tea.Cmd{c}
+	} else { // modifiers view active
+		cmds = q.modifiers.update(msg)
+	}
+
+	return tea.Batch(cmds...)
 }
 
 func (q *query) View() string {
-	var errOrSpnr string
+	var blankOrSpnr string
 	if q.mode == waiting { // if waiting, show a spinner instead of help
-		errOrSpnr = q.spnr.View()
+		blankOrSpnr = q.spnr.View()
 	} else {
-		errOrSpnr = q.error
+		blankOrSpnr = "\n"
 	}
 
 	help := q.help.model.View(q.help.keys)
 
-	viewB := fmt.Sprintf("Settings:\nDuration:\n%s\n___", q.viewRight.durationTI.View())
-
-	return fmt.Sprintf("%s\n%s\n%s", lipgloss.JoinHorizontal(lipgloss.Top, q.viewLeft.view(), viewB), help, errOrSpnr)
+	return fmt.Sprintf("%s\n%s\n%s",
+		lipgloss.JoinHorizontal(lipgloss.Top, q.editor.view(), q.modifiers.view()),
+		help,
+		blankOrSpnr)
 }
 
 func (q *query) Done() bool {
@@ -264,11 +420,11 @@ func (q *query) Done() bool {
 }
 
 func (q *query) Reset() error {
+	// TODO update Reset to clear out views left and right
 	q.mode = inactive
-	q.error = ""
 	localFS = initialLocalFlagSet()
 	q.curSearch = nil
-	q.viewLeft.ta.Reset()
+	q.editor.ta.Reset()
 	q.duration = defaultDuration
 	q.searchDone.Store(false)
 	return nil
@@ -296,7 +452,7 @@ func (q *query) SetArgs(_ *pflag.FlagSet, tokens []string) (string, []tea.Cmd, e
 	if tQry, err := FetchQueryString(&localFS, localFS.Args()); err != nil {
 		return "", []tea.Cmd{}, err
 	} else if tQry != "" {
-		q.viewLeft.ta.SetValue(tQry)
+		q.editor.ta.SetValue(tQry)
 		// if the query is valid, submitQuery will place us directly into waiting mode
 		return "", []tea.Cmd{q.submitQuery()}, nil
 	}
@@ -307,14 +463,14 @@ func (q *query) SetArgs(_ *pflag.FlagSet, tokens []string) (string, []tea.Cmd, e
 //#region helper subroutines
 
 func (q *query) submitQuery() tea.Cmd {
-	qry := q.viewLeft.ta.Value() // clarity
+	qry := q.editor.ta.Value() // clarity
 
 	clilog.Writer.Infof("Submitting query '%v'...", qry)
 	// TODO take duration from second viewport
 	var duration time.Duration = 1 * time.Hour
 	s, err := tryQuery(qry, duration)
 	if err != nil {
-		q.error = err.Error()
+		q.editor.err = err.Error()
 		return nil
 	}
 	// spin up a goroutine to wait on the search while we show a spinner
@@ -331,13 +487,13 @@ func (q *query) submitQuery() tea.Cmd {
 }
 
 func (q *query) switchFocus() {
-	q.focusedLeft = !q.focusedLeft
-	if q.focusedLeft { // disable viewB interactions
-		q.viewRight.durationTI.Blur()
-		q.viewLeft.ta.Focus()
+	q.focusedEditor = !q.focusedEditor
+	if q.focusedEditor { // disable viewB interactions
+		q.modifiers.blur()
+		q.editor.ta.Focus()
 	} else { // disable query editor interaction
-		q.viewLeft.ta.Blur()
-		q.viewRight.durationTI.Focus()
+		q.editor.ta.Blur()
+		q.modifiers.focusSelected()
 	}
 }
 
