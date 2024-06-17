@@ -38,8 +38,7 @@ const (
 )
 
 const (
-	tiWidth int    = 60
-	indent  string = "    "
+	indent string = "    "
 )
 
 // keys kill the program in Update no matter its other states
@@ -102,7 +101,7 @@ func new(root *navCmd, pwd *navCmd, _ *lipgloss.Renderer) Mother {
 	m.ti = textinput.New()
 	m.ti.Placeholder = "help"
 	m.ti.Focus()
-	m.ti.Width = tiWidth
+	m.ti.Width = stylesheet.TIWidth
 
 	m.history = NewHistory()
 

@@ -6,6 +6,7 @@ import (
 	"gwcli/busywait"
 	"gwcli/clilog"
 	"gwcli/connection"
+	"gwcli/stylesheet"
 	"gwcli/stylesheet/colorizer"
 	"gwcli/treeutils"
 	"os"
@@ -247,7 +248,7 @@ func Initial() *query {
 	q.ta = textarea.New()
 	q.ta.ShowLineNumbers = true
 	q.ta.Prompt = "->"
-	q.ta.SetWidth(70)
+	q.ta.SetWidth(stylesheet.TIWidth)
 	q.ta.SetHeight(5)
 	q.ta.Focus()
 
