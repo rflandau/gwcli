@@ -59,7 +59,7 @@ func GenerateAction() action.Pair {
 func initialLocalFlagSet() pflag.FlagSet {
 	fs := pflag.FlagSet{}
 
-	fs.DurationP("duration", "t", time.Hour*1, "the amount of time over which the query should be run.\n"+"Default: 1h")
+	fs.DurationP("duration", "t", time.Hour*1, "the amount of time over which the query should be run.")
 	fs.StringP("reference", "r", "", "a reference to a query library item to execute instead of a provided query.")
 	fs.StringP("output", "o", "", "file to write results to.")
 
@@ -188,6 +188,8 @@ func tryQuery(qry string, duration time.Duration) (grav.Search, error) {
 		SearchEnd:    start.Add(duration).Format(timeFormat),
 		Background:   false,
 		SearchString: qry, // pull query from the commandline
+		NoHistory:    false,
+		Preview:      false,
 	}
 	go func() {
 		clilog.Writer.Infof("Executing foreground search '%v' from %v -> %v",
