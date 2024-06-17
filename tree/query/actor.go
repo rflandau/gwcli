@@ -9,7 +9,6 @@ import (
 	"gwcli/connection"
 	"gwcli/stylesheet"
 	"gwcli/stylesheet/colorizer"
-	"os"
 	"sync/atomic"
 	"time"
 
@@ -60,10 +59,6 @@ type query struct {
 	help help.Model
 
 	keys []key.Binding // global keys, always active no matter the focused view
-
-	outFile *os.File
-
-	duration time.Duration
 }
 
 var Query action.Model = Initial()
@@ -74,7 +69,6 @@ func Initial() *query {
 		searchError: make(chan error),
 		curSearch:   nil,
 		spnr:        busywait.NewSpinner(),
-		duration:    defaultDuration,
 	}
 
 	// configure max dimensions
@@ -223,7 +217,7 @@ func (q *query) Reset() error {
 	localFS = initialLocalFlagSet()
 	q.curSearch = nil
 	q.editor.ta.Reset()
-	q.duration = defaultDuration
+	//q.duration = defaultDuration
 	q.searchDone.Store(false)
 	return nil
 }
@@ -240,10 +234,12 @@ func (q *query) SetArgs(_ *pflag.FlagSet, tokens []string) (string, []tea.Cmd, e
 	if d, err := localFS.GetDuration("duration"); err != nil {
 		return "", []tea.Cmd{}, err
 	} else if d != 0 {
-		q.duration = d
+		q.modifiers.durationTI.SetValue(d.String())
 	}
-	if q.outFile, err = openOutFile(&localFS); err != nil {
+	if o, err := localFS.GetString("output"); err != nil {
 		return "", []tea.Cmd{}, err
+	} else if o != "" {
+		q.modifiers.outfileTI.SetValue(o)
 	}
 
 	// fetch and set a query, if given
@@ -264,8 +260,11 @@ func (q *query) submitQuery() tea.Cmd {
 	qry := q.editor.ta.Value() // clarity
 
 	clilog.Writer.Infof("Submitting query '%v'...", qry)
-	// TODO take duration from second viewport
-	var duration time.Duration = 1 * time.Hour
+	duration, err := time.ParseDuration(q.modifiers.durationTI.Value())
+	if err != nil {
+		q.editor.err = err.Error()
+		return nil
+	}
 	s, err := tryQuery(qry, duration)
 	if err != nil {
 		q.editor.err = err.Error()

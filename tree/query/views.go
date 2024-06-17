@@ -87,8 +87,9 @@ type modifView struct {
 	height     uint
 	selected   uint // tracks which modifier is currently active w/in this view
 	durationTI textinput.Model
-	outfileTi  textinput.Model
-	keys       []key.Binding
+	outfileTI  textinput.Model
+	// TODO add append bool that greys if outfile is not set
+	keys []key.Binding
 }
 
 // generate the second view to be composed with the query editor
@@ -110,12 +111,16 @@ func initialModifView(height, width uint) modifView {
 	mv.durationTI.Width = int(width)
 	mv.durationTI.Blur()
 	mv.durationTI.Prompt = stylesheet.PromptPrefix
+	mv.durationTI.SetValue(defaultDuration.String())
 	mv.durationTI.Placeholder = "1h00m00s00ms00us00ns"
 	mv.durationTI.Validate = func(s string) error {
 		// checks that the string is composed of valid characters for duration parsing
 		// (0-9 and h,m,s,u,n)
 		// ! does not confirm that it is a valid duration!
-		validChars := map[rune]interface{}{'h': nil, 'm': nil, 's': nil, 'u': nil, 'n': nil}
+		validChars := map[rune]interface{}{
+			'h': nil, 'm': nil, 's': nil,
+			'u': nil, 'n': nil, '.': nil,
+		}
 		for _, r := range s {
 			if unicode.IsDigit(r) {
 				continue
@@ -128,10 +133,10 @@ func initialModifView(height, width uint) modifView {
 	}
 
 	// build outFile ti
-	mv.outfileTi = textinput.New()
-	mv.outfileTi.Width = int(width)
-	mv.outfileTi.Blur()
-	mv.outfileTi.Prompt = stylesheet.PromptPrefix
+	mv.outfileTI = textinput.New()
+	mv.outfileTI.Width = int(width)
+	mv.outfileTI.Blur()
+	mv.outfileTI.Prompt = stylesheet.PromptPrefix
 
 	return mv
 
@@ -140,7 +145,7 @@ func initialModifView(height, width uint) modifView {
 // Unfocuses this view, blurring all text inputs
 func (mv *modifView) blur() {
 	mv.durationTI.Blur()
-	mv.outfileTi.Blur()
+	mv.outfileTI.Blur()
 }
 
 func (mv *modifView) update(msg tea.Msg) []tea.Cmd {
@@ -167,7 +172,7 @@ func (mv *modifView) update(msg tea.Msg) []tea.Cmd {
 	if t != nil {
 		cmds = append(cmds, t)
 	}
-	mv.outfileTi, t = mv.outfileTi.Update(msg)
+	mv.outfileTI, t = mv.outfileTI.Update(msg)
 	if t != nil {
 		cmds = append(cmds, t)
 	}
@@ -180,10 +185,10 @@ func (mv *modifView) focusSelected() {
 	switch mv.selected {
 	case duration:
 		mv.durationTI.Focus()
-		mv.outfileTi.Blur()
+		mv.outfileTI.Blur()
 	case outFile:
 		mv.durationTI.Blur()
-		mv.outfileTi.Focus()
+		mv.outfileTI.Focus()
 	default:
 		clilog.Writer.Errorf("Failed to update modifier view focus: unknown selected field %d",
 			mv.selected)
@@ -207,7 +212,7 @@ func (mv *modifView) view() string {
 	} else {
 		bldr.WriteRune(' ')
 	}
-	bldr.WriteString(mv.outfileTi.View() + "\n")
+	bldr.WriteString(mv.outfileTI.View() + "\n")
 
 	return bldr.String()
 }
