@@ -28,3 +28,24 @@
 - [x] BUG: Spinner only spins on the first submitted query; it is frozen on future queries
 
 - [x] add append flag to query to append results to the file instead of overwriting
+
+- [ ] Provide debouncer utility for children to use while loading
+
+- Search Improvements
+    - [ ] non-interactive scheduling via flag
+    - [ ] second viewport: search settings
+        - [ ] switch between search editor and search settings via tab cycling
+        - support flag setting
+            - [ ] duration
+            - [ ] output
+            - [ ] scheduling
+                - [ ] name
+                - [ ] description
+                - [ ] schedule
+    - [ ] parse query for rendered pipe
+        - [ ] set file extension appropriately
+        - [ ] select fetch function
+        - [ ] implement ntcharts for chart-like renderers
+    - [ ] interactive mode syntax highlighting
+    - [ ] result pagination and/or scrollable viewport
+        - [?] pass in pagination increment
