@@ -290,9 +290,11 @@ func Initial() *query {
 
 	q.focusedEditor = true
 
-	q.keys = []key.Binding{ // 0: cycle
-		key.NewBinding(key.WithKeys("tab"), key.WithHelp("tab", "cycle view")),
-		key.NewBinding(key.WithKeys("esc"), key.WithHelp("esc", "return to navigation")),
+	q.keys = []key.Binding{
+		key.NewBinding(key.WithKeys("tab"), // 0: cycle
+			key.WithHelp("tab", "cycle view")),
+		key.NewBinding(key.WithKeys("esc"), // [handled by mother]
+			key.WithHelp("esc", "return to navigation")),
 	}
 
 	// set up help
