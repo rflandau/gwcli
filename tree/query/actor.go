@@ -265,6 +265,8 @@ func (q *query) submitQuery() tea.Cmd {
 		q.editor.err = err.Error()
 		return nil
 	}
+	// TODO parse and save "final" outfile field for when results are returned
+
 	s, err := tryQuery(qry, duration)
 	if err != nil {
 		q.editor.err = err.Error()
