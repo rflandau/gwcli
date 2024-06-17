@@ -61,7 +61,8 @@ func initialLocalFlagSet() pflag.FlagSet {
 
 	fs.DurationP("duration", "t", time.Hour*1, "the historical timeframe (now minus duration) the query should pour over.")
 	fs.StringP("reference", "r", "", "a reference to a query library item to execute instead of a provided query.")
-	fs.StringP("output", "o", "", "file to write results to.")
+	fs.StringP("output", "o", "", "file to write results to. Truncates file unless --append is also given.")
+	fs.Bool("append", false, "append to the given output file.")
 
 	// scheduled searches
 	fs.StringP("name", "n", "", "name for a scheduled search")
@@ -461,8 +462,15 @@ func openOutFile(fs *pflag.FlagSet) (*os.File, error) {
 	if outfile, err := fs.GetString("output"); err != nil {
 		return nil, err
 	} else if outfile != "" {
-		f, err = os.Create(outfile)
-		if err != nil {
+		if append, err := fs.GetBool("append"); err != nil {
+			return nil, err
+		} else if append {
+			if f, err = os.OpenFile(outfile, os.O_WRONLY|os.O_APPEND|os.O_CREATE, 0644); err != nil {
+				return nil, err
+			}
+			return f, nil
+		}
+		if f, err = os.Create(outfile); err != nil {
 			return nil, err
 		}
 	}
