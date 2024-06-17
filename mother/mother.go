@@ -38,7 +38,7 @@ const (
 )
 
 const (
-	tiWidth int    = 40
+	tiWidth int    = 60
 	indent  string = "    "
 )
 
