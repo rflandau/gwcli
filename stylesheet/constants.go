@@ -1,5 +1,6 @@
 package stylesheet
 
 const (
-	TIWidth = 60
+	TIWidth      = 60
+	PromptPrefix = ">"
 )
