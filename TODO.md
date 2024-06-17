@@ -25,6 +25,6 @@
 
 - [ ] Handle CTRL+left/right word jumping
 
-- [ ] BUG: Spinner only spins on the first submitted query; it is frozen on future queries
+- [x] BUG: Spinner only spins on the first submitted query; it is frozen on future queries
 
-- [ ] add append flag to query to append results to the file instead of overwriting
+- [x] add append flag to query to append results to the file instead of overwriting
