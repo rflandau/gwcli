@@ -59,7 +59,7 @@ func GenerateAction() action.Pair {
 func initialLocalFlagSet() pflag.FlagSet {
 	fs := pflag.FlagSet{}
 
-	fs.DurationP("duration", "t", time.Hour*1, "the amount of time over which the query should be run.")
+	fs.DurationP("duration", "t", time.Hour*1, "the historical timeframe (now minus duration) the query should pour over.")
 	fs.StringP("reference", "r", "", "a reference to a query library item to execute instead of a provided query.")
 	fs.StringP("output", "o", "", "file to write results to.")
 
@@ -182,10 +182,10 @@ func tryQuery(qry string, duration time.Duration) (grav.Search, error) {
 		return grav.Search{}, fmt.Errorf("'%s' is not a valid query: %s", qry, err.Error())
 	}
 
-	start := time.Now()
+	end := time.Now()
 	sreq := types.StartSearchRequest{
-		SearchStart:  start.Format(timeFormat),
-		SearchEnd:    start.Add(duration).Format(timeFormat),
+		SearchStart:  end.Add(-duration).Format(timeFormat),
+		SearchEnd:    end.Format(timeFormat),
 		Background:   false,
 		SearchString: qry, // pull query from the commandline
 		NoHistory:    false,
