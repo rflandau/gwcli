@@ -47,7 +47,7 @@ const (
 type editorView struct {
 	ta   textarea.Model
 	err  string
-	keys map[string]key.Binding
+	keys []key.Binding
 }
 
 func initialEdiorView(height, width uint) editorView {
@@ -61,8 +61,8 @@ func initialEdiorView(height, width uint) editorView {
 	ev.ta.SetHeight(int(height))
 	ev.ta.Focus()
 	// set up the help keys
-	ev.keys = map[string]key.Binding{
-		"submit": key.NewBinding(
+	ev.keys = []key.Binding{ // 0: submit
+		key.NewBinding(
 			key.WithKeys("alt+enter"),
 			key.WithHelp("alt+enter", "submit query"),
 		)}
@@ -74,7 +74,7 @@ func (ev *editorView) update(msg tea.Msg) (cmd tea.Cmd, submit bool) {
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
 		switch {
-		case key.Matches(msg, ev.keys["submit"]):
+		case key.Matches(msg, ev.keys[0]): // submit
 			if ev.ta.Value() == "" {
 				// superfluous request
 				ev.err = "empty request"
@@ -125,6 +125,11 @@ func initialModifView(height, width uint) modifView {
 		width:    width,
 		height:   height,
 		selected: duration,
+		keys: []key.Binding{
+			key.NewBinding(
+				key.WithKeys("↑/↓"),
+				key.WithHelp("↑/↓", "select input"),
+			)},
 	}
 
 	// build duration ti
@@ -256,12 +261,9 @@ type query struct {
 
 	spnr spinner.Model // wait spinner
 
-	help struct {
-		model help.Model
-		keys  helpKeyMap
-	}
+	help help.Model
 
-	keys map[string]key.Binding // global keys, always active no matter the focused view
+	keys []key.Binding // global keys, always active no matter the focused view
 
 	outFile *os.File
 
@@ -288,22 +290,14 @@ func Initial() *query {
 
 	q.focusedEditor = true
 
-	q.keys = map[string]key.Binding{
-		"cycle": key.NewBinding(key.WithKeys("tab"), key.WithHelp("tab", "cycle view")),
-		"quit":  key.NewBinding(key.WithHelp("esc", "return to navigation")),
+	q.keys = []key.Binding{ // 0: cycle
+		key.NewBinding(key.WithKeys("tab"), key.WithHelp("tab", "cycle view")),
+		key.NewBinding(key.WithKeys("esc"), key.WithHelp("esc", "return to navigation")),
 	}
 
 	// set up help
-	q.help.model = help.New()
-	q.help.keys = helpKeyMap{
-		Cycle: key.NewBinding(
-			key.WithKeys("tab"),
-			key.WithKeys("tab", "cycle viewport"),
-		),
-		Quit: key.NewBinding(
-			key.WithHelp("esc", "return to navigation"),
-		),
-	}
+	q.help = help.New()
+	q.help.Width = int(q.width)
 
 	// Actions, particularly actions with Help and TextArea/TextInputs hang the first time one is
 	// called every time the program is launched. They eventually redraw, fixing the issue, but
@@ -379,7 +373,7 @@ func (q *query) Update(msg tea.Msg) tea.Cmd {
 	// handle global keys
 	if isKeyMsg {
 		switch {
-		case key.Matches(keyMsg, q.help.keys.Cycle):
+		case key.Matches(keyMsg, q.keys[0]):
 			q.switchFocus()
 		}
 	}
@@ -407,11 +401,17 @@ func (q *query) View() string {
 		blankOrSpnr = "\n"
 	}
 
-	help := q.help.model.View(q.help.keys)
+	var viewKeys []key.Binding
+	if q.focusedEditor {
+		viewKeys = q.editor.keys
+	} else {
+		viewKeys = q.modifiers.keys
+	}
+	h := q.help.ShortHelpView(append(q.keys, viewKeys...))
 
 	return fmt.Sprintf("%s\n%s\n%s",
 		lipgloss.JoinHorizontal(lipgloss.Top, q.editor.view(), q.modifiers.view()),
-		help,
+		h,
 		blankOrSpnr)
 }
 
@@ -498,23 +498,3 @@ func (q *query) switchFocus() {
 }
 
 //#endregion helper subroutines
-
-//#region help display
-
-type helpKeyMap struct {
-	Cycle  key.Binding
-	Submit key.Binding // ctrl+enter
-	//Help   key.Binding // '?'
-	Quit key.Binding // esc
-}
-
-func (k helpKeyMap) ShortHelp() []key.Binding {
-	return []key.Binding{k.Cycle, k.Submit, k.Quit}
-}
-
-// unused
-func (k helpKeyMap) FullHelp() [][]key.Binding {
-	return [][]key.Binding{}
-}
-
-//#endregion help display
