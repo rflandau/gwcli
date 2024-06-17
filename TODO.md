@@ -34,7 +34,7 @@
 - Search Improvements
     - [ ] non-interactive scheduling via flag
     - [ ] second viewport: search settings
-        - [ ] switch between search editor and search settings via tab cycling
+        - [x] switch between search editor and search settings via tab cycling
         - support flag setting
             - [ ] duration
             - [ ] output
@@ -42,6 +42,7 @@
                 - [ ] name
                 - [ ] description
                 - [ ] schedule
+        - [ ] unique helpkey sets based on current focus
     - [ ] parse query for rendered pipe
         - [ ] set file extension appropriately
         - [ ] select fetch function

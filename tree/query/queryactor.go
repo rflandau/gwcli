@@ -17,11 +17,16 @@ import (
 	"github.com/charmbracelet/bubbles/key"
 	"github.com/charmbracelet/bubbles/spinner"
 	"github.com/charmbracelet/bubbles/textarea"
+	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/charmbracelet/lipgloss"
 	grav "github.com/gravwell/gravwell/v3/client"
 	"github.com/spf13/pflag"
 )
 
+//#region modes
+
+// modes query model can be in
 type mode int8
 
 const (
@@ -31,9 +36,46 @@ const (
 	waiting               // search submitted; waiting for results
 )
 
+//#endregion modes
+
+//#region editorView
+
+// editorView represents the composable view box containing the query editor
+type editorView struct {
+	ta textarea.Model
+}
+
+func (va *editorView) view() string {
+	return fmt.Sprintf("Query:\n%s", va.ta.View())
+}
+
+//#endregion editorView
+
+//#region modifView
+
+// modifView represents the composable view box containing all configurable features of the query
+type modifView struct {
+	width      uint
+	height     uint
+	durationTI textinput.Model
+}
+
+//#region modifView
+
+// interactive model definition
 type query struct {
 	mode  mode
 	error string // errors are mostly cleared by the next key input
+
+	// total screen sizes for composing subviews
+	width  uint
+	height uint
+
+	viewLeft editorView
+
+	viewRight modifView
+
+	focusedLeft bool
 
 	curSearch   *grav.Search // nil or ongoing/recently-completed search
 	searchDone  atomic.Bool  // waiting thread has returned
@@ -45,7 +87,6 @@ type query struct {
 		model help.Model
 		keys  helpKeyMap
 	}
-	ta textarea.Model
 
 	outFile *os.File
 
@@ -64,17 +105,29 @@ func Initial() *query {
 		duration:    defaultDuration,
 	}
 
+	// configure max dimensions
+	q.width = 100
+	q.height = 10
+
+	q.viewRight = initialViewB(q.height)
+
+	q.focusedLeft = true
+
 	// configure text area
-	q.ta = textarea.New()
-	q.ta.ShowLineNumbers = true
-	q.ta.Prompt = "->"
-	q.ta.SetWidth(stylesheet.TIWidth)
-	q.ta.SetHeight(5)
-	q.ta.Focus()
+	q.viewLeft.ta = textarea.New()
+	q.viewLeft.ta.ShowLineNumbers = true
+	q.viewLeft.ta.Prompt = "->"
+	q.viewLeft.ta.SetWidth(stylesheet.TIWidth)
+	q.viewLeft.ta.SetHeight(5)
+	q.viewLeft.ta.Focus()
 
 	// set up help
 	q.help.model = help.New()
 	q.help.keys = helpKeyMap{
+		Cycle: key.NewBinding(
+			key.WithKeys("tab"),
+			key.WithKeys("tab", "cycle viewport"),
+		),
 		Submit: key.NewBinding(
 			key.WithKeys("alt+enter"),
 			key.WithHelp("alt+enter", "submit query"),
@@ -94,16 +147,31 @@ func Initial() *query {
 	// sending a msg (ex: a blink) back to Mother during handoff. Not clear if this message should
 	// be coming from Mother herself or from the recently in-control child.
 	// TODO figure out why this works and what the proper fix is
-	go func() { q.ta.View() }()
+	go func() { q.viewLeft.ta.View() }()
 
 	return q
+}
+
+// generate the second view to be composed with the query editor
+func initialViewB(height uint) modifView {
+	var width uint = 20
+	ti := textinput.New()
+	ti.Width = int(width)
+	ti.Blur()
+
+	return modifView{
+		width:      width,
+		height:     height,
+		durationTI: ti,
+	}
+
 }
 
 func (q *query) Update(msg tea.Msg) tea.Cmd {
 	switch q.mode {
 	case quitting:
 		return textarea.Blink
-	case inactive:
+	case inactive: // if inactive, bootstrap
 		q.mode = prompting
 		return textarea.Blink
 	case waiting: // display spinner and wait
@@ -113,7 +181,7 @@ func (q *query) Update(msg tea.Msg) tea.Cmd {
 				q.error = err.Error()
 				q.mode = prompting
 				var cmd tea.Cmd
-				q.ta, cmd = q.ta.Update(msg)
+				q.viewLeft.ta, cmd = q.viewLeft.ta.Update(msg)
 				return cmd
 			}
 
@@ -151,23 +219,29 @@ func (q *query) Update(msg tea.Msg) tea.Cmd {
 		return cmd
 	}
 
+	// default, prompting mode
+
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
 		q.error = "" // clear out the error
-		if key.Matches(msg, q.help.keys.Submit) {
-			if q.ta.Value() == "" {
+		switch {
+		case key.Matches(msg, q.help.keys.Submit):
+			if q.viewLeft.ta.Value() == "" {
 				// superfluous request
 				q.error = "empty request"
 				// falls through to standard update
 			} else {
 				return q.submitQuery()
 			}
+		case key.Matches(msg, q.help.keys.Cycle):
+			q.switchFocus()
 		}
 	}
 
-	var cmd tea.Cmd
-	q.ta, cmd = q.ta.Update(msg)
-	return cmd
+	var cmdLeft, cmdRight tea.Cmd
+	q.viewLeft.ta, cmdLeft = q.viewLeft.ta.Update(msg)
+	q.viewRight.durationTI, cmdRight = q.viewRight.durationTI.Update(msg)
+	return tea.Batch(cmdLeft, cmdRight)
 }
 
 func (q *query) View() string {
@@ -179,9 +253,10 @@ func (q *query) View() string {
 	}
 
 	help := q.help.model.View(q.help.keys)
-	ta := q.ta.View()
 
-	return fmt.Sprintf("Query:\n%s\n%s\n%s", ta, help, errOrSpnr)
+	viewB := fmt.Sprintf("Settings:\nDuration:\n%s\n___", q.viewRight.durationTI.View())
+
+	return fmt.Sprintf("%s\n%s\n%s", lipgloss.JoinHorizontal(lipgloss.Top, q.viewLeft.view(), viewB), help, errOrSpnr)
 }
 
 func (q *query) Done() bool {
@@ -193,7 +268,7 @@ func (q *query) Reset() error {
 	q.error = ""
 	localFS = initialLocalFlagSet()
 	q.curSearch = nil
-	q.ta.Reset()
+	q.viewLeft.ta.Reset()
 	q.duration = defaultDuration
 	q.searchDone.Store(false)
 	return nil
@@ -221,7 +296,7 @@ func (q *query) SetArgs(_ *pflag.FlagSet, tokens []string) (string, []tea.Cmd, e
 	if tQry, err := FetchQueryString(&localFS, localFS.Args()); err != nil {
 		return "", []tea.Cmd{}, err
 	} else if tQry != "" {
-		q.ta.SetValue(tQry)
+		q.viewLeft.ta.SetValue(tQry)
 		// if the query is valid, submitQuery will place us directly into waiting mode
 		return "", []tea.Cmd{q.submitQuery()}, nil
 	}
@@ -229,10 +304,10 @@ func (q *query) SetArgs(_ *pflag.FlagSet, tokens []string) (string, []tea.Cmd, e
 	return "", nil, nil
 }
 
-//#region interactive-specific helper subroutines
+//#region helper subroutines
 
 func (q *query) submitQuery() tea.Cmd {
-	qry := q.ta.Value() // clarity
+	qry := q.viewLeft.ta.Value() // clarity
 
 	clilog.Writer.Infof("Submitting query '%v'...", qry)
 	// TODO take duration from second viewport
@@ -255,21 +330,35 @@ func (q *query) submitQuery() tea.Cmd {
 	return q.spnr.Tick // start the wait spinner
 }
 
-//#endregion
+func (q *query) switchFocus() {
+	q.focusedLeft = !q.focusedLeft
+	if q.focusedLeft { // disable viewB interactions
+		q.viewRight.durationTI.Blur()
+		q.viewLeft.ta.Focus()
+	} else { // disable query editor interaction
+		q.viewLeft.ta.Blur()
+		q.viewRight.durationTI.Focus()
+	}
+}
+
+//#endregion helper subroutines
 
 //#region help display
 
 type helpKeyMap struct {
+	Cycle  key.Binding
 	Submit key.Binding // ctrl+enter
 	//Help   key.Binding // '?'
 	Quit key.Binding // esc
 }
 
 func (k helpKeyMap) ShortHelp() []key.Binding {
-	return []key.Binding{k.Submit, k.Quit}
+	return []key.Binding{k.Cycle, k.Submit, k.Quit}
 }
 
 // unused
 func (k helpKeyMap) FullHelp() [][]key.Binding {
 	return [][]key.Binding{}
 }
+
+//#endregion help display
