@@ -222,9 +222,20 @@ func (mv *modifView) view() string {
 	if mv.appendToFile {
 		checkmark = '☑'
 	}
-	bldr.WriteString(
-		fmt.Sprintf("%c %c %s\n", pip(mv.selected, appendToFile), checkmark, stylesheet.Header1Style.Render("Append?")),
-	)
+	// if the outfile field is empty, render append in grey
+	if strings.TrimSpace(mv.outfileTI.Value()) == "" {
+		bldr.WriteString(
+			fmt.Sprintf("%c %s\n",
+				pip(mv.selected, appendToFile),
+				stylesheet.GreyedOutStyle.Render(string(checkmark)+" "+"Append?")),
+		)
+	} else {
+		bldr.WriteString(
+			fmt.Sprintf("%c %c %s\n",
+				pip(mv.selected, appendToFile),
+				checkmark, stylesheet.Header1Style.Render("Append?")),
+		)
+	}
 
 	return bldr.String()
 }
