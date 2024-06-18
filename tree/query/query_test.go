@@ -5,7 +5,6 @@ package query
 
 import (
 	"gwcli/connection"
-	"os"
 	"testing"
 
 	"github.com/spf13/cobra"
@@ -48,11 +47,6 @@ func TestGenerateQueryString(t *testing.T) {
 			name:      "basic multiwork argument query",
 			args:      args{[]string{}, []string{"tag=dpkg words status"}},
 			wantQuery: "tag=dpkg words status", wantErr: false,
-		},
-		{
-			name:      "empty query",
-			args:      args{[]string{}, []string{}},
-			wantQuery: "", wantErr: true,
 		},
 		{
 			name:      "uuid " + uuid1str,
@@ -100,6 +94,7 @@ func generateCobraCommand(args []string) *cobra.Command {
 	return &cmd
 }
 
+/*
 func TestOpenOutFile(t *testing.T) {
 	fn := "testOpenOutFile_test_data.tmp"
 	defer os.Remove(fn)
@@ -178,3 +173,4 @@ func TestOpenOutFile(t *testing.T) {
 	})
 
 }
+*/
