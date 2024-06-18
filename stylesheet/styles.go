@@ -7,7 +7,7 @@ var (
 	ActionStyle = lipgloss.NewStyle().Foreground(ActionColor)
 	ErrStyle    = lipgloss.NewStyle().Foreground(ErrorColor)
 	ModelStyle  = lipgloss.NewStyle(). // base box style for a child model
-		/*Align(lipgloss.Left).*/ BorderStyle(lipgloss.HiddenBorder())
+			Align(lipgloss.Left, lipgloss.Center).BorderStyle(lipgloss.HiddenBorder())
 	Composable = struct { // styles for multiple, simultaneous models
 		Unfocused lipgloss.Style
 		Focused   lipgloss.Style
