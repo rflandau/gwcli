@@ -51,6 +51,7 @@ func initialEdiorView(height, width uint) editorView {
 func (ev *editorView) update(msg tea.Msg) (cmd tea.Cmd, submit bool) {
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
+		ev.err = ""
 		switch {
 		case key.Matches(msg, ev.keys[0]): // submit
 			if ev.ta.Value() == "" {
@@ -68,6 +69,7 @@ func (ev *editorView) update(msg tea.Msg) (cmd tea.Cmd, submit bool) {
 }
 
 func (va *editorView) view() string {
+	// TODO wrap err if > ev width
 	return fmt.Sprintf("%s\n%s\n%s", stylesheet.Header1Style.Render("Query:"), va.ta.View(), va.err)
 }
 
