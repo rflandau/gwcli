@@ -9,6 +9,8 @@ import (
 	"gwcli/connection"
 	"gwcli/stylesheet"
 	"gwcli/stylesheet/colorizer"
+	"os"
+	"strings"
 	"sync/atomic"
 	"time"
 
@@ -53,12 +55,14 @@ type query struct {
 	curSearch   *grav.Search // nil or ongoing/recently-completed search
 	searchDone  atomic.Bool  // waiting thread has returned
 	searchError chan error   // result to be fetched after SearchDone
+	output      *os.File     // set once query is submitted, if outfile was set
 
 	spnr spinner.Model // wait spinner
 
 	help help.Model
 
 	keys []key.Binding // global keys, always active no matter the focused view
+
 }
 
 var Query action.Model = Initial()
@@ -112,6 +116,8 @@ func (q *query) Update(msg tea.Msg) tea.Cmd {
 		return textarea.Blink
 	case inactive: // if inactive, bootstrap
 		q.mode = prompting
+		q.editor.ta.Focus()
+		q.focusedEditor = true
 		return textarea.Blink
 	case waiting: // display spinner and wait
 		if q.searchDone.Load() {
@@ -133,13 +139,15 @@ func (q *query) Update(msg tea.Msg) tea.Cmd {
 				return textarea.Blink // we need to send a (any) msg to mother to trigger a redraw
 			}
 
-			if q.outFile != nil {
+			if q.output != nil {
 				for _, e := range results.Entries {
-					if _, err := q.outFile.Write(e.Data); err != nil {
-						return colorizer.ErrPrintf("Failed to write to %s: %v", q.outFile.Name(), err)
+					if _, err := q.output.Write(e.Data); err != nil {
+						q.output.Close()
+						return colorizer.ErrPrintf("Failed to write to %s: %v", q.output.Name(), err)
 					}
-					q.outFile.WriteString("\n")
+					q.output.WriteString("\n")
 				}
+				q.output.Close()
 				return textarea.Blink // we need to send a (any) msg to mother to trigger a redraw
 			}
 
@@ -212,13 +220,30 @@ func (q *query) Done() bool {
 }
 
 func (q *query) Reset() error {
-	// TODO update Reset to clear out views left and right
+	// ! all inputs are blurred until user re-enters query later
+
 	q.mode = inactive
-	localFS = initialLocalFlagSet()
-	q.curSearch = nil
+
+	// reset editor view
 	q.editor.ta.Reset()
-	//q.duration = defaultDuration
+	q.editor.err = ""
+	q.editor.ta.Blur()
+	// reset modifier view
+	q.modifiers.selected = defaultModifSelection
+	q.modifiers.durationTI.Reset()
+	q.modifiers.outfileTI.Reset()
+	q.modifiers.blur()
+
+	// clear query fields
+	q.curSearch = nil
 	q.searchDone.Store(false)
+	if q.output != nil {
+		q.output.Close()
+	}
+	q.output = nil
+
+	localFS = initialLocalFlagSet()
+
 	return nil
 }
 
@@ -260,12 +285,25 @@ func (q *query) submitQuery() tea.Cmd {
 	qry := q.editor.ta.Value() // clarity
 
 	clilog.Writer.Infof("Submitting query '%v'...", qry)
+
+	// fetch modifiers from alternative view
 	duration, err := time.ParseDuration(q.modifiers.durationTI.Value())
 	if err != nil {
 		q.editor.err = err.Error()
 		return nil
 	}
 	// TODO parse and save "final" outfile field for when results are returned
+	fn := strings.TrimSpace(q.modifiers.outfileTI.Value())
+	if fn != "" {
+		// TODO check Append flag
+		q.output, err = os.Create(fn)
+		if err != nil {
+			q.editor.err = err.Error()
+			return nil
+		}
+	} else {
+		q.output = nil
+	}
 
 	s, err := tryQuery(qry, duration)
 	if err != nil {
