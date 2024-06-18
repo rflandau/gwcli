@@ -287,14 +287,21 @@ func (q *query) submitQuery() tea.Cmd {
 	clilog.Writer.Infof("Submitting query '%v'...", qry)
 
 	// fetch modifiers from alternative view
-	duration, err := time.ParseDuration(q.modifiers.durationTI.Value())
-	if err != nil {
-		q.editor.err = err.Error()
-		return nil
+	var (
+		duration time.Duration
+		err      error
+	)
+	if d := strings.TrimSpace(q.modifiers.durationTI.Value()); d != "" {
+		duration, err = time.ParseDuration(q.modifiers.durationTI.Value())
+		if err != nil {
+			q.editor.err = err.Error()
+			return nil
+		}
+	} else {
+		duration = defaultDuration
 	}
-	// TODO parse and save "final" outfile field for when results are returned
-	fn := strings.TrimSpace(q.modifiers.outfileTI.Value())
-	if fn != "" {
+
+	if fn := strings.TrimSpace(q.modifiers.outfileTI.Value()); fn != "" {
 		// TODO check Append flag
 		q.output, err = os.Create(fn)
 		if err != nil {
