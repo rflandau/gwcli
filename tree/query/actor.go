@@ -309,14 +309,19 @@ func (q *query) submitQuery() tea.Cmd {
 		duration = defaultDuration
 	}
 
+	// prepare file for output and associate it to the query struct
 	if fn := strings.TrimSpace(q.modifiers.outfileTI.Value()); fn != "" {
-		// TODO check Append flag
-		q.output, err = os.Create(fn)
+		var flags int = os.O_WRONLY | os.O_CREATE
+		if q.modifiers.appendToFile { // check append
+			flags |= os.O_APPEND
+		}
+
+		q.output, err = os.OpenFile(fn, flags, 0644)
 		if err != nil {
 			q.editor.err = err.Error()
 			return nil
 		}
-	} else {
+	} else { // do not output to file
 		q.output = nil
 	}
 
