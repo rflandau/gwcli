@@ -63,7 +63,7 @@ func (ev *editorView) update(msg tea.Msg) (cmd tea.Cmd, submit bool) {
 }
 
 func (va *editorView) view() string {
-	return fmt.Sprintf("Query:\n%s\n%s", va.ta.View(), va.err)
+	return fmt.Sprintf("%s\n%s\n%s", stylesheet.Header1Style.Render("Query:"), va.ta.View(), va.err)
 }
 
 //#endregion editorView
@@ -200,7 +200,7 @@ func (mv *modifView) focusSelected() {
 func (mv *modifView) view() string {
 	var bldr strings.Builder
 
-	bldr.WriteString("Duration:\n")
+	bldr.WriteString(stylesheet.Header1Style.Render("Duration:") + "\n")
 	if mv.selected == duration {
 		bldr.WriteRune(selectionRune)
 	} else {
@@ -208,7 +208,7 @@ func (mv *modifView) view() string {
 	}
 	bldr.WriteString(mv.durationTI.View() + "\n")
 
-	bldr.WriteString("Output Path:\n")
+	bldr.WriteString(stylesheet.Header1Style.Render("Output Path:") + "\n")
 	if mv.selected == outFile {
 		bldr.WriteRune(selectionRune)
 	} else {
