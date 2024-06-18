@@ -146,7 +146,7 @@ func initialModifView(height, width uint) modifView {
 	mv.outfileTI = textinput.New()
 	mv.outfileTI.Width = int(width)
 	mv.outfileTI.Blur()
-	mv.outfileTI.Prompt = ""
+	mv.outfileTI.Prompt = "(optional)"
 
 	return mv
 
