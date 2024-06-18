@@ -81,6 +81,8 @@ const (
 	highBound
 )
 
+const defaultModifSelection = duration
+
 // modifView represents the composable view box containing all configurable features of the query
 type modifView struct {
 	width      uint
@@ -98,7 +100,7 @@ func initialModifView(height, width uint) modifView {
 	mv := modifView{
 		width:    width,
 		height:   height,
-		selected: duration,
+		selected: defaultModifSelection,
 		keys: []key.Binding{
 			key.NewBinding(
 				key.WithKeys("↑/↓"),
