@@ -78,6 +78,7 @@ const (
 	lowBound modifSelection = iota
 	duration
 	outFile
+	appendToFile
 	highBound
 )
 
@@ -85,13 +86,13 @@ const defaultModifSelection = duration
 
 // modifView represents the composable view box containing all configurable features of the query
 type modifView struct {
-	width      uint
-	height     uint
-	selected   uint // tracks which modifier is currently active w/in this view
-	durationTI textinput.Model
-	outfileTI  textinput.Model
-	// TODO add append bool that greys if outfile is not set
-	keys []key.Binding
+	width        uint
+	height       uint
+	selected     uint // tracks which modifier is currently active w/in this view
+	durationTI   textinput.Model
+	outfileTI    textinput.Model
+	appendToFile bool
+	keys         []key.Binding
 }
 
 // generate the second view to be composed with the query editor
@@ -166,6 +167,10 @@ func (mv *modifView) update(msg tea.Msg) []tea.Cmd {
 				mv.selected = lowBound + 1
 			}
 			mv.focusSelected()
+		case tea.KeySpace, tea.KeyEnter:
+			if mv.selected == appendToFile {
+				mv.appendToFile = !mv.appendToFile
+			}
 		}
 	}
 	var cmds []tea.Cmd = []tea.Cmd{}
@@ -191,6 +196,9 @@ func (mv *modifView) focusSelected() {
 	case outFile:
 		mv.durationTI.Blur()
 		mv.outfileTI.Focus()
+	case appendToFile:
+		mv.durationTI.Blur()
+		mv.outfileTI.Blur()
 	default:
 		clilog.Writer.Errorf("Failed to update modifier view focus: unknown selected field %d",
 			mv.selected)
@@ -201,22 +209,33 @@ func (mv *modifView) view() string {
 	var bldr strings.Builder
 
 	bldr.WriteString(stylesheet.Header1Style.Render("Duration:") + "\n")
-	if mv.selected == duration {
-		bldr.WriteRune(selectionRune)
-	} else {
-		bldr.WriteRune(' ')
-	}
-	bldr.WriteString(" " + mv.durationTI.View() + "\n")
+	bldr.WriteString(
+		fmt.Sprintf("%c %s\n", pip(mv.selected, duration), mv.durationTI.View()),
+	)
 
 	bldr.WriteString(stylesheet.Header1Style.Render("Output Path:") + "\n")
-	if mv.selected == outFile {
-		bldr.WriteRune(selectionRune)
-	} else {
-		bldr.WriteRune(' ')
+	bldr.WriteString(
+		fmt.Sprintf("%c %s\n", pip(mv.selected, outFile), mv.outfileTI.View()),
+	)
+	// TODO grey out append checkbox if output path is empty
+	var checkmark rune = '☐'
+	if mv.appendToFile {
+		checkmark = '☑'
 	}
-	bldr.WriteString(" " + mv.outfileTI.View() + "\n")
+	bldr.WriteString(
+		fmt.Sprintf("%c %c %s\n", pip(mv.selected, appendToFile), checkmark, stylesheet.Header1Style.Render("Append?")),
+	)
 
 	return bldr.String()
+}
+
+// if this field is the selected field, returns the selection rune.
+// otherwise, returns a space
+func pip(selected, field uint) rune {
+	if selected == field {
+		return selectionRune
+	}
+	return ' '
 }
 
 //#endregion modifView
