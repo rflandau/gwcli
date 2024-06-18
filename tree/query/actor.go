@@ -201,16 +201,24 @@ func (q *query) View() string {
 		blankOrSpnr = "\n"
 	}
 
-	var viewKeys []key.Binding
+	var (
+		viewKeys     []key.Binding
+		editorView   string
+		modifierView string
+	)
 	if q.focusedEditor {
 		viewKeys = q.editor.keys
+		editorView = stylesheet.Composable.Focused.Render(q.editor.view())
+		modifierView = stylesheet.Composable.Unfocused.Render(q.modifiers.view())
 	} else {
 		viewKeys = q.modifiers.keys
+		editorView = stylesheet.Composable.Unfocused.Render(q.editor.view())
+		modifierView = stylesheet.Composable.Focused.Render(q.modifiers.view())
 	}
 	h := q.help.ShortHelpView(append(q.keys, viewKeys...))
 
 	return fmt.Sprintf("%s\n%s\n%s",
-		lipgloss.JoinHorizontal(lipgloss.Top, q.editor.view(), q.modifiers.view()),
+		lipgloss.JoinHorizontal(lipgloss.Top, editorView, modifierView),
 		h,
 		blankOrSpnr)
 }
