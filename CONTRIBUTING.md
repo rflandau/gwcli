@@ -6,6 +6,7 @@ gwcli is built to build to allow more functionality to be easily plugged in. As 
 - Actions' Update subroutines should *always* return a tea.Cmd when handing control back to Mother.
     - If you do not have anything to tea.Println on completion, use a .Blink method
 - Remember that this is a prompt; anything not immediately interactive should be output via tea.Print* as history, rather than in the .View() that will be lost on redraw. 
+- Do not include newlines in lipgloss renders. It produces weird results.
 
 # More on Design
 
