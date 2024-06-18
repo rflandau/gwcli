@@ -1,3 +1,8 @@
+// Supporting code for the query actor
+// Defines and supports the two, composed views in interactive mode: editor and modifiers
+// Editor is as it sounds
+// Modifiers provides switches and buttons to tweak how the search will be run/displayed
+
 package query
 
 import (
@@ -217,7 +222,6 @@ func (mv *modifView) view() string {
 	bldr.WriteString(
 		fmt.Sprintf("%c %s\n", pip(mv.selected, outFile), mv.outfileTI.View()),
 	)
-	// TODO grey out append checkbox if output path is empty
 	var checkmark rune = '☐'
 	if mv.appendToFile {
 		checkmark = '☑'
