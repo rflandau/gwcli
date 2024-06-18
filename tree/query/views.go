@@ -112,7 +112,7 @@ func initialModifView(height, width uint) modifView {
 	mv.durationTI = textinput.New()
 	mv.durationTI.Width = int(width)
 	mv.durationTI.Blur()
-	mv.durationTI.Prompt = stylesheet.PromptPrefix
+	mv.durationTI.Prompt = ""
 	mv.durationTI.SetValue(defaultDuration.String())
 	mv.durationTI.Placeholder = "1h00m00s00ms00us00ns"
 	mv.durationTI.Validate = func(s string) error {
@@ -138,7 +138,7 @@ func initialModifView(height, width uint) modifView {
 	mv.outfileTI = textinput.New()
 	mv.outfileTI.Width = int(width)
 	mv.outfileTI.Blur()
-	mv.outfileTI.Prompt = stylesheet.PromptPrefix
+	mv.outfileTI.Prompt = ""
 
 	return mv
 
@@ -206,7 +206,7 @@ func (mv *modifView) view() string {
 	} else {
 		bldr.WriteRune(' ')
 	}
-	bldr.WriteString(mv.durationTI.View() + "\n")
+	bldr.WriteString(" " + mv.durationTI.View() + "\n")
 
 	bldr.WriteString(stylesheet.Header1Style.Render("Output Path:") + "\n")
 	if mv.selected == outFile {
@@ -214,7 +214,7 @@ func (mv *modifView) view() string {
 	} else {
 		bldr.WriteRune(' ')
 	}
-	bldr.WriteString(mv.outfileTI.View() + "\n")
+	bldr.WriteString(" " + mv.outfileTI.View() + "\n")
 
 	return bldr.String()
 }
