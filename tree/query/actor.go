@@ -131,6 +131,7 @@ func (q *query) Update(msg tea.Msg) tea.Cmd {
 			}
 
 			// success
+			clilog.Writer.Infof("Search succeeded. Fetching results...")
 			q.mode = quitting
 			results, err := connection.Client.GetTextResults(*q.curSearch, 0, 500)
 			if err != nil {
@@ -138,6 +139,8 @@ func (q *query) Update(msg tea.Msg) tea.Cmd {
 				q.editor.err = err.Error()
 				return textarea.Blink // we need to send a (any) msg to mother to trigger a redraw
 			}
+
+			clilog.Writer.Infof("%d results obtained", results.EntryCount)
 
 			if q.output != nil {
 				for _, e := range results.Entries {
@@ -147,6 +150,7 @@ func (q *query) Update(msg tea.Msg) tea.Cmd {
 					}
 					q.output.WriteString("\n")
 				}
+				q.output.Sync()
 				q.output.Close()
 				return textarea.Blink // we need to send a (any) msg to mother to trigger a redraw
 			}
@@ -241,6 +245,7 @@ func (q *query) Reset() error {
 	q.modifiers.durationTI.Reset()
 	q.modifiers.outfileTI.Reset()
 	q.modifiers.blur()
+	q.modifiers.appendToFile = false
 
 	// clear query fields
 	q.curSearch = nil
@@ -314,13 +319,22 @@ func (q *query) submitQuery() tea.Cmd {
 		var flags int = os.O_WRONLY | os.O_CREATE
 		if q.modifiers.appendToFile { // check append
 			flags |= os.O_APPEND
+		} else {
+			flags |= os.O_TRUNC
 		}
 
 		q.output, err = os.OpenFile(fn, flags, 0644)
 		if err != nil {
+			clilog.Writer.Errorf("Failed to open file %s (flags %d, mode %d): %v", fn, flags, 0644, err)
 			q.editor.err = err.Error()
 			return nil
 		}
+		if s, err := q.output.Stat(); err != nil {
+			clilog.Writer.Warnf("Failed to stat file %s: %v", q.output.Name(), err)
+		} else {
+			clilog.Writer.Debugf("Opened file %s of size %v", q.output.Name(), s.Size())
+		}
+
 	} else { // do not output to file
 		q.output = nil
 	}
