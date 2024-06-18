@@ -131,7 +131,7 @@ func (q *query) Update(msg tea.Msg) tea.Cmd {
 			}
 
 			// success
-			clilog.Writer.Infof("Search succeeded. Fetching results...")
+			clilog.Writer.Infof("Search succeeded. Fetching results (renderer %v)...", q.curSearch.RenderMod)
 			q.mode = quitting
 			results, err := connection.Client.GetTextResults(*q.curSearch, 0, 500)
 			if err != nil {
@@ -316,25 +316,11 @@ func (q *query) submitQuery() tea.Cmd {
 
 	// prepare file for output and associate it to the query struct
 	if fn := strings.TrimSpace(q.modifiers.outfileTI.Value()); fn != "" {
-		var flags int = os.O_WRONLY | os.O_CREATE
-		if q.modifiers.appendToFile { // check append
-			flags |= os.O_APPEND
-		} else {
-			flags |= os.O_TRUNC
-		}
-
-		q.output, err = os.OpenFile(fn, flags, 0644)
+		q.output, err = openFile(fn, q.modifiers.appendToFile)
 		if err != nil {
-			clilog.Writer.Errorf("Failed to open file %s (flags %d, mode %d): %v", fn, flags, 0644, err)
 			q.editor.err = err.Error()
 			return nil
 		}
-		if s, err := q.output.Stat(); err != nil {
-			clilog.Writer.Warnf("Failed to stat file %s: %v", q.output.Name(), err)
-		} else {
-			clilog.Writer.Debugf("Opened file %s of size %v", q.output.Name(), s.Size())
-		}
-
 	} else { // do not output to file
 		q.output = nil
 	}
