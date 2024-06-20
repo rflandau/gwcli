@@ -4,6 +4,7 @@
 package query
 
 import (
+	"errors"
 	"fmt"
 	"gwcli/action"
 	"gwcli/busywait"
@@ -171,7 +172,13 @@ func run(cmd *cobra.Command, args []string) {
 		defer of.Close()
 		// if we are outputting to a file, use the provided Download functionality
 		// TODO unclear if an empty TR will use the search's timeframe, as desired
-		// TODO switch format on rendermod?
+
+		format, err := RenderToDownload(s.RenderMod)
+		if err != nil {
+			clilog.TeeError(cmd.ErrOrStderr(), err.Error())
+			return
+		}
+		clilog.Writer.Debugf("output file, renderer '%s' -> '%s'", s.RenderMod, format)
 		rc, err := connection.Client.DownloadSearch(s.ID, types.TimeRange{}, "text")
 		if err != nil {
 			clilog.TeeError(cmd.ErrOrStderr(), err.Error())
@@ -289,4 +296,18 @@ func openFile(path string, append bool) (*os.File, error) {
 	}
 
 	return f, nil
+}
+
+// Maps Render module to a string usable with DownloadSearch()
+func RenderToDownload(r string) (string, error) {
+	// TODO this needs to be expanded to associate the remaining types.Download* constants.
+	// JSON and CSV likely must be implemented as user-provided flags unrelated to render module
+	switch r {
+	case types.RenderNameHex, types.RenderNameRaw, types.RenderNameText:
+		return types.DownloadText, nil
+	case types.RenderNamePcap:
+		return types.DownloadPCAP, nil
+	default:
+		return "", errors.New("Unable to retrieve " + r + " results via the cli. Please use the web interface.")
+	}
 }
