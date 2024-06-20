@@ -95,17 +95,7 @@ func Initial() *query {
 	q.help = help.New()
 	q.help.Width = int(q.width)
 
-	// Actions, particularly actions with Help and TextArea/TextInputs hang the first time one is
-	// called every time the program is launched. They eventually redraw, fixing the issue, but
-	// sometimes require a msg (generally in the form of user input) to redraw.
-	// What is weird is that it is *not* that each one hangs, but that the first hangs and then all
-	// actions are fine after that.
-	// This errant view call gets that out of the way in the back so the UX is seamless.
-	// This is likely due to some lazy initialization within Bubble Tea OR (more likely) us not
-	// sending a msg (ex: a blink) back to Mother during handoff. Not clear if this message should
-	// be coming from Mother herself or from the recently in-control child.
-	// TODO figure out why this works and what the proper fix is
-	go func() { q.editor.ta.View() }()
+	BurnFirstView(q.editor.ta)
 
 	return q
 }
@@ -355,3 +345,49 @@ func (q *query) switchFocus() {
 }
 
 //#endregion helper subroutines
+
+func BurnFirstView(ta textarea.Model) {
+
+	/**
+	 * Omitting this superfluous view outputs rgb control characters to the *first* instance of the
+	 * query editor.
+	 */
+	// TODO figure out why this works and what the proper fix is
+	_ = ta.View()
+
+	/**
+	 * A deeper dive:
+	 * Formerly, Actions, particularly actions with TextArea/TextInputs hung the first time one was
+	 * invoked each time the program launched. They eventually redrew, fixing the issue, but it
+	 * could take quite a while.
+	 * What was weird was that it was *not* that each one hung, but that the first hung and then all
+	 * actions thereafter were fine. In other words, it was either related to a costly
+	 * initialization in TA/TIs or not properly triggering redraws (by not sending tea.Cmds were we
+	 * should be).
+	 * The errant view call above was wrapped in a goroutine
+	 * (`go func() { q.editor.ta.View() }()`)
+	 * and it paid the startup cost in a way invisible to the user so the UX was seamless.
+	 * Some optimizations and reworks later, and I figued out that the hang/redraw issue was likely
+	 * due to missing tea.Cmds (the latter of the possibilities above).
+	 *
+	 * However, I also discovered that the go .view instruction was causing garbage (rgb control
+	 * characters) to be output to the terminal if Mother was not invoked to catch the characters.
+	 * This caused *some* non-interactive commands to output garbage to the users terminal or, worst
+	 * case, break older shells (such as `sh`).
+	 *
+	 * The RGB control characters issue still persists and eliminating the above call causes garbage
+	 * to appear in the first, interactive call to query.
+	 * I have looked into the issue and it seems to stem from termenv.
+	 * These characters are requested by termenv on startup to determine the capabilities of the
+	 * terminal, but can be output to the terminal if term latency is too high.
+	 * Supposedly this issue was fixed in termenv in [2021](https://github.com/muesli/termenv/pull/27).
+	 * This means one of two things: the issue is not as resovled as it seems or, more likely, we or
+	 * lipgloss are doing something ill-advised that causes these characters to not be collected by
+	 * termenv properly.
+	 *
+	 * I would love to know what the issue is and hope to dedicate time to delving into termenv and
+	 * lipgloss to investigate, but termenv is a doozy and my time is better spent elsewhere, as
+	 * this band-aid is doing its job for minimal technical debt.
+	 */
+
+}
