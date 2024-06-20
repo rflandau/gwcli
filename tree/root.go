@@ -11,15 +11,12 @@ import (
 	"gwcli/action"
 	"gwcli/clilog"
 	"gwcli/connection"
-	"gwcli/group"
-	"gwcli/stylesheet"
 	"gwcli/tree/kits"
 	"gwcli/tree/query"
 	"gwcli/tree/search"
 	"gwcli/tree/systems"
 	"gwcli/tree/tools"
 	"gwcli/treeutils"
-	"strings"
 	"time"
 
 	"github.com/spf13/cobra"
@@ -172,7 +169,8 @@ func Execute(args []string) int {
 		rootCmd.SetArgs(args)
 	}
 
-	rootCmd.SetUsageFunc(func(c *cobra.Command) error {
+	// TODO this break Usage printing in Mother (via help or F1). Causes severe misalignment.
+	/*rootCmd.SetUsageFunc(func(c *cobra.Command) error {
 		const titleWidth = 9
 
 		var bldr strings.Builder
@@ -232,7 +230,7 @@ func Execute(args []string) int {
 
 		fmt.Println(bldr.String())
 		return nil
-	})
+	}) */
 
 	err := rootCmd.Execute()
 	if err != nil {
