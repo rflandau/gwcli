@@ -69,8 +69,8 @@ func (ev *editorView) update(msg tea.Msg) (cmd tea.Cmd, submit bool) {
 }
 
 func (va *editorView) view() string {
-	// TODO wrap err if > ev width
-	return fmt.Sprintf("%s\n%s\n%s", stylesheet.Header1Style.Render("Query:"), va.ta.View(), va.err)
+	return fmt.Sprintf("%s\n%s\n%s", stylesheet.Header1Style.Render("Query:"), va.ta.View(),
+		stylesheet.ErrStyle.Width(stylesheet.TIWidth).Render(va.err)) // add a width style for wrapping
 }
 
 //#endregion editorView
