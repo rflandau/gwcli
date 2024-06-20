@@ -62,6 +62,8 @@ func initialLocalFlagSet() pflag.FlagSet {
 	fs.StringP("reference", "r", "", "a reference to a query library item to execute instead of a provided query.")
 	fs.StringP("output", "o", "", "file to write results to. Truncates file unless --append is also given.")
 	fs.Bool("append", false, "append to the given output file instead of truncating.")
+	fs.Bool("JSON", false, "output results as JSON. Only effectual with --output. Mutually exclusive with CSV.")
+	fs.Bool("CSV", false, "output results as CSV. Only effectual with --output. Mutually exclusive with JSON.")
 
 	// scheduled searches
 	fs.StringP("name", "n", "", "name for a scheduled search.")
