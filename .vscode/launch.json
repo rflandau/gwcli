@@ -1,7 +1,14 @@
 {
     "version": "0.2.0",
     "configurations": [
-
+    {
+        "name": "Cobra `query -h`",
+        "type": "go",
+        "request": "launch",
+        "mode": "debug",
+        "program": "${workspaceRoot}",
+        "args": ["-u=admin", "-p=changeme", "--insecure", "--no-interactive", "query","-h"]
+    },
     {
         "name": "Cobra `kits list --csv`",
         "type": "go",
