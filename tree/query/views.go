@@ -91,13 +91,17 @@ const defaultModifSelection = duration
 
 // modifView represents the composable view box containing all configurable features of the query
 type modifView struct {
-	width        uint
-	height       uint
-	selected     uint // tracks which modifier is currently active w/in this view
+	width    uint
+	height   uint
+	selected uint // tracks which modifier is currently active w/in this view
+	// knobs available to user
 	durationTI   textinput.Model
 	outfileTI    textinput.Model
 	appendToFile bool
-	keys         []key.Binding
+	json         bool
+	csv          bool
+
+	keys []key.Binding
 }
 
 // generate the second view to be composed with the query editor
