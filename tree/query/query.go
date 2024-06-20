@@ -41,7 +41,7 @@ var localFS pflag.FlagSet
 func GenerateAction() action.Pair {
 	cmd := treeutils.NewActionCommand("query", "submit a query",
 		"Generate and send a query to the remote server. Results can be received via this cli or later on the web GUI.\n"+
-			"All arguments after `query` will be passed to the instance as the string to query.", []string{}, run)
+			"All bare arguments after `query` will be passed to the instance as the query string.", []string{"q", "search"}, run)
 
 	localFS = initialLocalFlagSet()
 
@@ -57,14 +57,14 @@ func GenerateAction() action.Pair {
 func initialLocalFlagSet() pflag.FlagSet {
 	fs := pflag.FlagSet{}
 
-	fs.DurationP("duration", "t", time.Hour*1, "the historical timeframe (now minus duration) the query should pour over.")
+	fs.DurationP("duration", "t", time.Hour*1, "the historical timeframe (now minus duration) the query should pour over.\nEx: the past hour")
 	fs.StringP("reference", "r", "", "a reference to a query library item to execute instead of a provided query.")
 	fs.StringP("output", "o", "", "file to write results to. Truncates file unless --append is also given.")
-	fs.Bool("append", false, "append to the given output file.")
+	fs.Bool("append", false, "append to the given output file instead of truncating.")
 
 	// scheduled searches
-	fs.StringP("name", "n", "", "name for a scheduled search")
-	fs.StringP("description", "d", "", "(flavour) description")
+	fs.StringP("name", "n", "", "name for a scheduled search.")
+	fs.StringP("description", "d", "", "(flavour) description.")
 	fs.StringP("schedule", "s", "", "schedule this search to be run at a later date, over the given duration.")
 
 	return fs
