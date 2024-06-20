@@ -150,7 +150,7 @@ func (m Mother) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.KeyMsg:
 		// NOTE kill keys are handled above
 		if msg.Type == tea.KeyF1 { // help
-			return m, m.f1Help()
+			return m, ContextHelp(&m, strings.Split(strings.TrimSpace(m.ti.Value()), " "))
 		}
 		if msg.Type == tea.KeyUp {
 			m.ti.SetValue(m.history.GetOlderRecord())
@@ -432,30 +432,6 @@ func (m *Mother) promptString() string {
 }
 
 /**
- * f1Help displays context help relevant to the current state of the model.
- * It determines if F1 contextual help should be relevant to the pwd or a
- * command currently on the prompt
- */
-func (m *Mother) f1Help() tea.Cmd {
-	// figure out the current state of the prompt
-	var prompt string = strings.TrimSpace(m.ti.Value())
-	if prompt == "" {
-		// show help for current directory
-		return tea.Sequence(tea.Println(m.promptString()), TeaCmdContextHelp(m.pwd))
-	}
-	// check if prompt has relevant info
-	var children []*cobra.Command = m.pwd.Commands()
-	for _, child := range children {
-		if child.Name() == prompt {
-			return tea.Sequence(tea.Println(m.promptString()), TeaCmdContextHelp(child))
-		}
-	}
-	// no matches
-	clilog.Writer.Debug("no matching child found")
-	return tea.Sequence(tea.Println(m.promptString()), TeaCmdContextHelp(m.pwd))
-}
-
-/**
  * UnsetAction resets the current active command/action, clears actives, and
  * returns control to Mother.
  */
@@ -505,6 +481,10 @@ func walk(dir *cobra.Command, tokens []string, onCompleteCmds []tea.Cmd) walkRes
 	}
 
 	curToken := strings.TrimSpace(tokens[0])
+	// if there is no token, just keep walking
+	if curToken == "" {
+		return walk(dir, tokens[1:], onCompleteCmds)
+	}
 
 	if bif, ok := builtins[curToken]; ok { // check for built-in command
 		return walkResult{
