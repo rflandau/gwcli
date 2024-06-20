@@ -183,10 +183,10 @@ func Execute(args []string) int {
 }
 
 func Usage(c *cobra.Command) error {
-	const titleWidth = 9
 
 	var bldr strings.Builder
-	bldr.WriteString(stylesheet.Header1Style.Width(titleWidth).Render("Usage:") + c.CommandPath() + "-u USER -p PASS")
+	bldr.WriteString(stylesheet.Header1Style.Render("Usage:") +
+		" " + c.CommandPath() + "-u USER -p PASS")
 
 	if c.GroupID == group.NavID { // nav
 		bldr.WriteString(" [subcommand]\n")
@@ -197,15 +197,16 @@ func Usage(c *cobra.Command) error {
 	}
 
 	bldr.WriteString(stylesheet.Header1Style.Render("Global Flags:") + "\n")
-	bldr.WriteString(c.Root().PersistentFlags().FlagUsages() + "\n")
+	bldr.WriteString(c.Root().PersistentFlags().FlagUsages())
 
+	// print aliases
 	if len(c.Aliases) != 0 {
 		var s strings.Builder
-		s.WriteString(stylesheet.Header1Style.Width(titleWidth).Render("Aliases:") + " ")
+		s.WriteString(stylesheet.Header1Style.Render("Aliases:") + " ")
 		for _, a := range c.Aliases {
-			s.WriteString(a + " ")
+			s.WriteString(a + ", ")
 		}
-		bldr.WriteString(strings.TrimSpace(s.String()) + "\n")
+		bldr.WriteString(strings.TrimRight(s.String(), ", ") + "\n") // chomp
 	}
 
 	// split children by group
@@ -237,7 +238,7 @@ func Usage(c *cobra.Command) error {
 		for _, a := range actions {
 			s.WriteString("\n  " + stylesheet.ActionStyle.Render(a.Name()))
 		}
-		bldr.WriteString(s.String() + "\n")
+		bldr.WriteString(s.String())
 	}
 
 	fmt.Fprintln(c.OutOrStdout(), bldr.String())
