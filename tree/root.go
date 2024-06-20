@@ -98,19 +98,18 @@ func EnforceLogin(cmd *cobra.Command, args []string) error {
 /** Generate Flags populates all root-relevant flags (ergo global and root-local flags) */
 func GenerateFlags(root *cobra.Command) {
 	// global flags
-	root.PersistentFlags().Bool("no-interactive", false, "Disallows gwcli from entering interactive mode and prints context help instead.\nRecommended for use in scripts to avoid hanging on a malformed command")
-	root.PersistentFlags().StringP("username", "u", "", "login credential")
-	root.PersistentFlags().StringP("password", "p", "", "login credential")
-	root.MarkFlagsRequiredTogether("username", "password")                       // tie username+password together
-	root.PersistentFlags().Bool("no-color", false, "Disables colourized output") // TODO via lipgloss.NoColor
-	root.PersistentFlags().String("server", "localhost:80", "<host>:<port>\n"+
-		"Default: 'localhost:80'")
-	root.PersistentFlags().StringP("log", "l", "gwcli.log", "Log location for developer logs.\n"+
-		"Default: './gwcli.log'")
-	root.PersistentFlags().String("loglevel", "DEBUG", "Log level for developer logs (-l).\n"+
-		"Possible values: 'OFF', 'DEBUG', 'INFO', 'WARN', 'ERROR', 'CRITICAL', 'FATAL'\n"+
-		"Default: './gwcli.log'")
-	root.PersistentFlags().Bool("insecure", false, "Do not use HTTPS and do not enforce certs")
+	root.PersistentFlags().Bool("no-interactive", false,
+		"disallows gwcli from entering interactive mode and prints context help instead.\n"+
+			"Recommended for use in scripts to avoid hanging on a malformed command.")
+	root.PersistentFlags().StringP("username", "u", "", "login credential.")
+	root.PersistentFlags().StringP("password", "p", "", "login credential.")
+	root.MarkFlagsRequiredTogether("username", "password")
+	root.PersistentFlags().Bool("no-color", false, "disables colourized output.") // TODO via lipgloss.NoColor
+	root.PersistentFlags().String("server", "localhost:80", "<host>:<port> of instance to connect to.\n")
+	root.PersistentFlags().StringP("log", "l", "./gwcli.log", "log location for developer logs.\n")
+	root.PersistentFlags().String("loglevel", "DEBUG", "log level for developer logs (-l).\n"+
+		"Possible values: 'OFF', 'DEBUG', 'INFO', 'WARN', 'ERROR', 'CRITICAL', 'FATAL'.\n")
+	root.PersistentFlags().Bool("insecure", false, "do not use HTTPS and do not enforce certs.")
 	// TODO JSON global flag output
 }
 
@@ -135,11 +134,11 @@ const ( // mousetrap
  * (via cobra.Command.Execute()).
  */
 func Execute(args []string) int {
-	rootCmd := treeutils.GenerateNav(use, short, long, []string{}, 
+	rootCmd := treeutils.GenerateNav(use, short, long, []string{},
 		[]*cobra.Command{
-			systems.NewSystemsNav(), 
-			search.NewSearchCmd(), 
-			tools.GenerateTree(), 
+			systems.NewSystemsNav(),
+			search.NewSearchCmd(),
+			tools.GenerateTree(),
 			kits.NewKitsNav(),
 		},
 		[]action.Pair{
