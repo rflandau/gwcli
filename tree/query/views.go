@@ -77,8 +77,6 @@ func (va *editorView) view() string {
 
 //#region modifView
 
-const selectionRune = '»'
-
 type modifSelection = uint
 
 const (
@@ -250,7 +248,7 @@ func (mv *modifView) view() string {
 // otherwise, returns a space
 func pip(selected, field uint) rune {
 	if selected == field {
-		return selectionRune
+		return stylesheet.SelectionPrefix
 	}
 	return ' '
 }
