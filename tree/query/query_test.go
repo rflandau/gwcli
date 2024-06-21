@@ -44,7 +44,7 @@ func TestGenerateQueryString(t *testing.T) {
 			wantQuery: "tag=gravwell", wantErr: false,
 		},
 		{
-			name:      "basic multiwork argument query",
+			name:      "basic multiword argument query",
 			args:      args{[]string{}, []string{"tag=dpkg words status"}},
 			wantQuery: "tag=dpkg words status", wantErr: false,
 		},
@@ -85,7 +85,6 @@ func generateCobraCommand(args []string) *cobra.Command {
 
 	fs := initialLocalFlagSet()
 	cmd.Flags().AddFlagSet(&fs)
-	cmd.MarkFlagsRequiredTogether("name", "description", "schedule")
 
 	// this cmd isn't being executed, so we have to call parse manually
 
