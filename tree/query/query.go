@@ -174,14 +174,23 @@ func run(cmd *cobra.Command, args []string) {
 		defer of.Close()
 		// if we are outputting to a file, use the provided Download functionality
 		// TODO unclear if an empty TR will use the search's timeframe, as desired
+		var json, csv bool
+		if json, err = cmd.Flags().GetBool("json"); err != nil {
+			clilog.TeeError(cmd.ErrOrStderr(), err.Error())
+			return
+		}
+		if csv, err = cmd.Flags().GetBool("csv"); err != nil {
+			clilog.TeeError(cmd.ErrOrStderr(), err.Error())
+			return
+		}
 
-		format, err := RenderToDownload(s.RenderMod)
+		format, err := RenderToDownload(s.RenderMod, csv, json)
 		if err != nil {
 			clilog.TeeError(cmd.ErrOrStderr(), err.Error())
 			return
 		}
 		clilog.Writer.Debugf("output file, renderer '%s' -> '%s'", s.RenderMod, format)
-		rc, err := connection.Client.DownloadSearch(s.ID, types.TimeRange{}, "text")
+		rc, err := connection.Client.DownloadSearch(s.ID, types.TimeRange{}, "csv")
 		if err != nil {
 			clilog.TeeError(cmd.ErrOrStderr(), err.Error())
 			return
@@ -193,6 +202,7 @@ func run(cmd *cobra.Command, args []string) {
 			return
 		}
 		clilog.Writer.Infof("Streamed %d bytes into %s", b, of.Name())
+		return
 	} else {
 		// batch results until we have the last of them
 		var (
@@ -300,10 +310,16 @@ func openFile(path string, append bool) (*os.File, error) {
 	return f, nil
 }
 
-// Maps Render module to a string usable with DownloadSearch()
-func RenderToDownload(r string) (string, error) {
+// Maps Render module and csv/json flag state to a string usable with DownloadSearch().
+// JSON, then CSV, take precidence over a direct render -> format map
+func RenderToDownload(r string, csv, json bool) (string, error) {
 	// TODO this needs to be expanded to associate the remaining types.Download* constants.
-	// JSON and CSV likely must be implemented as user-provided flags unrelated to render module
+	if json {
+		return types.DownloadJSON, nil
+	}
+	if csv {
+		return types.DownloadCSV, nil
+	}
 	switch r {
 	case types.RenderNameHex, types.RenderNameRaw, types.RenderNameText:
 		return types.DownloadText, nil
