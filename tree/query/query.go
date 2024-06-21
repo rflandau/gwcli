@@ -11,6 +11,7 @@ import (
 	"gwcli/clilog"
 	"gwcli/connection"
 	"gwcli/treeutils"
+	"io"
 	"os"
 	"strings"
 	"time"
@@ -50,7 +51,7 @@ func GenerateAction() action.Pair {
 
 	cmd.Flags().AddFlagSet(&localFS)
 
-	cmd.MarkFlagsRequiredTogether("name", "description", "schedule")
+	//cmd.MarkFlagsRequiredTogether("name", "description", "schedule")
 
 	return treeutils.GenerateAction(cmd, Query)
 }
@@ -66,9 +67,9 @@ func initialLocalFlagSet() pflag.FlagSet {
 	fs.Bool("csv", false, "output results as CSV. Only effectual with --output. Mutually exclusive with JSON.")
 
 	// scheduled searches
-	fs.StringP("name", "n", "", "name for a scheduled search.")
+	/*fs.StringP("name", "n", "", "name for a scheduled search.")
 	fs.StringP("description", "d", "", "(flavour) description.")
-	fs.StringP("schedule", "s", "", "schedule this search to be run at a later date, over the given duration.")
+	fs.StringP("schedule", "s", "", "schedule this search to be run at a later date, over the given duration.")*/
 
 	return fs
 }
@@ -85,26 +86,26 @@ func run(cmd *cobra.Command, args []string) {
 		qry      string
 		s        grav.Search // ongoing search
 		script   bool        // script mode
+		json     bool
+		csv      bool
 	)
 
-	// fetch required flags
+	// fetch flags
 	duration, err = cmd.Flags().GetDuration("duration")
 	if err != nil {
 		clilog.TeeError(cmd.ErrOrStderr(), err.Error())
 		return
 	}
 
-	if schedule, err := cmd.Flags().GetString("schedule"); err != nil {
+	if script, err = cmd.Flags().GetBool("no-interactive"); err != nil {
 		clilog.TeeError(cmd.ErrOrStderr(), err.Error())
 		return
-	} else if schedule != "" {
-		var name, description, schedule string
-		clilog.Writer.Infof("Scheduling search %v, %v, %v... (NYI)",
-			name, description, schedule)
-		// TODO implement scheduled searches
+	}
+	if json, err = cmd.Flags().GetBool("json"); err != nil {
+		clilog.TeeError(cmd.ErrOrStderr(), err.Error())
 		return
 	}
-	if script, err = cmd.Flags().GetBool("no-interactive"); err != nil {
+	if csv, err = cmd.Flags().GetBool("csv"); err != nil {
 		clilog.TeeError(cmd.ErrOrStderr(), err.Error())
 		return
 	}
@@ -116,6 +117,24 @@ func run(cmd *cobra.Command, args []string) {
 	} else if qry == "" { // superfluous query, don't bother
 		clilog.TeeError(cmd.ErrOrStderr(), ErrSuperfluousQuery)
 		return
+	}
+
+	// prepare output file
+	var of *os.File
+	if outfile, err := cmd.Flags().GetString("output"); err != nil {
+		clilog.TeeError(cmd.ErrOrStderr(), err.Error())
+		return
+	} else if outfile = strings.TrimSpace(outfile); outfile != "" {
+		append, err := cmd.Flags().GetBool("append")
+		if err != nil {
+			clilog.TeeError(cmd.ErrOrStderr(), err.Error())
+			return
+		}
+		if of, err = openFile(outfile, append); err != nil {
+			clilog.TeeError(cmd.ErrOrStderr(), err.Error())
+			return
+		}
+		defer of.Close()
 	}
 
 	// submit the query
@@ -148,88 +167,14 @@ func run(cmd *cobra.Command, args []string) {
 		}
 	}
 
-	clilog.Writer.Infof("Search succeeded. Fetching results (renderer %v)...", s.RenderMod)
-
-	// if we are outputting to a terminal AND not in script mode, spin up the displayer module
-	// TODO
-
-	// prepare output file
-	var of *os.File
-	if outfile, err := cmd.Flags().GetString("output"); err != nil {
+	var results []types.SearchEntry
+	if results, err = outputSearchResults(of, s, json, csv); err != nil {
 		clilog.TeeError(cmd.ErrOrStderr(), err.Error())
 		return
-	} else if outfile = strings.TrimSpace(outfile); outfile != "" {
-		append, err := cmd.Flags().GetBool("append")
-		if err != nil {
-			clilog.TeeError(cmd.ErrOrStderr(), err.Error())
-			return
-		}
-		if of, err = openFile(outfile, append); err != nil {
-			clilog.TeeError(cmd.ErrOrStderr(), err.Error())
-			return
-		}
 	}
-	// only write to output file if it was given/not null
-	if of != nil {
-		defer of.Close()
-		// if we are outputting to a file, use the provided Download functionality
-		// TODO unclear if an empty TR will use the search's timeframe, as desired
-		var json, csv bool
-		if json, err = cmd.Flags().GetBool("json"); err != nil {
-			clilog.TeeError(cmd.ErrOrStderr(), err.Error())
-			return
-		}
-		if csv, err = cmd.Flags().GetBool("csv"); err != nil {
-			clilog.TeeError(cmd.ErrOrStderr(), err.Error())
-			return
-		}
-
-		format, err := RenderToDownload(s.RenderMod, csv, json)
-		if err != nil {
-			clilog.TeeError(cmd.ErrOrStderr(), err.Error())
-			return
-		}
-		clilog.Writer.Debugf("output file, renderer '%s' -> '%s'", s.RenderMod, format)
-		rc, err := connection.Client.DownloadSearch(s.ID, types.TimeRange{}, format)
-		if err != nil {
-			clilog.TeeError(cmd.ErrOrStderr(), err.Error())
-			return
-		}
-
-		b, err := of.ReadFrom(rc)
-		if err != nil {
-			clilog.TeeError(cmd.ErrOrStderr(), err.Error())
-			return
-		}
-		clilog.Writer.Infof("Streamed %d bytes into %s", b, of.Name())
-		return
-	} else {
-		// batch results until we have the last of them
-		var (
-			results []types.SearchEntry = make([]types.SearchEntry, 0, pageSize)
-			low     uint64              = 0
-			high    uint64              = 0
-		)
-		for {
-			r, err := connection.Client.GetTextResults(s, low, high)
-			if err != nil {
-				clilog.TeeError(cmd.ErrOrStderr(), err.Error())
-				return
-			}
-			results = append(results, r.Entries...)
-			if !r.AdditionalEntries { // all records obtained
-				break
-			}
-			low = high + 1 // ! this assumes Get*Results is inclusive
-			high = high + pageSize + 1
-
-		}
-
-		clilog.Writer.Infof("%d results obtained", len(results))
-
-		for _, r := range results {
-			fmt.Printf("%s\n", r.Data)
-		}
+	// if results were not sent to file, they were returned and we need to print to terminal
+	for _, r := range results {
+		fmt.Printf("%s\n", r.Data)
 	}
 
 }
@@ -328,4 +273,57 @@ func RenderToDownload(r string, csv, json bool) (string, error) {
 	default:
 		return "", errors.New("Unable to retrieve " + r + " results via the cli. Please use the web interface.")
 	}
+}
+
+// Using a search and its modifiers, outputs the results to the given file handle. If a handle is
+// given, the results are returned as an array (nil otherwise).
+func outputSearchResults(file *os.File, s grav.Search, json, csv bool) ([]types.SearchEntry, error) {
+	var err error
+	clilog.Writer.Infof("Search succeeded. Fetching results (renderer %v)...", s.RenderMod)
+	// only write to output file if it was given/not null
+	if file != nil {
+		// if we are outputting to a file, use the provided Download functionality
+		// TODO unclear if an empty TR will use the search's timeframe, as desired
+		var (
+			format string
+			rc     io.ReadCloser
+		)
+		if format, err = RenderToDownload(s.RenderMod, csv, json); err != nil {
+			return nil, err
+		}
+		clilog.Writer.Debugf("output file, renderer '%s' -> '%s'", s.RenderMod, format)
+		if rc, err = connection.Client.DownloadSearch(s.ID, types.TimeRange{}, format); err != nil {
+			return nil, err
+		}
+
+		if b, err := file.ReadFrom(rc); err != nil {
+			return nil, err
+		} else {
+			clilog.Writer.Infof("Streamed %d bytes into %s", b, file.Name())
+		}
+		return nil, nil
+	}
+	// return results for output to terminal
+	// batch results until we have the last of them
+	var (
+		results []types.SearchEntry = make([]types.SearchEntry, 0, pageSize)
+		low     uint64              = 0
+		high    uint64              = 0
+	)
+	for { // accumulate the results
+		r, err := connection.Client.GetTextResults(s, low, high)
+		if err != nil {
+			return nil, err
+		}
+		results = append(results, r.Entries...)
+		if !r.AdditionalEntries { // all records obtained
+			break
+		}
+		low = high + 1 // ! this assumes Get*Results is inclusive
+		high = high + pageSize + 1
+	}
+
+	clilog.Writer.Infof("%d results obtained", len(results))
+
+	return results, nil
 }

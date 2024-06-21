@@ -18,9 +18,11 @@ import (
 	"github.com/charmbracelet/bubbles/key"
 	"github.com/charmbracelet/bubbles/spinner"
 	"github.com/charmbracelet/bubbles/textarea"
+	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 	grav "github.com/gravwell/gravwell/v3/client"
+	"github.com/gravwell/gravwell/v3/client/types"
 	"github.com/spf13/pflag"
 )
 
@@ -120,37 +122,28 @@ func (q *query) Update(msg tea.Msg) tea.Cmd {
 				return cmd
 			}
 
-			// success
-			clilog.Writer.Infof("Search succeeded. Fetching results (renderer %v)...", q.curSearch.RenderMod)
+			// succcess
 			q.mode = quitting
-			results, err := connection.Client.GetTextResults(*q.curSearch, 0, 500)
-			if err != nil {
-				q.mode = prompting
-				q.editor.err = err.Error()
-				return textarea.Blink // we need to send a (any) msg to mother to trigger a redraw
-			}
-
-			clilog.Writer.Infof("%d results obtained", results.EntryCount)
-
 			if q.output != nil {
-				for _, e := range results.Entries {
-					if _, err := q.output.Write(e.Data); err != nil {
-						q.output.Close()
-						return colorizer.ErrPrintf("Failed to write to %s: %v", q.output.Name(), err)
-					}
-					q.output.WriteString("\n")
-				}
-				q.output.Sync()
-				q.output.Close()
-				return textarea.Blink // we need to send a (any) msg to mother to trigger a redraw
+				defer q.output.Close()
 			}
 
-			// print to screen
-			var cmds []tea.Cmd = make([]tea.Cmd, results.EntryCount)
-
-			for i, e := range results.Entries {
-				cmds[i] = tea.Printf("%s\n", e.Data)
+			var results []types.SearchEntry
+			if results, err := outputSearchResults(q.output, *q.curSearch,
+				q.modifiers.json, q.modifiers.csv); err != nil {
+				return colorizer.ErrPrintf("Failed to write to %s: %v", q.output.Name(), err)
+			} else if results == nil {
+				return textinput.Blink
 			}
+
+			// output results as tea.Prints
+			var cmds []tea.Cmd = make([]tea.Cmd, len(results))
+
+			for i, r := range results {
+				cmds[i] = tea.Printf("%s\n", r.Data)
+			}
+
+			cmds = append(cmds, textinput.Blink)
 
 			return tea.Sequence(cmds...)
 		}
