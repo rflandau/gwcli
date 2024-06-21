@@ -128,8 +128,11 @@ func (q *query) Update(msg tea.Msg) tea.Cmd {
 				defer q.output.Close()
 			}
 
-			var results []types.SearchEntry
-			if results, err := outputSearchResults(q.output, *q.curSearch,
+			var (
+				results []types.SearchEntry
+				err     error
+			)
+			if results, err = outputSearchResults(q.output, *q.curSearch,
 				q.modifiers.json, q.modifiers.csv); err != nil {
 				return colorizer.ErrPrintf("Failed to write to %s: %v", q.output.Name(), err)
 			} else if results == nil {
