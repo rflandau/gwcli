@@ -1,23 +1,26 @@
 // Assumes a gravwell instance is running at `server` endpoint with credentials `user`, `pass`.
-// UUIDs are not seeded, so make sure the uuid1str const actually exists on the gravwell server.
-// Unsetting the constant skips tests taht require it
 package query
 
 import (
+	"gwcli/clilog"
 	"gwcli/connection"
 	"testing"
+	"time"
 
 	"github.com/spf13/cobra"
 )
 
 const (
-	server   = "localhost:80"
-	user     = "admin"
-	pass     = "changeme"
-	uuid1str = "" // ex: 52985695-ae81-4e82-ba1d-bce54f96def7
+	server = "localhost:80"
+	user   = "admin"
+	pass   = "changeme"
 )
 
+// UUIDs are not seeded, so make sure the uuid1str const actually exists on the gravwell server.
+// Unsetting the constant skips tests that require it
 func TestGenerateQueryString(t *testing.T) {
+	const uuid1str = "" // ex: 52985695-ae81-4e82-ba1d-bce54f96def7
+
 	if err := connection.Initialize(server, false, true); err != nil {
 		panic(err)
 	}
@@ -173,3 +176,65 @@ func TestOpenOutFile(t *testing.T) {
 
 }
 */
+
+func Test_tryQuery(t *testing.T) {
+	// establish connection
+	if err := connection.Initialize(server, false, true); err != nil {
+		panic(err)
+	}
+	if err := connection.Login(user, pass); err != nil {
+		panic(err)
+	}
+	// establish cli writer
+	clilog.Init("gwcli.Test_tryQuery.log", "DEBUG")
+
+	type args struct {
+		qry      string
+		duration time.Duration
+	}
+	tests := []struct {
+		name    string
+		args    args
+		wantErr bool
+	}{
+		{
+			name:    "invalid query",
+			args:    args{qry: "tags=gravwelll", duration: -2 * time.Hour},
+			wantErr: true,
+		},
+		{
+			name:    "whitespace query",
+			args:    args{qry: " ", duration: -2 * time.Hour},
+			wantErr: true,
+		},
+		{
+			name:    "positive duration",
+			args:    args{qry: " ", duration: 2 * time.Hour},
+			wantErr: true,
+		},
+		{
+			name:    "valid",
+			args:    args{qry: "tag=gravwell", duration: -30 * time.Minute},
+			wantErr: false,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := tryQuery(tt.args.qry, tt.args.duration)
+			if err != nil {
+				if tt.wantErr {
+					return
+				}
+				t.Errorf("tryQuery() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+
+			// unable to really compare search structs returned,
+			// just check they were created as expected
+			if got.ID == "" || got.SearchString != tt.args.qry {
+				t.Errorf("tryQuery() invalid search struct: got struct %v", got)
+				return
+			}
+		})
+	}
+}
