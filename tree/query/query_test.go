@@ -4,6 +4,8 @@ package query
 import (
 	"gwcli/clilog"
 	"gwcli/connection"
+	"os"
+	"strings"
 	"testing"
 	"time"
 
@@ -83,19 +85,6 @@ func TestGenerateQueryString(t *testing.T) {
 	}
 }
 
-func generateCobraCommand(args []string) *cobra.Command {
-	cmd := cobra.Command{Use: "test"}
-
-	fs := initialLocalFlagSet()
-	cmd.Flags().AddFlagSet(&fs)
-
-	// this cmd isn't being executed, so we have to call parse manually
-
-	cmd.ParseFlags(args)
-
-	return &cmd
-}
-
 func Test_tryQuery(t *testing.T) {
 	// establish connection
 	if err := connection.Initialize(server, false, true); err != nil {
@@ -157,3 +146,81 @@ func Test_tryQuery(t *testing.T) {
 		})
 	}
 }
+
+// Simple tests to check for basic functionality without deep checking the results.
+// Primarily checking that data was successfully put to a file or the terminal.
+func Test_run(t *testing.T) {
+	// establish connection
+	if err := connection.Initialize(server, false, true); err != nil {
+		panic(err)
+	}
+	if err := connection.Login(user, pass); err != nil {
+		panic(err)
+	}
+	logFn := "gwcli.Test_run.log"
+	// establish cli writer
+	clilog.Init(logFn, "DEBUG")
+
+	resultstxtFN := "Test_run.results.txt"
+	t.Run("output to file '"+resultstxtFN+"'", func(t *testing.T) {
+		flagArgs := strings.Split("-o "+resultstxtFN+" --no-interactive", " ")
+		args := strings.Split("tag=gravwell", " ")
+
+		// setup the command instance
+		cmd := cobra.Command{Use: "test"}
+
+		fs := initialLocalFlagSet()
+		cmd.Flags().AddFlagSet(&fs)
+		// mock the root persistent flags that should have been passed down
+		cmd.Flags().Bool("no-interactive", false,
+			"disallows gwcli from entering interactive mode and prints context help instead.\n"+
+				"Recommended for use in scripts to avoid hanging on a malformed command.")
+		cmd.Flags().StringP("username", "u", "", "login credential.")
+		cmd.Flags().StringP("password", "p", "", "login credential.")
+		cmd.Flags().Bool("no-color", false, "disables colourized output.") // TODO via lipgloss.NoColor
+		cmd.Flags().String("server", "localhost:80", "<host>:<port> of instance to connect to.\n")
+		cmd.Flags().StringP("log", "l", "./gwcli.log", "log location for developer logs.\n")
+		cmd.Flags().String("loglevel", "DEBUG", "log level for developer logs (-l).\n"+
+			"Possible values: 'OFF', 'DEBUG', 'INFO', 'WARN', 'ERROR', 'CRITICAL', 'FATAL'.\n")
+		cmd.Flags().Bool("insecure", false, "do not use HTTPS and do not enforce certs.")
+		cmd.ParseFlags(flagArgs)
+
+		// run
+		run(&cmd, args)
+
+		// check that the expected file exists and has data
+		fileInfo, err := os.Stat(resultstxtFN)
+		if err != nil {
+			t.Fatalf("Failed to stat file %s: %v", resultstxtFN, err)
+		}
+		if fileInfo.Size() == 0 {
+			t.Errorf("File has no contents")
+		}
+	})
+
+	// close the connection
+	connection.End()
+
+	// clean up log
+	if err := os.Remove(logFn); err != nil {
+		t.Errorf("Failed to remove log file %s: %v", logFn, err)
+	}
+
+}
+
+//#region helpers
+
+func generateCobraCommand(args []string) *cobra.Command {
+	cmd := cobra.Command{Use: "test"}
+
+	fs := initialLocalFlagSet()
+	cmd.Flags().AddFlagSet(&fs)
+
+	// this cmd isn't being executed, so we have to call parse manually
+
+	cmd.ParseFlags(args)
+
+	return &cmd
+}
+
+//#endregion
