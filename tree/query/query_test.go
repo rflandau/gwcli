@@ -161,11 +161,7 @@ func Test_run(t *testing.T) {
 	// establish cli writer
 	clilog.Init(logFn, "DEBUG")
 
-	resultstxtFN := "Test_run.results.txt"
-	t.Run("output to file '"+resultstxtFN+"'", func(t *testing.T) {
-		flagArgs := strings.Split("-o "+resultstxtFN+" --no-interactive", " ")
-		args := strings.Split("tag=gravwell", " ")
-
+	prepCmd := func(flagArgs []string) *cobra.Command {
 		// setup the command instance
 		cmd := cobra.Command{Use: "test"}
 
@@ -184,18 +180,49 @@ func Test_run(t *testing.T) {
 			"Possible values: 'OFF', 'DEBUG', 'INFO', 'WARN', 'ERROR', 'CRITICAL', 'FATAL'.\n")
 		cmd.Flags().Bool("insecure", false, "do not use HTTPS and do not enforce certs.")
 		cmd.ParseFlags(flagArgs)
+		return &cmd
+	}
+
+	t1 := "Test_run.output-to-file.results.txt"
+	t.Run("output to file '"+t1+"'", func(t *testing.T) {
+		flagArgs := strings.Split("-o "+t1+" --no-interactive", " ")
+		args := strings.Split("tag=gravwell", " ")
+
+		cmd := prepCmd(flagArgs)
 
 		// run
-		run(&cmd, args)
+		run(cmd, args)
 
 		// check that the expected file exists and has data
-		fileInfo, err := os.Stat(resultstxtFN)
+		fileInfo, err := os.Stat(t1)
 		if err != nil {
-			t.Fatalf("Failed to stat file %s: %v", resultstxtFN, err)
+			t.Fatalf("Failed to stat file %s: %v", t1, err)
 		}
 		if fileInfo.Size() == 0 {
 			t.Errorf("File has no contents")
 		}
+		os.Remove(t1)
+	})
+
+	t2 := "Test_run.output-to-file.results.json"
+	t.Run("output to file '"+t2+"'", func(t *testing.T) {
+		flagArgs := strings.Split("-o "+t2+" --no-interactive --json", " ")
+		args := strings.Split("tag=gravwell", " ")
+
+		cmd := prepCmd(flagArgs)
+
+		// run
+		run(cmd, args)
+
+		// check that the expected file exists and has data
+		fileInfo, err := os.Stat(t2)
+		if err != nil {
+			t.Fatalf("Failed to stat file %s: %v", t2, err)
+		}
+		if fileInfo.Size() == 0 {
+			t.Errorf("File has no contents")
+		}
+		os.Remove(t2)
 	})
 
 	// close the connection
