@@ -62,8 +62,8 @@ func initialLocalFlagSet() pflag.FlagSet {
 	fs.StringP("reference", "r", "", "a reference to a query library item to execute instead of a provided query.")
 	fs.StringP("output", "o", "", "file to write results to. Truncates file unless --append is also given.")
 	fs.Bool("append", false, "append to the given output file instead of truncating.")
-	fs.Bool("JSON", false, "output results as JSON. Only effectual with --output. Mutually exclusive with CSV.")
-	fs.Bool("CSV", false, "output results as CSV. Only effectual with --output. Mutually exclusive with JSON.")
+	fs.Bool("json", false, "output results as JSON. Only effectual with --output. Mutually exclusive with CSV.")
+	fs.Bool("csv", false, "output results as CSV. Only effectual with --output. Mutually exclusive with JSON.")
 
 	// scheduled searches
 	fs.StringP("name", "n", "", "name for a scheduled search.")
@@ -190,7 +190,7 @@ func run(cmd *cobra.Command, args []string) {
 			return
 		}
 		clilog.Writer.Debugf("output file, renderer '%s' -> '%s'", s.RenderMod, format)
-		rc, err := connection.Client.DownloadSearch(s.ID, types.TimeRange{}, "csv")
+		rc, err := connection.Client.DownloadSearch(s.ID, types.TimeRange{}, format)
 		if err != nil {
 			clilog.TeeError(cmd.ErrOrStderr(), err.Error())
 			return
