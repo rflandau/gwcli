@@ -10,6 +10,7 @@ import (
 	"gwcli/busywait"
 	"gwcli/clilog"
 	"gwcli/connection"
+	"gwcli/datascope"
 	"gwcli/treeutils"
 	"io"
 	"os"
@@ -173,8 +174,24 @@ func run(cmd *cobra.Command, args []string) {
 		return
 	}
 	// if results were not sent to file, they were returned and we need to print to terminal
-	for _, r := range results {
-		fmt.Printf("%s\n", r.Data)
+	if script { // do not allow interactivity
+		for _, r := range results {
+			fmt.Printf("%s\n", r.Data)
+		}
+	} else { // spin up a scrolling pager to display
+		// convert data to string form for scope
+		// TODO we have a lot of loops of similar data; can we consolidate?
+		var strs []string = make([]string, len(results))
+		for i, r := range results {
+			strs[i] = string(r.Data)
+		}
+
+		// TODO provide redundancies to Mother's kill keys as they will not be accessible from here
+		scrlPgrP := datascope.CobraNew(strs)
+		if _, err := scrlPgrP.Run(); err != nil {
+			clilog.TeeError(cmd.ErrOrStderr(), err.Error())
+			return
+		}
 	}
 
 }
