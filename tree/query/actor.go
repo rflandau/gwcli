@@ -311,7 +311,7 @@ func (q *query) submitQuery() tea.Cmd {
 		q.output = nil
 	}
 
-	s, err := tryQuery(qry, duration)
+	s, err := tryQuery(qry, -duration)
 	if err != nil {
 		q.editor.err = err.Error()
 		return nil

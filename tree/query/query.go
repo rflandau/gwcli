@@ -138,7 +138,7 @@ func run(cmd *cobra.Command, args []string) {
 	}
 
 	// submit the query
-	s, err = tryQuery(qry, duration)
+	s, err = tryQuery(qry, -duration)
 	if err != nil {
 		clilog.TeeError(cmd.ErrOrStderr(), err.Error())
 		return
@@ -205,9 +205,14 @@ func FetchQueryString(fs *pflag.FlagSet, args []string) (query string, err error
 	return strings.TrimSpace(strings.Join(args, " ")), nil
 }
 
-// Validates and (if valid) submits the given query to the connected server instance
+// Validates and (if valid) submits the given query to the connected server instance.
+// Duration must be negative or zero. A positive duration will result in an error.
 func tryQuery(qry string, duration time.Duration) (grav.Search, error) {
 	var err error
+	if duration > 0 {
+		return grav.Search{}, fmt.Errorf("duration must be negative or zero (given %v)", duration)
+	}
+
 	// validate search query
 	if err = connection.Client.ParseSearch(qry); err != nil {
 		return grav.Search{}, fmt.Errorf("'%s' is not a valid query: %s", qry, err.Error())
@@ -215,7 +220,7 @@ func tryQuery(qry string, duration time.Duration) (grav.Search, error) {
 
 	end := time.Now()
 	sreq := types.StartSearchRequest{
-		SearchStart:  end.Add(-duration).Format(timeFormat),
+		SearchStart:  end.Add(duration).Format(timeFormat),
 		SearchEnd:    end.Format(timeFormat),
 		Background:   false,
 		SearchString: qry, // pull query from the commandline
