@@ -17,6 +17,7 @@ import (
 	"github.com/charmbracelet/bubbles/textarea"
 	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/charmbracelet/lipgloss"
 )
 
 //#region editorView
@@ -84,6 +85,8 @@ const (
 	duration
 	outFile
 	appendToFile
+	json
+	csv
 	highBound
 )
 
@@ -178,9 +181,21 @@ func (mv *modifView) update(msg tea.Msg) []tea.Cmd {
 			}
 			mv.focusSelected()
 		case tea.KeySpace, tea.KeyEnter:
-			if mv.selected == appendToFile {
+			switch mv.selected {
+			case appendToFile:
 				mv.appendToFile = !mv.appendToFile
+			case json:
+				mv.json = !mv.json
+				if mv.json {
+					mv.csv = false
+				}
+			case csv:
+				mv.csv = !mv.csv
+				if mv.csv {
+					mv.json = false
+				}
 			}
+			return nil
 		}
 	}
 	var cmds []tea.Cmd = []tea.Cmd{}
@@ -206,7 +221,7 @@ func (mv *modifView) focusSelected() {
 	case outFile:
 		mv.durationTI.Blur()
 		mv.outfileTI.Focus()
-	case appendToFile:
+	case appendToFile, json, csv:
 		mv.durationTI.Blur()
 		mv.outfileTI.Blur()
 	default:
@@ -227,25 +242,15 @@ func (mv *modifView) view() string {
 	bldr.WriteString(
 		fmt.Sprintf("%c %s\n", pip(mv.selected, outFile), mv.outfileTI.View()),
 	)
-	var checkmark rune = '☐'
-	if mv.appendToFile {
-		checkmark = '☑'
-	}
-	// if the outfile field is empty, render append in grey
-	if strings.TrimSpace(mv.outfileTI.Value()) == "" {
-		bldr.WriteString(
-			fmt.Sprintf("%c %s\n",
-				pip(mv.selected, appendToFile),
-				stylesheet.GreyedOutStyle.Render(string(checkmark)+" "+"Append?")),
-		)
-	} else {
-		bldr.WriteString(
-			fmt.Sprintf("%c %c %s\n",
-				pip(mv.selected, appendToFile),
-				checkmark, stylesheet.Header1Style.Render("Append?")),
-		)
-	}
 
+	// view boolean switches
+	// currently, all three depend on outfile
+	bldr.WriteString(viewBool(pip(mv.selected, appendToFile),
+		mv.appendToFile, "Append?", mv.outfileTI))
+	bldr.WriteString(viewBool(pip(mv.selected, json),
+		mv.json, "JSON", mv.outfileTI))
+	bldr.WriteString(viewBool(pip(mv.selected, csv),
+		mv.csv, "CSV", mv.outfileTI))
 	return bldr.String()
 }
 
@@ -256,6 +261,26 @@ func pip(selected, field uint) rune {
 		return stylesheet.SelectionPrefix
 	}
 	return ' '
+}
+
+type dependsOn interface {
+	Value() string
+}
+
+// Returns a string representing the current state of the given boolean value.
+// DependsOn is any struct with a .Value that can be checked for emptiness.
+func viewBool(pip rune, val bool, fieldName string, dependsOn dependsOn) string {
+	var sty lipgloss.Style = stylesheet.Header1Style
+	// if depended value is given and empty, grey out
+	if dependsOn != nil && dependsOn.Value() == "" {
+		sty = stylesheet.GreyedOutStyle
+	}
+
+	var checked rune = ' '
+	if val {
+		checked = '✓'
+	}
+	return fmt.Sprintf("%c [%s] %s\n", pip, sty.Render(string(checked)), sty.Render(fieldName))
 }
 
 //#endregion modifView
