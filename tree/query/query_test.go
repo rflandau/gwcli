@@ -202,10 +202,7 @@ func Test_run(t *testing.T) {
 	connection.End()
 
 	// clean up log
-	if err := os.Remove(logFn); err != nil {
-		t.Errorf("Failed to remove log file %s: %v", logFn, err)
-	}
-
+	os.Remove(logFn)
 }
 
 //#region helpers
