@@ -17,9 +17,16 @@ import (
 	"gwcli/tree/tools"
 	"gwcli/treeutils"
 	"gwcli/utilities/usage"
+	"os"
+	"path"
 	"time"
 
 	"github.com/spf13/cobra"
+)
+
+const (
+	tokenFileName = "token"
+	envPathVar    = "GWCLI_TOKEN_PATH" // env key that maps to token path value
 )
 
 // global PersistenPreRunE.
@@ -77,20 +84,74 @@ func EnforceLogin(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	// prompt for username and/or password
-	// TODO
-	if u == "" || p == "" {
-		return fmt.Errorf("username (-u) and password (-p) required")
-	}
+	// TODO check for token an existing token at the path stored within the env var
+	if v, found := os.LookupEnv(envPathVar); !found {
+		// prompt for username and/or password
+		// TODO
+		if u == "" || p == "" {
+			return fmt.Errorf("username (-u) and password (-p) required")
+		}
+		if err = connection.Login(u, p); err != nil {
+			return err
+		}
 
-	if err = connection.Login(u, p); err != nil {
-		return err
+		if err := CreateToken(); err != nil {
+			clilog.Writer.Warnf(err.Error())
+			// failing to create the token is not fatal
+		}
+	} else {
+		// load token from a file
+		b, err := os.ReadFile(v)
+		if err != nil {
+			return err
+		}
+		connection.Client.ImportLoginToken(string(b))
+		if err := connection.Client.TestLogin(); err != nil {
+			return err
+		}
+		// TODO on failure, prompt for user/pass instead of dying
 	}
 
 	clilog.Writer.Infof("Logged in successfully")
-	// TODO check for token or supply user with login model if interactivity available
+
 	return nil
 
+}
+
+// Creates a login token for future use.
+// The token's path is saved to an environment variable to be looked up on future runs
+func CreateToken() error {
+	var (
+		err       error
+		token     string
+		tokenPath string
+	)
+	if token, err = connection.Client.ExportLoginToken(); err != nil {
+		return fmt.Errorf("failed to export login token: %v", err)
+	}
+	if pwd, err := os.Getwd(); err != nil {
+		return fmt.Errorf("failed to determine pwd: %v\n not writing token", err)
+	} else {
+		tokenPath = path.Join(pwd, tokenFileName)
+	}
+
+	// write out the token
+	// TODO may need to create it as 0200 and change it to 0400 after writing
+	fd, err := os.OpenFile(tokenPath, os.O_CREATE|os.O_WRONLY, 0400)
+	if err != nil {
+		return fmt.Errorf("failed to create token @ %v: %v", tokenPath, err)
+	}
+	if _, err := fd.WriteString(token); err != nil {
+		return fmt.Errorf("failed to write token @ %v: %v", tokenPath, err)
+	}
+
+	// save its path as an environment variable
+	if err := os.Setenv(envPathVar, tokenPath); err != nil {
+		return fmt.Errorf("failed to set environment variable '%v' -> '%v': %v", envPathVar, tokenPath, err)
+	}
+
+	clilog.Writer.Infof("Created cred token @ %v with associated env var %v", tokenPath, envPathVar)
+	return nil
 }
 
 // TODO add lipgloss tree printing to help
