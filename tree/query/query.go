@@ -43,7 +43,7 @@ var localFS pflag.FlagSet
 
 func GenerateAction() action.Pair {
 	cmd := treeutils.NewActionCommand("query", "submit a query",
-		"Generate and send a query to the remote server. Results can be received via this cli or later on the web GUI.\n"+
+		"Generate and send a query to the remote server either by arguments or the interactive query builder.\n"+
 			"All bare arguments after `query` will be passed to the instance as the query string.", []string{"q", "search"}, run)
 
 	localFS = initialLocalFlagSet()
