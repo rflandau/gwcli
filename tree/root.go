@@ -13,7 +13,6 @@ import (
 	"gwcli/connection"
 	"gwcli/tree/kits"
 	"gwcli/tree/query"
-	"gwcli/tree/search"
 	"gwcli/tree/systems"
 	"gwcli/tree/tools"
 	"gwcli/treeutils"
@@ -138,7 +137,6 @@ func Execute(args []string) int {
 	rootCmd := treeutils.GenerateNav(use, short, long, []string{},
 		[]*cobra.Command{
 			systems.NewSystemsNav(),
-			search.NewSearchCmd(),
 			tools.GenerateTree(),
 			kits.NewKitsNav(),
 		},
