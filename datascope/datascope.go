@@ -12,26 +12,26 @@ import (
 	"gwcli/clilog"
 	"gwcli/stylesheet"
 	"gwcli/utilities/killer"
+	"os"
 	"strings"
 
 	"github.com/charmbracelet/bubbles/paginator"
 	"github.com/charmbracelet/bubbles/viewport"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
+	"github.com/charmbracelet/x/term"
 )
-
-//#region For Cobra Usage
 
 type DataScope struct {
 	vp            viewport.Model
 	pager         paginator.Model
 	ready         bool
 	data          []string // complete set of data to be paged
-	done          bool     // user has used a kill key
 	Title         string   // displayed in the header box
 	motherRunning bool     // without Mother's support, we need to handle killkeys and death alone
 	hdrHeight     int
 	ftrHeight     int
+	marginHeight  int
 }
 
 func (s DataScope) Init() tea.Cmd {
@@ -52,18 +52,16 @@ func (s DataScope) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	)
 	switch msg := msg.(type) {
 	case tea.WindowSizeMsg:
-		marginHeight := s.hdrHeight + s.ftrHeight // extra space not showing content
 
 		if !s.ready { // if we are not ready, use these dimensions to become ready
-			s.vp = viewport.New(msg.Width, msg.Height-marginHeight)
+			s.vp = viewport.New(msg.Width, msg.Height-s.marginHeight)
 			s.vp.YPosition = s.hdrHeight
 			s.vp.HighPerformanceRendering = false
 			s.vp.SetContent(s.displayPage())
 			s.ready = true
-			cmds = append(cmds, tea.EnterAltScreen) // start the alt buffer
 		} else { // just an update
 			s.vp.Width = msg.Width
-			s.vp.Height = msg.Height - marginHeight
+			s.vp.Height = msg.Height - s.marginHeight
 		}
 	}
 	s.pager, cmd = s.pager.Update(msg)
@@ -76,26 +74,18 @@ func (s DataScope) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 func (s DataScope) View() string {
-	if s.Done() {
-		return "\nQuitting..."
-	}
 	if !s.ready {
 		return "\nInitializing..."
 	}
 	return fmt.Sprintf("%s\n%s\n%s", s.header(), s.vp.View(), s.footer())
 }
 
-func (s DataScope) Done() bool {
-	return s.done
-}
-
 func CobraNew(data []string, title string) (p *tea.Program) {
-	return tea.NewProgram(NewDataScope(data, false, title))
+	ds, _ := NewDataScope(data, false, title)
+	return tea.NewProgram(ds, tea.WithAltScreen())
 }
 
-//#endregion For Cobra Usage
-
-func NewDataScope(data []string, motherRunning bool, title string) DataScope {
+func NewDataScope(data []string, motherRunning bool, title string) (DataScope, tea.Cmd) {
 	// set up backend paginator
 	p := paginator.New()
 	p.Type = paginator.Dots
@@ -108,15 +98,25 @@ func NewDataScope(data []string, motherRunning bool, title string) DataScope {
 		pager:         p,
 		ready:         false,
 		data:          data,
-		done:          false,
 		Title:         title,
 		motherRunning: motherRunning,
 	}
 	// pre-set heights
 	s.hdrHeight = lipgloss.Height(s.header())
 	s.ftrHeight = lipgloss.Height(s.footer())
+	s.marginHeight = s.hdrHeight + s.ftrHeight // extra space not showing content
+	// mother does not start in alt screen, and thus requires manual measurements
+	if motherRunning {
+		return s, tea.Sequence(tea.EnterAltScreen, func() tea.Msg {
+			w, h, err := term.GetSize(os.Stdin.Fd())
+			if err != nil {
+				clilog.Writer.Errorf("Failed to fetch terminal size: %v", err)
+			}
+			return tea.WindowSizeMsg{Width: w, Height: h}
+		})
+	}
+	return s, nil
 
-	return s
 }
 
 // displays the current page
