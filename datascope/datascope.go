@@ -10,6 +10,7 @@ package datascope
 import (
 	"fmt"
 	"gwcli/stylesheet"
+	"gwcli/utilities/killer"
 	"strings"
 
 	"github.com/charmbracelet/bubbles/paginator"
@@ -65,20 +66,17 @@ func (s DataScope) Init() tea.Cmd {
 }
 
 func (s DataScope) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+	// mother takes care of kill keys if she is running
+	if !s.motherRunning {
+		if kill := killer.CheckKillKeys(msg); kill != killer.None {
+			return s, tea.Batch(tea.Quit, tea.ExitAltScreen)
+		}
+	}
 	var (
 		cmd  tea.Cmd
 		cmds []tea.Cmd
 	)
 	switch msg := msg.(type) {
-	case tea.KeyMsg:
-		switch msg.String() {
-		case "q", "esc", "ctrl+c":
-			if s.motherRunning {
-				s.done = true
-				return s, tea.ExitAltScreen
-			}
-			return s, tea.Batch(tea.ExitAltScreen, tea.Quit)
-		}
 	case tea.WindowSizeMsg:
 
 		marginHeight := s.margins.hdrHeight + s.margins.ftrHeight // extra space not showing content
