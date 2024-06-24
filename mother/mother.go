@@ -124,17 +124,18 @@ func (m Mother) Init() tea.Cmd {
 // control (if in handoff mode) or handles the input itself (if in prompt mode).
 func (m Mother) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	// handle kill keys above all else
-	if kill := killer.CheckKillKeys(msg); kill == killer.Global {
+	// if we are killing from mother, we must manually exit alt screen (if in use)
+	switch killer.CheckKillKeys(msg) {
+	case killer.Global:
 		if m.mode == handoff {
 			m.UnsetAction()
-			return m, textinput.Blink
+			return m, tea.Batch(tea.ExitAltScreen, textinput.Blink)
 		}
 		return m, tea.Batch(connection.End, tea.Println("Bye"), tea.Quit)
-	} else if kill == killer.Child {
+	case killer.Child:
 		m.UnsetAction()
-		return m, textinput.Blink
+		return m, tea.Batch(tea.ExitAltScreen, textinput.Blink)
 	}
-
 	// a child is running
 	if m.mode == handoff {
 		activeChildSanityCheck(m)
