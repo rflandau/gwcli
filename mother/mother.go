@@ -13,6 +13,7 @@ import (
 	"gwcli/connection"
 	"gwcli/stylesheet"
 	"gwcli/stylesheet/colorizer"
+	"gwcli/utilities/killer"
 	"strings"
 
 	tea "github.com/charmbracelet/bubbletea"
@@ -40,12 +41,6 @@ const (
 const (
 	indent string = "    "
 )
-
-// keys kill the program in Update no matter its other states
-var globalKillKeys = [...]tea.KeyType{tea.KeyCtrlC}
-
-// keys that kill the child if it exists, otherwise do nothing
-var childOnlykillKeys = [...]tea.KeyType{tea.KeyEscape}
 
 // special, global actions
 // takes a reference to Mother and tokens [1:]
@@ -128,8 +123,12 @@ func (m Mother) Init() tea.Cmd {
 // It checks for kill keys (to disallow a runaway/ill-designed child), then either passes off
 // control (if in handoff mode) or handles the input itself (if in prompt mode).
 func (m Mother) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
-	if kill, cmds := m.checkKillKey(msg); kill { // handle kill keys above all else
-		return m, tea.Sequence(cmds...)
+	// handle kill keys above all else
+	if kill := killer.CheckKillKeys(msg); kill == killer.Global {
+		return m, tea.Batch(connection.End, tea.Println("Bye"), tea.Quit)
+	} else if kill == killer.Child {
+		m.UnsetAction()
+		return m, textinput.Blink
 	}
 
 	// a child is running
@@ -175,45 +174,6 @@ func (m Mother) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	m.ti, cmd = m.ti.Update(msg)
 
 	return m, cmd
-}
-
-// Checks if the given message is a kill key, including child-only kill keys iff mother is in
-// handoff mode.
-func (m *Mother) checkKillKey(msg tea.Msg) (bool, []tea.Cmd) {
-	keyMsg, isKeyMsg := msg.(tea.KeyMsg)
-	if !isKeyMsg {
-		return false, []tea.Cmd{}
-	}
-
-	if m.mode == handoff { // kill the child
-		if m.active.model == nil {
-			clilog.Writer.Warnf(
-				"Mother is in handoff mode but has inconsistent actives %#v",
-				m.active)
-		}
-		allKKeys := append(globalKillKeys[:], childOnlykillKeys[:]...)
-		for _, kKey := range allKKeys {
-			if keyMsg.Type == kKey {
-				clilog.Writer.Infof("Kill Key %v invoked. Killing child %v", kKey.String(), m.active.command.Name())
-				m.UnsetAction()
-				return true, []tea.Cmd{textinput.Blink}
-			}
-		}
-
-		// not a kill key
-		return false, []tea.Cmd{}
-	}
-
-	// die
-	for _, kKey := range globalKillKeys {
-		if keyMsg.Type == kKey {
-			clilog.Writer.Infof("Kill Key %v invoked. Dying...", kKey.String())
-			return true, []tea.Cmd{tea.Quit, connection.End, tea.Println("Bye")}
-		}
-	}
-
-	// was not a kill key
-	return false, []tea.Cmd{}
 }
 
 //#region Update helper functions
