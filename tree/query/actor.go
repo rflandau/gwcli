@@ -7,6 +7,7 @@ import (
 	"gwcli/busywait"
 	"gwcli/clilog"
 	"gwcli/connection"
+	"gwcli/datascope"
 	"gwcli/stylesheet"
 	"gwcli/stylesheet/colorizer"
 	"os"
@@ -32,10 +33,11 @@ import (
 type mode int8
 
 const (
-	inactive  mode = iota // prepared, but not utilized
-	prompting             // accepting user input
-	quitting              // leaving prompt
-	waiting               // search submitted; waiting for results
+	inactive   mode = iota // prepared, but not utilized
+	prompting              // accepting user input
+	quitting               // leaving prompt
+	waiting                // search submitted; waiting for results
+	displaying             // datascope is displaying results
 )
 
 //#endregion modes
@@ -59,7 +61,8 @@ type query struct {
 	searchError chan error   // result to be fetched after SearchDone
 	output      *os.File     // set once query is submitted, if outfile was set
 
-	spnr spinner.Model // wait spinner
+	spnr  spinner.Model // wait spinner
+	scope tea.Model     // interactively display data
 
 	help help.Model
 
@@ -106,6 +109,15 @@ func (q *query) Update(msg tea.Msg) tea.Cmd {
 	switch q.mode {
 	case quitting:
 		return textarea.Blink
+	case displaying:
+		if q.scope == nil {
+			clilog.Writer.Errorf("query cannot be in display mode without a valid datascope")
+			q.mode = quitting
+		}
+		// once we enter display mode, we do not leave until Mother kills us
+		var cmd tea.Cmd
+		q.scope, cmd = q.scope.Update(msg)
+		return cmd
 	case inactive: // if inactive, bootstrap
 		q.mode = prompting
 		q.editor.ta.Focus()
@@ -123,7 +135,6 @@ func (q *query) Update(msg tea.Msg) tea.Cmd {
 			}
 
 			// succcess
-			q.mode = quitting
 			if q.output != nil {
 				defer q.output.Close()
 			}
@@ -136,19 +147,25 @@ func (q *query) Update(msg tea.Msg) tea.Cmd {
 				q.modifiers.json, q.modifiers.csv); err != nil {
 				return colorizer.ErrPrintf("Failed to write to %s: %v", q.output.Name(), err)
 			} else if results == nil {
+				// already output to file, no more work needed
+				q.mode = quitting
 				return textinput.Blink
 			}
 
+			// display the output via datascope
+			q.mode = displaying
+
 			// output results as tea.Prints
-			var cmds []tea.Cmd = make([]tea.Cmd, len(results))
+			var data []string = make([]string, len(results))
 
 			for i, r := range results {
-				cmds[i] = tea.Printf("%s\n", r.Data)
+				data[i] = fmt.Sprintf("%s\n", r.Data)
 			}
 
-			cmds = append(cmds, textinput.Blink)
+			s, cmd := datascope.NewDataScope(data, true, "query results")
+			q.scope = s
 
-			return tea.Sequence(cmds...)
+			return cmd
 		}
 		// still waiting
 		var cmd tea.Cmd
@@ -184,6 +201,10 @@ func (q *query) Update(msg tea.Msg) tea.Cmd {
 }
 
 func (q *query) View() string {
+	if q.mode == displaying {
+		return q.scope.View()
+	}
+
 	var blankOrSpnr string
 	if q.mode == waiting { // if waiting, show a spinner instead of help
 		blankOrSpnr = q.spnr.View()
@@ -240,6 +261,7 @@ func (q *query) Reset() error {
 		q.output.Close()
 	}
 	q.output = nil
+	q.scope = nil
 
 	localFS = initialLocalFlagSet()
 
@@ -280,6 +302,10 @@ func (q *query) SetArgs(_ *pflag.FlagSet, tokens []string) (string, []tea.Cmd, e
 
 //#region helper subroutines
 
+// Gathers information across both views and initiates the search, placing the model into a waiting
+// state. A seperate goroutine, initialized here, waits on the search, allowing this thread to
+// display a spinner.
+// Corrollary to `outputSearchResults` (connected via `case waiting` in Update()).
 func (q *query) submitQuery() tea.Cmd {
 	qry := q.editor.ta.Value() // clarity
 
