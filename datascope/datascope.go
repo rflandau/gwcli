@@ -9,6 +9,7 @@ package datascope
 
 import (
 	"fmt"
+	"gwcli/clilog"
 	"gwcli/stylesheet"
 	"gwcli/utilities/killer"
 	"strings"
@@ -29,39 +30,11 @@ type DataScope struct {
 	done          bool     // user has used a kill key
 	Title         string   // displayed in the header box
 	motherRunning bool     // without Mother's support, we need to handle killkeys and death alone
-	margins       struct {
-		header    string
-		hdrHeight int
-		footer    string
-		ftrHeight int
-	}
+	hdrHeight     int
+	ftrHeight     int
 }
 
 func (s DataScope) Init() tea.Cmd {
-	// set header
-	s.margins.header = func() string {
-		title := viewportHeaderBoxStyle.Render(s.Title)
-		line := strings.Repeat("─", max(0, s.vp.Width-lipgloss.Width(title)))
-		dots := s.pager.View() + "\n"
-		paragraph := lipgloss.JoinVertical(lipgloss.Center, dots, line)
-		return lipgloss.JoinHorizontal(lipgloss.Center, title, paragraph)
-	}()
-
-	// set footer
-
-	s.margins.footer = func() string {
-		percent := infoStyle.Render(fmt.Sprintf("%3.f%%", s.vp.ScrollPercent()*100))
-		line := strings.Repeat("─", max(0, s.vp.Width-lipgloss.Width(percent)))
-
-		help := "h/l ←/→ page • q: quit\n"
-		paragraph := lipgloss.JoinVertical(lipgloss.Center, line, help)
-		return lipgloss.JoinHorizontal(lipgloss.Center, paragraph, percent)
-	}()
-
-	// pre-set heights
-	s.margins.hdrHeight = lipgloss.Height(s.margins.header)
-	s.margins.ftrHeight = lipgloss.Height(s.margins.footer)
-
 	return nil
 }
 
@@ -69,6 +42,7 @@ func (s DataScope) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	// mother takes care of kill keys if she is running
 	if !s.motherRunning {
 		if kill := killer.CheckKillKeys(msg); kill != killer.None {
+			clilog.Writer.Infof("Self-handled kill key, with kill type %v", kill)
 			return s, tea.Batch(tea.Quit, tea.ExitAltScreen)
 		}
 	}
@@ -78,12 +52,11 @@ func (s DataScope) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	)
 	switch msg := msg.(type) {
 	case tea.WindowSizeMsg:
-
-		marginHeight := s.margins.hdrHeight + s.margins.ftrHeight // extra space not showing content
+		marginHeight := s.hdrHeight + s.ftrHeight // extra space not showing content
 
 		if !s.ready { // if we are not ready, use these dimensions to become ready
 			s.vp = viewport.New(msg.Width, msg.Height-marginHeight)
-			s.vp.YPosition = s.margins.hdrHeight
+			s.vp.YPosition = s.hdrHeight
 			s.vp.HighPerformanceRendering = false
 			s.vp.SetContent(s.displayPage())
 			s.ready = true
@@ -110,7 +83,7 @@ func (s DataScope) View() string {
 		return "\nInitializing..."
 	}
 
-	return fmt.Sprintf("%s\n%s\n%s", s.margins.header, s.View(), s.margins.footer)
+	return fmt.Sprintf("%s\n%s\n%s", s.header(), s.vp.View(), s.footer())
 }
 
 func (s DataScope) Done() bool {
@@ -132,7 +105,7 @@ func NewDataScope(data []string, motherRunning bool, title string) DataScope {
 	p.InactiveDot = lipgloss.NewStyle().Foreground(lipgloss.AdaptiveColor{Light: "250", Dark: "238"}).Render("•")
 	p.SetTotalPages(len(data))
 
-	return DataScope{
+	s := DataScope{
 		pager:         p,
 		ready:         false,
 		data:          data,
@@ -140,13 +113,40 @@ func NewDataScope(data []string, motherRunning bool, title string) DataScope {
 		Title:         title,
 		motherRunning: motherRunning,
 	}
+	// pre-set heights
+	s.hdrHeight = lipgloss.Height(s.header())
+	s.ftrHeight = lipgloss.Height(s.footer())
+
+	return s
 }
 
 // displays the current page
-func (s DataScope) displayPage() string {
+func (s *DataScope) displayPage() string {
 	start, end := s.pager.GetSliceBounds(len(s.data))
 	imploded := strings.Join(s.data[start:end], "\n")
 	return imploded
+}
+
+// generates a header with the box+line and page pips
+func (s *DataScope) header() string {
+	title := viewportHeaderBoxStyle.Render(s.Title)
+	line := lipgloss.NewStyle().Foreground(stylesheet.PrimaryColor).Render(
+		strings.Repeat("─", max(0, s.vp.Width-lipgloss.Width(title))),
+	)
+	dots := s.pager.View() + "\n"
+	paragraph := lipgloss.JoinVertical(lipgloss.Center, dots, line)
+	return lipgloss.JoinHorizontal(lipgloss.Center, title, paragraph)
+}
+
+// generates a footer with the box+line and help keys
+func (s *DataScope) footer() string {
+	percent := infoStyle.Render(fmt.Sprintf("%3.f%%", s.vp.ScrollPercent()*100))
+	line := "\n" + lipgloss.NewStyle().Foreground(stylesheet.PrimaryColor).Render(
+		strings.Repeat("─", max(0, s.vp.Width-lipgloss.Width(percent))),
+	)
+	lineHelp := lipgloss.JoinVertical(lipgloss.Center, line, "h/l ←/→ page • q: quit")
+
+	return lipgloss.JoinHorizontal(lipgloss.Center, lineHelp, percent)
 }
 
 // #region styling
