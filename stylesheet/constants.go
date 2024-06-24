@@ -1,3 +1,4 @@
+// Other constants we can use to enforce a consistent style across all states of the program
 package stylesheet
 
 const (
