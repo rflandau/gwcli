@@ -11,15 +11,13 @@ import (
 	"gwcli/action"
 	"gwcli/clilog"
 	"gwcli/connection"
-	"gwcli/group"
-	"gwcli/stylesheet"
 	"gwcli/tree/kits"
 	"gwcli/tree/query"
 	"gwcli/tree/search"
 	"gwcli/tree/systems"
 	"gwcli/tree/tools"
 	"gwcli/treeutils"
-	"strings"
+	"gwcli/utilities/usage"
 	"time"
 
 	"github.com/spf13/cobra"
@@ -172,7 +170,7 @@ func Execute(args []string) int {
 		rootCmd.SetArgs(args)
 	}
 
-	rootCmd.SetUsageFunc(Usage)
+	rootCmd.SetUsageFunc(usage.Usage)
 
 	err := rootCmd.Execute()
 	if err != nil {
@@ -180,67 +178,4 @@ func Execute(args []string) int {
 	}
 
 	return 0
-}
-
-func Usage(c *cobra.Command) error {
-
-	var bldr strings.Builder
-	bldr.WriteString(stylesheet.Header1Style.Render("Usage:") +
-		" " + c.CommandPath() + "-u USER -p PASS")
-
-	if c.GroupID == group.NavID { // nav
-		bldr.WriteString(" [subcommand]\n")
-	} else { // action
-		bldr.WriteString(" [flags]\n")
-		bldr.WriteString(stylesheet.Header1Style.Render("Local Flags:") + "\n")
-		bldr.WriteString(c.LocalNonPersistentFlags().FlagUsages() + "\n")
-	}
-
-	bldr.WriteString(stylesheet.Header1Style.Render("Global Flags:") + "\n")
-	bldr.WriteString(c.Root().PersistentFlags().FlagUsages())
-
-	// print aliases
-	if len(c.Aliases) != 0 {
-		var s strings.Builder
-		s.WriteString(stylesheet.Header1Style.Render("Aliases:") + " ")
-		for _, a := range c.Aliases {
-			s.WriteString(a + ", ")
-		}
-		bldr.WriteString(strings.TrimRight(s.String(), ", ") + "\n") // chomp
-	}
-
-	// split children by group
-	navs := make([]*cobra.Command, 0)
-	actions := make([]*cobra.Command, 0)
-	children := c.Commands()
-	for _, c := range children {
-		if c.GroupID == group.NavID {
-			navs = append(navs, c)
-		} else {
-			actions = append(actions, c)
-		}
-	}
-
-	// output navs as submenus
-	if len(navs) > 0 {
-		var s strings.Builder
-		s.WriteString("\n" + stylesheet.Header1Style.Render("Submenus"))
-		for _, n := range navs {
-			s.WriteString("\n  " + stylesheet.NavStyle.Render(n.Name()))
-		}
-		bldr.WriteString(s.String() + "\n")
-	}
-
-	// output actions
-	if len(actions) > 0 {
-		var s strings.Builder
-		s.WriteString("\n" + stylesheet.Header1Style.Render("Actions"))
-		for _, a := range actions {
-			s.WriteString("\n  " + stylesheet.ActionStyle.Render(a.Name()))
-		}
-		bldr.WriteString(s.String())
-	}
-
-	fmt.Fprintln(c.OutOrStdout(), bldr.String())
-	return nil
 }
