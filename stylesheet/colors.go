@@ -14,7 +14,7 @@ const (
 	ErrorColor     = lipgloss.Color("#f77a96")
 	NavColor       = SecondaryColor
 	ActionColor    = AccentColor1
-	FocusedColor   = PrimaryColor   // an element currently in focus
+	FocusedColor   = AccentColor2   // an element currently in focus
 	UnfocusedColor = SecondaryColor // complimentary elements to the focused element
 )
 

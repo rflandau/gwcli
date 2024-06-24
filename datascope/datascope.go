@@ -100,8 +100,8 @@ func NewDataScope(data []string, motherRunning bool, title string) DataScope {
 	p := paginator.New()
 	p.Type = paginator.Dots
 	p.PerPage = 30
-	p.ActiveDot = lipgloss.NewStyle().Foreground(lipgloss.AdaptiveColor{Light: "235", Dark: "252"}).Render("•")
-	p.InactiveDot = lipgloss.NewStyle().Foreground(lipgloss.AdaptiveColor{Light: "250", Dark: "238"}).Render("•")
+	p.ActiveDot = lipgloss.NewStyle().Foreground(stylesheet.FocusedColor).Render("•")
+	p.InactiveDot = lipgloss.NewStyle().Foreground(stylesheet.UnfocusedColor).Render("•")
 	p.SetTotalPages(len(data))
 
 	s := DataScope{
@@ -141,10 +141,11 @@ func (s *DataScope) footer() string {
 	line := "\n" + lipgloss.NewStyle().Foreground(stylesheet.PrimaryColor).Render(
 		strings.Repeat("─", max(0, s.vp.Width-lipgloss.Width(percent))),
 	)
-	// TODO match help to standard help styling
-	lineHelp := lipgloss.JoinVertical(lipgloss.Center,
-		line,
-		fmt.Sprintf("%v page • %v scroll • esc: quit", stylesheet.LeftRight, stylesheet.UpDown))
+	help := stylesheet.GreyedOutStyle.Render(
+		fmt.Sprintf("%v page • %v scroll • esc: quit", stylesheet.LeftRight, stylesheet.UpDown),
+	)
+
+	lineHelp := lipgloss.JoinVertical(lipgloss.Center, line, help)
 
 	return lipgloss.JoinHorizontal(lipgloss.Center, lineHelp, percent)
 }
