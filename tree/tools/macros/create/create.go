@@ -5,6 +5,7 @@ import (
 	"gwcli/action"
 	"gwcli/clilog"
 	"gwcli/connection"
+	"gwcli/stylesheet"
 	"gwcli/treeutils"
 	"strings"
 	"unicode"
@@ -234,7 +235,7 @@ func (c *create) View() string {
 
 	helpDisplay := c.help.model.View(c.help.keys)
 
-	return fields + "\n" + helpDisplay
+	return stylesheet.Composable.Focused.Render(fields) + "\n" + helpDisplay
 }
 
 func (c *create) Done() bool {
