@@ -24,6 +24,11 @@ go.work
 gwcli
 *.log
 rest_client.json
+**/*.csv
+**/*.txt
+# omit most .json file
+**/*.json
+!/vscode/launch.json
 
 # delve files
 __debug_*
