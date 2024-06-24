@@ -589,8 +589,11 @@ func TeaCmdContextHelp(c *cobra.Command) tea.Cmd {
 	return tea.Println(strings.TrimSuffix(s.String(), "\n"))
 }
 
+// Returns the present working directory, set to the primary color
 func CommandPath(m *Mother) string {
-	return stylesheet.NavStyle.Render(m.pwd.CommandPath())
+	return lipgloss.NewStyle().Foreground(
+		lipgloss.Color(stylesheet.PrimaryColor),
+	).Render(m.pwd.CommandPath())
 }
 
 //#endregion
