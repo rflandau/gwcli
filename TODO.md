@@ -11,17 +11,15 @@
 - [ ] displaying help should not establish a connection
     - especially important for nav-runs executed with --no-interactive mode 
 
-- [ ] Colourize Cobra help
+- [x] Colourize Cobra help
 
 - [ ] Allow list commands to pass in additional flags to treeutils.NewListCmd()
 
 - [ ] Add support for home (~) or root (/) navigation
 
-- [ ] Do not display an unknown command error on empty input
+- [x] Do not display an unknown command error on empty input
 
 - [ ] If an action that required arguments (ex: query) is called bare and --script is not supplied, invoke Mother
-
-- [ ] BUG (may be an issue with my terminal, specifically): Invoking -h works correctly, but puts garbage ("11;rgb:0000/0000/00003;1R") on the next shell prompt.
 
 - [ ] Handle CTRL+left/right word jumping
 
@@ -33,20 +31,16 @@
 
 - Search Improvements
     - [ ] non-interactive scheduling via flag
-    - [ ] second viewport: search settings
+    - [x] second viewport: search settings
         - [x] switch between search editor and search settings via tab cycling
         - support flag setting
-            - [ ] duration
-            - [ ] output
+            - [x] duration
+            - [x] output
             - [ ] scheduling
                 - [ ] name
                 - [ ] description
                 - [ ] schedule
-        - [ ] unique helpkey sets based on current focus
-    - [ ] parse query for rendered pipe
-        - [ ] set file extension appropriately
-        - [ ] select fetch function
-        - [ ] implement ntcharts for chart-like renderers
+        - [x] unique helpkey sets based on current focus
     - [ ] interactive mode syntax highlighting
     - [ ] result pagination and/or scrollable viewport
         - [?] pass in pagination increment
