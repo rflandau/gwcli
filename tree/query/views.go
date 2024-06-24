@@ -116,8 +116,8 @@ func initialModifView(height, width uint) modifView {
 		selected: defaultModifSelection,
 		keys: []key.Binding{
 			key.NewBinding(
-				key.WithKeys("↑/↓"),
-				key.WithHelp("↑/↓", "select input"),
+				key.WithKeys(stylesheet.UpDown),
+				key.WithHelp(stylesheet.UpDown, "select input"),
 			)},
 	}
 
