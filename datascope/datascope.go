@@ -141,7 +141,9 @@ func (s *DataScope) footer() string {
 	line := "\n" + lipgloss.NewStyle().Foreground(stylesheet.PrimaryColor).Render(
 		strings.Repeat("─", max(0, s.vp.Width-lipgloss.Width(percent))),
 	)
-	lineHelp := lipgloss.JoinVertical(lipgloss.Center, line, "h/l ←/→ page • esc: quit")
+	lineHelp := lipgloss.JoinVertical(lipgloss.Center,
+		line,
+		fmt.Sprintf("%v page • %v scroll • esc: quit", stylesheet.LeftRight, stylesheet.UpDown))
 
 	return lipgloss.JoinHorizontal(lipgloss.Center, lineHelp, percent)
 }
