@@ -186,7 +186,6 @@ func run(cmd *cobra.Command, args []string) {
 			strs[i] = string(r.Data)
 		}
 
-		// TODO provide redundancies to Mother's kill keys as they will not be accessible from here
 		scrlPgrP := datascope.CobraNew(strs, "results")
 		if _, err := scrlPgrP.Run(); err != nil {
 			clilog.TeeError(cmd.ErrOrStderr(), err.Error())
