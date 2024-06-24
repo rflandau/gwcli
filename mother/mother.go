@@ -125,6 +125,10 @@ func (m Mother) Init() tea.Cmd {
 func (m Mother) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	// handle kill keys above all else
 	if kill := killer.CheckKillKeys(msg); kill == killer.Global {
+		if m.mode == handoff {
+			m.UnsetAction()
+			return m, textinput.Blink
+		}
 		return m, tea.Batch(connection.End, tea.Println("Bye"), tea.Quit)
 	} else if kill == killer.Child {
 		m.UnsetAction()
