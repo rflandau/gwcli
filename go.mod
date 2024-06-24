@@ -6,6 +6,7 @@ toolchain go1.22.4
 
 require (
 	github.com/charmbracelet/bubbletea v0.26.4
+	github.com/charmbracelet/x/term v0.1.1
 	github.com/google/uuid v1.6.0
 	github.com/muesli/termenv v0.15.2
 	github.com/spf13/cobra v1.8.0
@@ -18,7 +19,6 @@ require (
 	github.com/buger/jsonparser v1.1.1 // indirect
 	github.com/charmbracelet/x/ansi v0.1.2 // indirect
 	github.com/charmbracelet/x/input v0.1.0 // indirect
-	github.com/charmbracelet/x/term v0.1.1 // indirect
 	github.com/charmbracelet/x/windows v0.1.0 // indirect
 	github.com/crewjam/rfc5424 v0.1.0 // indirect
 	github.com/erikgeiser/coninput v0.0.0-20211004153227-1c3628e74d0f // indirect
