@@ -14,7 +14,7 @@ var (
 	}{
 		Unfocused: ModelStyle,
 		Focused: ModelStyle.
-			BorderStyle(lipgloss.NormalBorder()).BorderForeground(lipgloss.Color("69")),
+			BorderStyle(lipgloss.NormalBorder()).BorderForeground(AccentColor1),
 	}
 	Header1Style   = lipgloss.NewStyle().Foreground(PrimaryColor).Bold(true)
 	GreyedOutStyle = lipgloss.NewStyle().Faint(true)
