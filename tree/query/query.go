@@ -329,7 +329,7 @@ func outputSearchResults(file *os.File, s grav.Search, json, csv bool) ([]types.
 	var (
 		results []types.SearchEntry = make([]types.SearchEntry, 0, pageSize)
 		low     uint64              = 0
-		high    uint64              = 0
+		high    uint64              = pageSize
 	)
 	for { // accumulate the results
 		r, err := connection.Client.GetTextResults(s, low, high)
