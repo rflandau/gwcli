@@ -141,6 +141,7 @@ func (s *DataScope) footer() string {
 	line := "\n" + lipgloss.NewStyle().Foreground(stylesheet.PrimaryColor).Render(
 		strings.Repeat("─", max(0, s.vp.Width-lipgloss.Width(percent))),
 	)
+	// TODO match help to standard help styling
 	lineHelp := lipgloss.JoinVertical(lipgloss.Center,
 		line,
 		fmt.Sprintf("%v page • %v scroll • esc: quit", stylesheet.LeftRight, stylesheet.UpDown))
