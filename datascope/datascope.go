@@ -82,7 +82,6 @@ func (s DataScope) View() string {
 	if !s.ready {
 		return "\nInitializing..."
 	}
-
 	return fmt.Sprintf("%s\n%s\n%s", s.header(), s.vp.View(), s.footer())
 }
 
@@ -123,8 +122,7 @@ func NewDataScope(data []string, motherRunning bool, title string) DataScope {
 // displays the current page
 func (s *DataScope) displayPage() string {
 	start, end := s.pager.GetSliceBounds(len(s.data))
-	imploded := strings.Join(s.data[start:end], "\n")
-	return imploded
+	return strings.Join(s.data[start:end], "\n")
 }
 
 // generates a header with the box+line and page pips
@@ -132,10 +130,9 @@ func (s *DataScope) header() string {
 	title := viewportHeaderBoxStyle.Render(s.Title)
 	line := lipgloss.NewStyle().Foreground(stylesheet.PrimaryColor).Render(
 		strings.Repeat("─", max(0, s.vp.Width-lipgloss.Width(title))),
-	)
-	dots := s.pager.View() + "\n"
-	paragraph := lipgloss.JoinVertical(lipgloss.Center, dots, line)
-	return lipgloss.JoinHorizontal(lipgloss.Center, title, paragraph)
+	) + "\n"
+	dotsLine := lipgloss.JoinVertical(lipgloss.Center, s.pager.View(), line)
+	return lipgloss.JoinHorizontal(lipgloss.Center, title, dotsLine)
 }
 
 // generates a footer with the box+line and help keys
@@ -144,7 +141,7 @@ func (s *DataScope) footer() string {
 	line := "\n" + lipgloss.NewStyle().Foreground(stylesheet.PrimaryColor).Render(
 		strings.Repeat("─", max(0, s.vp.Width-lipgloss.Width(percent))),
 	)
-	lineHelp := lipgloss.JoinVertical(lipgloss.Center, line, "h/l ←/→ page • q: quit")
+	lineHelp := lipgloss.JoinVertical(lipgloss.Center, line, "h/l ←/→ page • esc: quit")
 
 	return lipgloss.JoinHorizontal(lipgloss.Center, lineHelp, percent)
 }
