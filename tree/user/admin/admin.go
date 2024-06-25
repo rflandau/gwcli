@@ -1,3 +1,4 @@
+// A simple action to tell the user whether or not they are logged in as an admin.
 package admin
 
 import (
