@@ -3,7 +3,6 @@ package list
 import (
 	"gwcli/action"
 	"gwcli/connection"
-	"gwcli/treeutils"
 	"gwcli/utilities/scaffold"
 
 	grav "github.com/gravwell/gravwell/v3/client"
@@ -21,9 +20,8 @@ var (
 )
 
 func NewListCmd() action.Pair {
-	cmd, la := scaffold.NewListCmd(short, long, aliases, defaultColumns,
+	return scaffold.NewListCmd(short, long, aliases, defaultColumns,
 		types.SearchMacro{}, listMacros)
-	return treeutils.GenerateAction(cmd, &la)
 }
 
 func listMacros(c *grav.Client) ([]types.SearchMacro, error) {

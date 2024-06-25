@@ -1,6 +1,6 @@
-// Helper functions and generic struct.
-// Intended to be boiler plate for specific list implementations.
-
+// A list action runs a given function that outputs an arbitrary data structure.
+// The results are sent to weave and packaged in a way that can be listed for the user.
+// This provides a consistent interface for actions that list arbitrary data.
 package scaffold
 
 import (
@@ -26,17 +26,22 @@ const use = "list"
 // action, complete with common flags and a generic run function operating off
 // the given dataFunc.
 //
-// Flags: {--csv, --json, --table} --columns <...>
+// Flags: {--csv|--json|--table} --columns <...>
 //
 // If no output module is given, defaults to --table.
 //
-// ! `dataFunc` should be a static wrapper function for a method that returns an array of structures containing the data to be listed.
+// ! `dataFunc` should be a static wrapper function for a method that returns an array of structures
+// containing the data to be listed.
 // ! `dataStruct` must be the type of struct returned by dataFunc. Its values do not matter.
-// Any data massaging required to get the data into an array of functions should be performed there.
+//
+// Any data massaging required to get the data into an array of structures should be performed in
+// the data func.
 // See kitactions' ListKits() as an example
 //
 // Go's Generics are a godsend.
-func NewListCmd[Any any](short, long string, aliases []string, defaultColumns []string, dataStruct Any, dataFunc func(*grav.Client) ([]Any, error)) (*cobra.Command, ListAction[Any]) {
+func NewListCmd[Any any](short, long string,
+	aliases []string, defaultColumns []string,
+	dataStruct Any, dataFunc func(*grav.Client) ([]Any, error)) action.Pair {
 	// assert developer provided a usable data struct
 	if reflect.TypeOf(dataStruct).Kind() != reflect.Struct {
 		panic("dataStruct must be a struct") // developer error
@@ -96,7 +101,7 @@ func NewListCmd[Any any](short, long string, aliases []string, defaultColumns []
 
 	// share the flagset with the interactive action model
 
-	return cmd, la
+	return treeutils.GenerateAction(cmd, &la)
 }
 
 // Given a **parsed** flagset, determines and returns output format

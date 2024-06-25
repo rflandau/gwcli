@@ -2,7 +2,6 @@ package kitactions
 
 import (
 	"gwcli/action"
-	"gwcli/treeutils"
 	"gwcli/utilities/scaffold"
 
 	grav "github.com/gravwell/gravwell/v3/client"
@@ -18,8 +17,7 @@ var (
 )
 
 func NewListCmd() action.Pair {
-	cmd, la := scaffold.NewListCmd(short, long, aliases, defaultColumns, types.IdKitState{}, ListKits)
-	return treeutils.GenerateAction(cmd, &la)
+	return scaffold.NewListCmd(short, long, aliases, defaultColumns, types.IdKitState{}, ListKits)
 }
 
 // Retrieve and return array of kit structs via gravwell client
