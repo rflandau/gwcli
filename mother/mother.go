@@ -101,7 +101,7 @@ func (m Mother) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case killer.Global:
 		// if in handoff mode, just kill the child
 		if m.mode == handoff {
-			m.UnsetAction()
+			m.unsetAction()
 			// if we are killing from mother, we must manually exit alt screen
 			// (harmless if not in use)
 			return m, tea.Batch(tea.ExitAltScreen, textinput.Blink)
@@ -109,7 +109,7 @@ func (m Mother) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		connection.End()
 		return m, tea.Batch(tea.Println("Bye"), tea.Quit)
 	case killer.Child: // ineffectual if not in handoff mode
-		m.UnsetAction()
+		m.unsetAction()
 		return m, tea.Batch(tea.ExitAltScreen, textinput.Blink)
 	}
 
@@ -120,7 +120,7 @@ func (m Mother) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, m.active.model.Update(msg)
 		} else {
 			// child has finished processing, regain control and return to normal processing
-			m.UnsetAction()
+			m.unsetAction()
 			return m, textinput.Blink
 		}
 	}
@@ -132,13 +132,13 @@ func (m Mother) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if msg.Type == tea.KeyF1 { // help
 			return m, ContextHelp(&m, strings.Split(strings.TrimSpace(m.ti.Value()), " "))
 		}
-		if msg.Type == tea.KeyUp {
+		if msg.Type == tea.KeyUp { // history
 			m.ti.SetValue(m.history.getOlderRecord())
 			// update cursor position
 			m.ti.CursorEnd()
 			return m, nil
 		}
-		if msg.Type == tea.KeyDown {
+		if msg.Type == tea.KeyDown { // history
 			m.ti.SetValue(m.history.getNewerRecord())
 			// update cursor position
 			m.ti.CursorEnd()
@@ -189,12 +189,9 @@ func (m Mother) View() string {
 
 //#endregion
 
-/**
- * processInput consumes and clears the text on the prompt, determines what
- * action to take, modifies the model accordingly, and outputs the state of the
- * prompt as a newline.
- * ! Be sure each path that clears the prompt also outputs it via tea.Println
- */
+// processInput consumes and clears the text on the prompt, determines what action to take, modifies
+// the model accordingly, and outputs the state of the prompt as a newline.
+// ! Be sure each path that clears the prompt also outputs it via tea.Println
 func processInput(m *Mother) tea.Cmd {
 	// sanity check error state of the ti
 	if m.ti.Err != nil {
@@ -215,7 +212,6 @@ func processInput(m *Mother) tea.Cmd {
 	given := strings.Split(strings.TrimSpace(input), " ")
 
 	wr := walk(m.pwd, given, onComplete)
-
 	if wr.errString != "" {
 		return tea.Sequence(
 			append(
@@ -223,6 +219,7 @@ func processInput(m *Mother) tea.Cmd {
 				tea.Println(stylesheet.ErrStyle.Render(wr.errString)),
 			)...)
 	}
+
 	// split on action or nav
 	switch wr.status {
 	case foundBuiltin:
@@ -270,7 +267,7 @@ func processInput(m *Mother) tea.Cmd {
 		// NOTE: the inherited flags here may have a combination of parsed and !parsed flags
 		// persistent commands defined below root may not be parsed
 		if invalid, cmds, err := m.active.model.SetArgs(m.active.command.InheritedFlags(), wr.remainingTokens); err != nil {
-			m.UnsetAction()
+			m.unsetAction()
 
 			errString := fmt.Sprintf("Failed to set args %v: %v", wr.remainingTokens, err)
 			clilog.Writer.Errorf("%v\nactive model %v\nactive command%v", errString, m.active.model, wr.endCommand)
@@ -292,6 +289,8 @@ func processInput(m *Mother) tea.Cmd {
 		clilog.Writer.Errorf("walking input %v returned invalid", given)
 	}
 
+	// do not include pushToHistory in the sequence to ensure it doesn't get delayed due to
+	// sequencing
 	return tea.Batch(onComplete[0], tea.Sequence(onComplete[1:]...))
 }
 
@@ -310,18 +309,14 @@ func (m *Mother) pushToHistory() (println tea.Cmd, userIn string, err error) {
 	return tea.Println(p), userIn, nil // print prompt
 }
 
-//#region helper functions
-
-/* Returns a composition resembling the full prompt. */
+// Returns a composition resembling the full prompt.
 func (m *Mother) promptString() string {
 	return fmt.Sprintf("%s> %s", CommandPath(m), m.ti.Value())
 }
 
-/**
- * UnsetAction resets the current active command/action, clears actives, and
- * returns control to Mother.
- */
-func (m *Mother) UnsetAction() {
+// unsetAction resets the current active command/action, clears actives, and returns control to
+// Mother.
+func (m *Mother) unsetAction() {
 	if m.active.model != nil {
 		m.active.model.Reset()
 	}
@@ -330,8 +325,6 @@ func (m *Mother) UnsetAction() {
 	m.active.model = nil
 	m.active.command = nil
 }
-
-//#endregion
 
 //#region static helper functions
 
@@ -345,21 +338,19 @@ func up(dir *cobra.Command) *cobra.Command {
 	return dir.Parent()
 }
 
-/* Returns a tea.Println Cmd containing the path to the pwd */
-func TeaCmdPath(c *cobra.Command) tea.Cmd {
-	return tea.Println(c.CommandPath())
-}
-
-/**
- * Returns a tea.Println Cmd containing the context help for the given command.
- * Structure:
- * <nav> - <desc>
- *     <childnav> <childaction> <childnav>
- * <nav> - <desc>
- *     <childaction>
- * <action> - <desc>
- *
- */
+// Returns a tea.Println Cmd containing the context help for the given command.
+//
+// Structure:
+//
+// <nav> - <desc>
+//
+// --> <childnav> <childaction> <childnav>
+//
+// <nav> - <desc>
+//
+// --> <childaction>
+//
+// <action> - <desc>
 func TeaCmdContextHelp(c *cobra.Command) tea.Cmd {
 	// generate a list of all available Navs and Actions with their associated shorts
 	var s strings.Builder
