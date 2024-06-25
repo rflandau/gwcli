@@ -130,7 +130,7 @@ func (m Mother) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.KeyMsg:
 		// NOTE kill keys are handled above
 		if msg.Type == tea.KeyF1 { // help
-			return m, ContextHelp(&m, strings.Split(strings.TrimSpace(m.ti.Value()), " "))
+			return m, contextHelp(&m, strings.Split(strings.TrimSpace(m.ti.Value()), " "))
 		}
 		if msg.Type == tea.KeyUp { // history
 			m.ti.SetValue(m.history.getOlderRecord())

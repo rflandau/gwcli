@@ -21,8 +21,8 @@ var builtinHelp map[string]string
 // initialize the maps used for builtin actions
 func initBuiltins() {
 	builtins = map[string](func(*Mother, []string) tea.Cmd){
-		"help":    ContextHelp,
-		"history": ListHistory,
+		"help":    contextHelp,
+		"history": listHistory,
 		"quit":    quit,
 		"exit":    quit}
 
@@ -38,7 +38,7 @@ func initBuiltins() {
 }
 
 // Built-in, interactive help invocation
-func ContextHelp(m *Mother, args []string) tea.Cmd {
+func contextHelp(m *Mother, args []string) tea.Cmd {
 	if len(args) == 0 {
 		return TeaCmdContextHelp(m.pwd)
 	}
@@ -71,7 +71,7 @@ func ContextHelp(m *Mother, args []string) tea.Cmd {
 	return nil
 }
 
-func ListHistory(m *Mother, _ []string) tea.Cmd {
+func listHistory(m *Mother, _ []string) tea.Cmd {
 	toPrint := strings.Builder{}
 	rs := m.history.getAllRecords()
 
