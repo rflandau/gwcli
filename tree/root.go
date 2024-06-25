@@ -26,7 +26,7 @@ import (
 
 const (
 	tokenFileName = "token"
-	envPathVar    = "GWCLI_TOKEN_PATH" // env key that maps to token path value
+	cfgSubFolder  = "gwcli" // $config_folder + configSubFolder
 )
 
 // global PersistenPreRunE.
@@ -74,22 +74,25 @@ func EnforceLogin(cmd *cobra.Command, args []string) error {
 		return nil
 	}
 
-	// attempt to login
-	u, err := cmd.Flags().GetString("username")
-	if err != nil {
-		return err
-	}
-	p, err := cmd.Flags().GetString("password")
-	if err != nil {
-		return err
-	}
+	// login is attempted via JWT token first
+	// If any stage in the process fails, the error is logged and we fall back to checking -u and -p
+	// flags and then prompting for input
+	if err := LoginViaToken(); err != nil {
+		// jwt token failure; log and move on
+		clilog.Writer.Warnf("Failed to login via JWT token: %v", err)
+		// log on via flags and prompt
+		u, err := cmd.Flags().GetString("username")
+		if err != nil {
+			return err
+		}
+		p, err := cmd.Flags().GetString("password")
+		if err != nil {
+			return err
+		}
 
-	// TODO check for token an existing token at the path stored within the env var
-	if v, found := os.LookupEnv(envPathVar); !found {
-		// prompt for username and/or password
-		// TODO
 		if u == "" || p == "" {
-			return fmt.Errorf("username (-u) and password (-p) required")
+			return fmt.Errorf("no valid token found.\n" +
+				"Please login via username (-u) and password (-p)")
 		}
 		if err = connection.Login(u, p); err != nil {
 			return err
@@ -99,23 +102,33 @@ func EnforceLogin(cmd *cobra.Command, args []string) error {
 			clilog.Writer.Warnf(err.Error())
 			// failing to create the token is not fatal
 		}
-	} else {
-		// load token from a file
-		b, err := os.ReadFile(v)
-		if err != nil {
-			return err
-		}
-		connection.Client.ImportLoginToken(string(b))
-		if err := connection.Client.TestLogin(); err != nil {
-			return err
-		}
-		// TODO on failure, prompt for user/pass instead of dying
 	}
 
 	clilog.Writer.Infof("Logged in successfully")
 
 	return nil
 
+}
+
+// Attempts to login via JWT token in the user's config directory.
+// Returns an error on failures. This error should be considered nonfatal and the user logged in via
+// an alternative method instead.
+func LoginViaToken() (err error) {
+	var (
+		cfgDir   string
+		tknbytes []byte
+	)
+	// NOTE the reversal of standard error checking (`err == nil`)
+	if cfgDir, err = os.UserConfigDir(); err == nil {
+		if tknbytes, err = os.ReadFile(path.Join(cfgDir, cfgSubFolder, tokenFileName)); err == nil {
+			if err = connection.Client.ImportLoginToken(string(tknbytes)); err == nil {
+				if err = connection.Client.TestLogin(); err == nil {
+					return nil
+				}
+			}
+		}
+	}
+	return
 }
 
 // Creates a login token for future use.
@@ -129,29 +142,41 @@ func CreateToken() error {
 	if token, err = connection.Client.ExportLoginToken(); err != nil {
 		return fmt.Errorf("failed to export login token: %v", err)
 	}
-	if pwd, err := os.Getwd(); err != nil {
+	if cfgDir, err := os.UserConfigDir(); err != nil {
 		return fmt.Errorf("failed to determine pwd: %v\n not writing token", err)
 	} else {
-		tokenPath = path.Join(pwd, tokenFileName)
+		if err = os.MkdirAll(path.Join(cfgDir, cfgSubFolder), 0700); err != nil {
+			// check for exists error
+			clilog.Writer.Debugf("mkdir error: %v", err)
+			pe := err.(*os.PathError)
+			if pe.Err != os.ErrExist {
+				return fmt.Errorf("failed to ensure existance of directory %v: %v",
+					path.Join(cfgDir, cfgSubFolder), err)
+			}
+
+		}
+		tokenPath = path.Join(cfgDir, cfgSubFolder, tokenFileName)
 	}
 
 	// write out the token
-	// TODO may need to create it as 0200 and change it to 0400 after writing
-	fd, err := os.OpenFile(tokenPath, os.O_CREATE|os.O_WRONLY, 0400)
+	fd, err := os.OpenFile(tokenPath, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0600)
 	if err != nil {
-		return fmt.Errorf("failed to create token @ %v: %v", tokenPath, err)
+		return fmt.Errorf("failed to create token: %v", err)
 	}
 	if _, err := fd.WriteString(token); err != nil {
-		return fmt.Errorf("failed to write token @ %v: %v", tokenPath, err)
+		return fmt.Errorf("failed to write token: %v", err)
 	}
 
-	// save its path as an environment variable
-	if err := os.Setenv(envPathVar, tokenPath); err != nil {
-		return fmt.Errorf("failed to set environment variable '%v' -> '%v': %v", envPathVar, tokenPath, err)
+	if err = fd.Close(); err != nil {
+		return fmt.Errorf("failed to close token file: %v", err)
 	}
 
-	clilog.Writer.Infof("Created cred token @ %v with associated env var %v", tokenPath, envPathVar)
+	clilog.Writer.Infof("Created token file @ %v", tokenPath)
 	return nil
+}
+
+func ppost(cmd *cobra.Command, args []string) error {
+	return connection.End()
 }
 
 // TODO add lipgloss tree printing to help
@@ -206,6 +231,7 @@ func Execute(args []string) int {
 		})
 	rootCmd.SilenceUsage = true
 	rootCmd.PersistentPreRunE = ppre
+	rootCmd.PersistentPostRunE = ppost
 	rootCmd.Version = "prototype"
 
 	// associate flags
