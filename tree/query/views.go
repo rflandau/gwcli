@@ -35,7 +35,7 @@ func initialEdiorView(height, width uint) editorView {
 	// configure text area
 	ev.ta = textarea.New()
 	ev.ta.ShowLineNumbers = true
-	ev.ta.Prompt = stylesheet.PromptPrefix
+	ev.ta.Prompt = stylesheet.TAPromptPrefix
 	ev.ta.SetWidth(int(width))
 	ev.ta.SetHeight(int(height))
 	ev.ta.Focus()

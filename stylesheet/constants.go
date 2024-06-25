@@ -3,7 +3,8 @@ package stylesheet
 
 const (
 	TIWidth         = 60
-	PromptPrefix    = ">"
+	TIPromptPrefix  = "> " // text *input* prefix
+	TAPromptPrefix  = ""   // text *area* prefix
 	SelectionPrefix = '»'
 	UpDown          = "↑/↓"
 	LeftRight       = "←/→"

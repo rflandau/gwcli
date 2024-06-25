@@ -71,6 +71,7 @@ func new(root *navCmd, pwd *navCmd, _ *lipgloss.Renderer) Mother {
 	// text input
 	m.ti = textinput.New()
 	m.ti.Placeholder = "help"
+	m.ti.Prompt = stylesheet.TIPromptPrefix
 	m.ti.Focus()
 	m.ti.Width = stylesheet.TIWidth
 
