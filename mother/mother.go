@@ -410,24 +410,6 @@ func (m *Mother) UnsetAction() {
 
 //#region static helper functions
 
-//#region tree navigation
-
-type walkResult struct {
-	endCommand     *cobra.Command // the relevent command walk completed on
-	status         walkStatus     // ending state
-	onCompleteCmds []tea.Cmd      // ordered list of commands to pass to the bubble tea driver
-	errString      string
-
-	// builtin function information, if relevant (else Zero vals)
-	builtinStr  string
-	builtinFunc func(*Mother, []string) tea.Cmd
-
-	// contains args for actions
-	remainingTokens []string // any tokens remaining for later processing by walk caller
-}
-
-//#endregion
-
 // Return the parent directory to the given command
 func up(dir *cobra.Command) *cobra.Command {
 	if dir.Parent() == nil { // if we are at root, do nothing

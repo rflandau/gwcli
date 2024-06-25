@@ -28,6 +28,20 @@ const (
 	erroring
 )
 
+type walkResult struct {
+	endCommand     *cobra.Command // the relevent command walk completed on
+	status         walkStatus     // ending state
+	onCompleteCmds []tea.Cmd      // ordered list of commands to pass to the bubble tea driver
+	errString      string
+
+	// builtin function information, if relevant (else Zero vals)
+	builtinStr  string
+	builtinFunc func(*Mother, []string) tea.Cmd
+
+	// contains args for actions
+	remainingTokens []string // any tokens remaining for later processing by walk caller
+}
+
 // Recursively walk the tokens of the exploded user input until we run out or
 // find a valid destination.
 // Returns the relevant command (ending Nav destination or action to invoke),
