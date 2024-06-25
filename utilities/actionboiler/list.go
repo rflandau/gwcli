@@ -1,9 +1,7 @@
-/**
- * Helper functions and generic struct.
- * Intended to be boilder plate for specific list implementations.
- */
+// Helper functions and generic struct.
+// Intended to be boiler plate for specific list implementations.
 
-package treeutils
+package actionboiler
 
 import (
 	"fmt"
@@ -11,6 +9,7 @@ import (
 	"gwcli/clilog"
 	"gwcli/connection"
 	"gwcli/stylesheet"
+	"gwcli/treeutils"
 	"reflect"
 	"strings"
 
@@ -84,7 +83,7 @@ func NewListCmd[Any any](short, long string, aliases []string, defaultColumns []
 	}
 
 	// generate the command
-	cmd := NewActionCommand(use, short, long, aliases, runFunc)
+	cmd := treeutils.NewActionCommand(use, short, long, aliases, runFunc)
 
 	// define cmd-specific flag option
 	fs := NewListFlagSet()
