@@ -42,5 +42,9 @@
                 - [ ] schedule
         - [x] unique helpkey sets based on current focus
     - [ ] interactive mode syntax highlighting
-    - [ ] result pagination and/or scrollable viewport
+    - [x] result pagination and/or scrollable viewport
         - [?] pass in pagination increment
+
+- [ ] Move List_generic to boiler pkg
+
+- [ ] rename basic_generic to just basic
