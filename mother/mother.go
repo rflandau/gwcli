@@ -131,7 +131,8 @@ func (m Mother) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.UnsetAction()
 			return m, tea.Batch(tea.ExitAltScreen, textinput.Blink)
 		}
-		return m, tea.Batch(connection.End, tea.Println("Bye"), tea.Quit)
+		connection.End()
+		return m, tea.Batch(tea.Println("Bye"), tea.Quit)
 	case killer.Child:
 		m.UnsetAction()
 		return m, tea.Batch(tea.ExitAltScreen, textinput.Blink)
