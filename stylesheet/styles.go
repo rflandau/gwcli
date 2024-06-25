@@ -18,4 +18,5 @@ var (
 	}
 	Header1Style   = lipgloss.NewStyle().Foreground(PrimaryColor).Bold(true)
 	GreyedOutStyle = lipgloss.NewStyle().Faint(true)
+	PromptStyle    = lipgloss.NewStyle().Foreground(lipgloss.Color(PrimaryColor))
 )

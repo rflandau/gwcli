@@ -37,32 +37,13 @@ const (
 	indent string = "    "
 )
 
-// special, global actions
-// takes a reference to Mother and tokens [1:]
-var builtins map[string](func(*Mother, []string) tea.Cmd)
-
-var builtinHelp map[string]string
-
 func init() {
-	// need init to avoid an initialization cycle
-	builtins = map[string](func(*Mother, []string) tea.Cmd){
-		"help":    ContextHelp,
-		"history": ListHistory,
-		"quit":    quit,
-		"exit":    quit}
-
-	builtinHelp = map[string]string{
-		"help": "Display context-sensitive help. Equivalent to pressing F1.\n" +
-			"Calling `help` bare provides currently available navigations.\n" +
-			"Help can also be passed a path to display help on remote directories or actions.\n" +
-			"Ex: `help .. kits list`",
-		"history": "List previous commands. Navigate history via ↑/↓",
-		"quit":    "Kill the application",
-		"exit":    "Kill the application",
-	}
+	initBuiltins() // need init to avoid an initialization cycle
 }
 
-/* tea.Model implementation, carrying all data required for interactive use */
+// Mother, a struct satisfying the tea.Model interface and containing information required for
+// cobra.Command tree traversal.
+// Facillitates interactive use of gwcli.
 type Mother struct {
 	mode mode
 
@@ -98,10 +79,8 @@ func new(root *navCmd, pwd *navCmd, _ *lipgloss.Renderer) Mother {
 	return m
 }
 
-/**
- * Generate a Mother instance to operate on the Cobra command tree.
- * If pwd is nil, Mother will start at root.
- */
+// Generate a Mother instance to operate on the Cobra command tree.
+// If pwd is nil, Mother will start at root.
 func New(root *navCmd, pwd *navCmd) Mother {
 	return new(root, pwd, nil)
 }
@@ -118,22 +97,23 @@ func (m Mother) Init() tea.Cmd {
 // It checks for kill keys (to disallow a runaway/ill-designed child), then either passes off
 // control (if in handoff mode) or handles the input itself (if in prompt mode).
 func (m Mother) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
-	// handle kill keys above all else
-	// if we are killing from mother, we must manually exit alt screen (if in use)
-	switch killer.CheckKillKeys(msg) {
+	switch killer.CheckKillKeys(msg) { // handle kill keys above all else
 	case killer.Global:
+		// if in handoff mode, just kill the child
 		if m.mode == handoff {
 			m.UnsetAction()
+			// if we are killing from mother, we must manually exit alt screen
+			// (harmless if not in use)
 			return m, tea.Batch(tea.ExitAltScreen, textinput.Blink)
 		}
 		connection.End()
 		return m, tea.Batch(tea.Println("Bye"), tea.Quit)
-	case killer.Child:
+	case killer.Child: // ineffectual if not in handoff mode
 		m.UnsetAction()
 		return m, tea.Batch(tea.ExitAltScreen, textinput.Blink)
 	}
-	// a child is running
-	if m.mode == handoff {
+
+	if m.mode == handoff { // a child is running
 		activeChildSanityCheck(m)
 		// test for child state
 		if !m.active.model.Done() { // child still processing
@@ -177,8 +157,6 @@ func (m Mother) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	return m, cmd
 }
 
-//#region Update helper functions
-
 // helper function for m.Update.
 // Validates that mother's active states have not become corrupted by a bug elsewhere in the code.
 // Panics if it detects an error
@@ -200,8 +178,6 @@ func activeChildSanityCheck(m Mother) {
 		}
 	}
 }
-
-//#endregion Update helper functions
 
 func (m Mother) View() string {
 	// allow child command to retain control if it exists
@@ -334,57 +310,6 @@ func (m *Mother) pushToHistory() (println tea.Cmd, userIn string, err error) {
 	return tea.Println(p), userIn, nil // print prompt
 }
 
-//#region builtin functions
-
-// Built-in, interactive help invocation
-func ContextHelp(m *Mother, args []string) tea.Cmd {
-	if len(args) == 0 {
-		return TeaCmdContextHelp(m.pwd)
-	}
-
-	// walk the command tree
-	// action or nav, print help about it
-	// if invalid/no destination, print error
-	wr := walk(m.pwd, args, make([]tea.Cmd, 1))
-
-	if wr.errString != "" { // erroneous input
-		return tea.Println(stylesheet.ErrStyle.Render(wr.errString))
-	}
-	switch wr.status {
-	case foundNav, foundAction:
-		return TeaCmdContextHelp(wr.endCommand)
-	case foundBuiltin:
-		if _, ok := builtins[args[0]]; ok {
-			str, found := builtinHelp[args[0]]
-			if !found {
-				str = "no help defined for '" + args[0] + "'"
-			}
-
-			return tea.Printf(str)
-		}
-
-	}
-
-	clilog.Writer.Debugf("Doing nothing (%#v)", wr)
-
-	return nil
-}
-
-func ListHistory(m *Mother, _ []string) tea.Cmd {
-	toPrint := strings.Builder{}
-	rs := m.history.getAllRecords()
-
-	// print the oldest record first, so newest record is directly over prompt
-	for i := len(rs) - 1; i > 0; i-- {
-		toPrint.WriteString(rs[i] + "\n")
-	}
-
-	// chomp last newline
-	return tea.Println(strings.TrimSpace(toPrint.String()))
-}
-
-//#endregion
-
 //#region helper functions
 
 /* Returns a composition resembling the full prompt. */
@@ -423,11 +348,6 @@ func up(dir *cobra.Command) *cobra.Command {
 /* Returns a tea.Println Cmd containing the path to the pwd */
 func TeaCmdPath(c *cobra.Command) tea.Cmd {
 	return tea.Println(c.CommandPath())
-}
-
-/* Quit the program */
-func quit(*Mother, []string) tea.Cmd {
-	return tea.Sequence(tea.Println("Bye"), tea.Quit)
 }
 
 /**
@@ -484,9 +404,7 @@ func TeaCmdContextHelp(c *cobra.Command) tea.Cmd {
 
 // Returns the present working directory, set to the primary color
 func CommandPath(m *Mother) string {
-	return lipgloss.NewStyle().Foreground(
-		lipgloss.Color(stylesheet.PrimaryColor),
-	).Render(m.pwd.CommandPath())
+	return stylesheet.PromptStyle.Render(m.pwd.CommandPath())
 }
 
 //#endregion
