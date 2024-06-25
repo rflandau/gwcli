@@ -19,7 +19,7 @@ import (
 // screen.
 //
 // NOTE: The tea.Cmd returned by act will be thrown away if run in a Cobra context.
-func NewBasicAction(use, short, long string, aliases []string, act func() (string, tea.Cmd)) (*cobra.Command, BasicAction) {
+func NewBasicAction(use, short, long string, aliases []string, act func() (string, tea.Cmd)) action.Pair {
 	cmd := treeutils.NewActionCommand(
 		use,
 		short,
@@ -30,7 +30,7 @@ func NewBasicAction(use, short, long string, aliases []string, act func() (strin
 			fmt.Fprintf(c.OutOrStdout(), "%v\n", s)
 		})
 
-	return cmd, BasicAction{fn: act}
+	return treeutils.GenerateAction(cmd, &BasicAction{fn: act})
 }
 
 //#region interactive mode (model) implementation
