@@ -3,7 +3,7 @@ package kitactions
 import (
 	"gwcli/action"
 	"gwcli/treeutils"
-	"gwcli/utilities/actionboiler"
+	"gwcli/utilities/scaffold"
 
 	grav "github.com/gravwell/gravwell/v3/client"
 
@@ -18,7 +18,7 @@ var (
 )
 
 func NewListCmd() action.Pair {
-	cmd, la := actionboiler.NewListCmd(short, long, aliases, defaultColumns, types.IdKitState{}, ListKits)
+	cmd, la := scaffold.NewListCmd(short, long, aliases, defaultColumns, types.IdKitState{}, ListKits)
 	return treeutils.GenerateAction(cmd, &la)
 }
 

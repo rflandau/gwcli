@@ -1,4 +1,4 @@
-package actionboiler
+package scaffold
 
 import "fmt"
 

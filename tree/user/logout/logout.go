@@ -4,7 +4,7 @@ package logout
 import (
 	"gwcli/action"
 	"gwcli/connection"
-	"gwcli/utilities/actionboiler"
+	"gwcli/utilities/scaffold"
 
 	tea "github.com/charmbracelet/bubbletea"
 )
@@ -17,7 +17,7 @@ var (
 )
 
 func NewLogoutAction() action.Pair {
-	return actionboiler.NewBasicAction(use, short, long, aliases, func() (string, tea.Cmd) {
+	return scaffold.NewBasicAction(use, short, long, aliases, func() (string, tea.Cmd) {
 		connection.End()
 		return "Successfully logged out", tea.Quit
 	})

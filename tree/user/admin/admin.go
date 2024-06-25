@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"gwcli/action"
 	"gwcli/connection"
-	"gwcli/utilities/actionboiler"
+	"gwcli/utilities/scaffold"
 
 	tea "github.com/charmbracelet/bubbletea"
 )
@@ -18,7 +18,7 @@ var (
 )
 
 func NewAdminAction() action.Pair {
-	return actionboiler.NewBasicAction(use, short, long, aliases, func() (string, tea.Cmd) {
+	return scaffold.NewBasicAction(use, short, long, aliases, func() (string, tea.Cmd) {
 		var not string
 		if !connection.Client.AdminMode() {
 			not = " not"

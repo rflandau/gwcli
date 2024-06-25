@@ -1,7 +1,7 @@
 // Helper functions and generic struct.
 // Intended to be boiler plate for specific list implementations.
 
-package actionboiler
+package scaffold
 
 import (
 	"fmt"

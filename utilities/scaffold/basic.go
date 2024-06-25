@@ -1,8 +1,8 @@
-// A basic action is the simple action: it does its thing and returns a string to be printed to the
+// A basic action is the simplest action: it does its thing and returns a string to be printed to the
 // terminal. Give it the function you want performed when the action is invoked and have it return
 // whatever string value you want printed to the screen, if at all.
 
-package actionboiler
+package scaffold
 
 import (
 	"fmt"
