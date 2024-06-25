@@ -1,3 +1,4 @@
+// Colors provides constants used to provide uniform, readable colors to the styles
 package stylesheet
 
 import "github.com/charmbracelet/lipgloss"
