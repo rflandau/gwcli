@@ -15,6 +15,7 @@ import (
 	"gwcli/tree/query"
 	"gwcli/tree/systems"
 	"gwcli/tree/tools"
+	"gwcli/tree/user"
 	"gwcli/treeutils"
 	"gwcli/utilities/usage"
 	"os"
@@ -225,6 +226,7 @@ func Execute(args []string) int {
 			systems.NewSystemsNav(),
 			tools.GenerateTree(),
 			kits.NewKitsNav(),
+			user.GenerateTree(),
 		},
 		[]action.Pair{
 			query.GenerateAction(),
