@@ -321,7 +321,7 @@ func processInput(m *Mother) tea.Cmd {
 		clilog.Writer.Errorf("walking input %v returned invalid", given)
 	}
 
-	return tea.Sequence(onComplete...)
+	return tea.Batch(onComplete...)
 }
 
 // pushToHistory generates and stores historical record of the prompt (as a
