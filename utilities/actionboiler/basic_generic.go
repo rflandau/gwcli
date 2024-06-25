@@ -14,14 +14,20 @@ import (
 	"github.com/spf13/pflag"
 )
 
-func NewBasicCmd(use, short, long string, aliases []string, act func() string) (*cobra.Command, BasicAction) {
+// Creates a new Basic action fully featured for Cobra and Mother usage.
+// The given act func will be executed when the action is triggered and its result printed to the
+// screen.
+//
+// NOTE: The tea.Cmd returned by act will be thrown away if run in a Cobra context.
+func NewBasicAction(use, short, long string, aliases []string, act func() (string, tea.Cmd)) (*cobra.Command, BasicAction) {
 	cmd := treeutils.NewActionCommand(
 		use,
 		short,
 		long,
 		aliases,
 		func(c *cobra.Command, _ []string) {
-			fmt.Fprintf(c.OutOrStdout(), "%v\n", act())
+			s, _ := act()
+			fmt.Fprintf(c.OutOrStdout(), "%v\n", s)
 		})
 
 	return cmd, BasicAction{fn: act}
@@ -31,14 +37,15 @@ func NewBasicCmd(use, short, long string, aliases []string, act func() string) (
 
 type BasicAction struct {
 	done bool
-	fn   func() string
+	fn   func() (string, tea.Cmd)
 }
 
 var _ action.Model = &BasicAction{}
 
 func (ba *BasicAction) Update(msg tea.Msg) tea.Cmd {
 	ba.done = true
-	return tea.Println(ba.fn())
+	s, cmd := ba.fn()
+	return tea.Sequence(tea.Println(s), cmd)
 }
 
 func (*BasicAction) View() string {

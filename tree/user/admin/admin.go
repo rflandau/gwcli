@@ -6,6 +6,8 @@ import (
 	"gwcli/connection"
 	"gwcli/treeutils"
 	"gwcli/utilities/actionboiler"
+
+	tea "github.com/charmbracelet/bubbletea"
 )
 
 var (
@@ -16,12 +18,12 @@ var (
 )
 
 func NewAdminAction() action.Pair {
-	cmd, ba := actionboiler.NewBasicCmd(use, short, long, aliases, func() string {
+	cmd, ba := actionboiler.NewBasicAction(use, short, long, aliases, func() (string, tea.Cmd) {
 		var not string
 		if !connection.Client.AdminMode() {
 			not = " not"
 		}
-		return fmt.Sprintf("You are%v an admin", not)
+		return fmt.Sprintf("You are%v an admin", not), nil
 	})
 	return treeutils.GenerateAction(cmd, &ba)
 }
