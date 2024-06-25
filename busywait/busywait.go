@@ -50,6 +50,7 @@ func CobraNew() (p *tea.Program) {
 
 // NewSpinner provides a consistent spinner interface.
 // Intended for integration with an existing Model (eg. from interactive mode).
+// Add a spinner.Model to your action struct and instantiate it with this.
 func NewSpinner() spinner.Model {
 	return spinner.New(
 		spinner.WithSpinner(spinner.Moon),
