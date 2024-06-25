@@ -1,3 +1,11 @@
+/**
+ * clilog provides the logger for gwcli in the form of a logging singleton:
+ * Writer.
+ *
+ * It is basically a singleton wrapper of the gravwell ingest logger.
+ * While the underlying ingest logger appears to be thread-safe, clilog's helper
+ * functions are not necessarily.
+ */
 package clilog
 
 import (
@@ -8,10 +16,8 @@ import (
 
 var Writer *log.Logger
 
-/**
- * Initializes Writer, the logging singleton.
- * Safe (ineffectual) if the writer has already been initialized.
- */
+// Initializes Writer, the logging singleton.
+// Safe (ineffectual) if the writer has already been initialized.
 func Init(path string, lvl string) error {
 	var err error
 	if Writer != nil {
@@ -42,4 +48,3 @@ func TeeError(alt io.Writer, str string) {
 	Writer.Debugf(str)
 	alt.Write([]byte(str))
 }
-
