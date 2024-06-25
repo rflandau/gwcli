@@ -19,7 +19,7 @@ func TestHistoryLimits(t *testing.T) {
 // A somewhat redudant test to ensure new sets all parameters correctly
 func TestNewHistory(t *testing.T) {
 	t.Run("New", func(t *testing.T) {
-		h := NewHistory()
+		h := newHistory()
 		if h.fetchedIndex != unset {
 			t.Errorf("fetch index did not start unset")
 		}
@@ -37,9 +37,9 @@ func TestNewHistory(t *testing.T) {
 func Test_history_Insert(t *testing.T) {
 	t.Parallel()
 	t.Run("first record", func(t *testing.T) {
-		h := NewHistory()
+		h := newHistory()
 		record := "first"
-		h.Insert(record)
+		h.insert(record)
 		if r := h.commands[0]; r != record {
 			t.Errorf("record mismatch: expected %s, got %s", record, h.commands[0])
 		}
@@ -51,10 +51,10 @@ func Test_history_Insert(t *testing.T) {
 		}
 	})
 	t.Run("empty second record", func(t *testing.T) {
-		h := NewHistory()
-		h.Insert("first")
+		h := newHistory()
+		h.insert("first")
 		record := ""
-		h.Insert(record)
+		h.insert(record)
 		if h.insertionIndex != 1 {
 			t.Errorf("insertion index was incremeneted")
 		}
@@ -64,20 +64,20 @@ func Test_history_Insert(t *testing.T) {
 	})
 	t.Run("interspersed empty records", func(t *testing.T) {
 		// no number of empty insertions should alter history at all
-		h := NewHistory()
-		h.Insert("first")
-		h.Insert("")
-		h.Insert("second")
+		h := newHistory()
+		h.insert("first")
+		h.insert("")
+		h.insert("second")
 		insertCount := rand.Intn(500)
 		for i := 0; i < insertCount; i++ {
-			h.Insert("")
+			h.insert("")
 		}
-		h.Insert("third")
+		h.insert("third")
 		insertCount = rand.Intn(500)
 		for i := 0; i < insertCount; i++ {
-			h.Insert("")
+			h.insert("")
 		}
-		h.Insert("fourth")
+		h.insert("fourth")
 
 		if h.insertionIndex != 4 {
 			t.Errorf("insertion index mismatch: expected %v, got %v", 4, h.insertionIndex)
@@ -91,10 +91,10 @@ func Test_history_Insert(t *testing.T) {
 func Test_history_GetRecord(t *testing.T) {
 	t.Parallel()
 	t.Run("empty fetches", func(t *testing.T) {
-		h := NewHistory()
+		h := newHistory()
 		// fetchIndex should be altered even if the newest record is empty
 		t.Run("first fetch sets fetchedIndex", func(t *testing.T) {
-			r := h.GetOlderRecord()
+			r := h.getOlderRecord()
 			if r != "" {
 				t.Errorf("empty history did not fetch empty string (got: %s)", r)
 			}
@@ -107,7 +107,7 @@ func Test_history_GetRecord(t *testing.T) {
 		})
 		// fetchIndex should not be altered on the second empty record
 		t.Run("second fetch does not alter fetchedIndex", func(t *testing.T) {
-			r := h.GetOlderRecord()
+			r := h.getOlderRecord()
 			if r != "" {
 				t.Errorf("empty history did not fetch empty string (got: %s)", r)
 			}
@@ -116,8 +116,8 @@ func Test_history_GetRecord(t *testing.T) {
 			}
 		})
 		t.Run("unset, repeat first fetch sets fetchedIndex", func(t *testing.T) {
-			h.UnsetFetch()
-			r := h.GetOlderRecord()
+			h.unsetFetch()
+			r := h.getOlderRecord()
 			if r != "" {
 				t.Errorf("empty history did not fetch empty string (got: %s)", r)
 			}
@@ -130,27 +130,27 @@ func Test_history_GetRecord(t *testing.T) {
 		})
 	})
 	t.Run("arbitrary Older/Newer manipulation", func(t *testing.T) {
-		h := NewHistory()
-		h.Insert("A")
-		h.Insert("B")
-		h.Insert("C")
+		h := newHistory()
+		h.insert("A")
+		h.insert("B")
+		h.insert("C")
 		t.Run("GetOlderRecord returns C, B, A (in that order)", func(t *testing.T) {
-			if r := h.GetOlderRecord(); r != "C" {
+			if r := h.getOlderRecord(); r != "C" {
 				t.Fatalf("expected: %v, got: %v", "C", r)
 			}
-			if r := h.GetOlderRecord(); r != "B" {
+			if r := h.getOlderRecord(); r != "B" {
 				t.Fatalf("expected: %v, got: %v", "B", r)
 			}
-			if r := h.GetOlderRecord(); r != "A" {
+			if r := h.getOlderRecord(); r != "A" {
 				t.Fatalf("expected: %v, got: %v", "A", r)
 			}
 		})
 
 		randOlderRecordFunc := func(t *testing.T) {
-			roll := rand.Intn(int(arraySize)*2)
+			roll := rand.Intn(int(arraySize) * 2)
 			t.Logf("Rolled %d", roll)
-			for i := 0; i < roll; i++{
-				if r := h.GetOlderRecord(); r != ""{
+			for i := 0; i < roll; i++ {
+				if r := h.getOlderRecord(); r != "" {
 					t.Fatalf("iteration #%d: found non-empty value %s", i, r)
 				}
 			}
@@ -160,29 +160,29 @@ func Test_history_GetRecord(t *testing.T) {
 		t.Run("any number of GetOlderRecords returns empty record #3", randOlderRecordFunc)
 
 		t.Run("GetNewerRecord returns A, B, C (in that order)", func(t *testing.T) {
-			if r := h.GetNewerRecord(); r != "A" {
+			if r := h.getNewerRecord(); r != "A" {
 				t.Fatalf("expected: %v, got: %v", "A", r)
 			}
-			if r := h.GetNewerRecord(); r != "B" {
+			if r := h.getNewerRecord(); r != "B" {
 				t.Fatalf("expected: %v, got: %v", "B", r)
 			}
-			if r := h.GetNewerRecord(); r != "C" {
+			if r := h.getNewerRecord(); r != "C" {
 				t.Fatalf("expected: %v, got: %v", "C", r)
 			}
 		})
 
 		t.Run("GetOlderRecord returns B", func(t *testing.T) {
-			if r := h.GetOlderRecord(); r != "B" {
+			if r := h.getOlderRecord(); r != "B" {
 				t.Fatalf("expected: %v, got: %v", "B", r)
 			}
 		})
-		h.GetNewerRecord() // C
+		h.getNewerRecord() // C
 
 		randNewerRecordFunc := func(t *testing.T) {
-			roll := rand.Intn(int(arraySize)*2)
+			roll := rand.Intn(int(arraySize) * 2)
 			t.Logf("Rolled %d", roll)
-			for i := 0; i < roll; i++{
-				if r := h.GetNewerRecord(); r != ""{
+			for i := 0; i < roll; i++ {
+				if r := h.getNewerRecord(); r != "" {
 					t.Fatalf("iteration #%d: found non-empty value %s", i, r)
 				}
 			}
@@ -192,108 +192,106 @@ func Test_history_GetRecord(t *testing.T) {
 		t.Run("any number of GetNewerRecords returns empty record #3", randNewerRecordFunc)
 
 		t.Run("GetOlderRecord returns C, B, A (in that order)", func(t *testing.T) {
-			if r := h.GetOlderRecord(); r != "C" {
+			if r := h.getOlderRecord(); r != "C" {
 				t.Fatalf("expected: %v, got: %v", "C", r)
 			}
-			if r := h.GetOlderRecord(); r != "B" {
+			if r := h.getOlderRecord(); r != "B" {
 				t.Fatalf("expected: %v, got: %v", "B", r)
 			}
-			if r := h.GetOlderRecord(); r != "A" {
+			if r := h.getOlderRecord(); r != "A" {
 				t.Fatalf("expected: %v, got: %v", "A", r)
 			}
 		})
 
 	})
 	t.Run("at limit", func(t *testing.T) {
-		h := NewHistory()
+		h := newHistory()
 		var i uint16
 		for i = 0; i < arraySize; i++ {
-			h.Insert(fmt.Sprintf("%v", i))
+			h.insert(fmt.Sprintf("%v", i))
 		}
 		t.Run("first GetRecord", func(t *testing.T) {
-			if r := h.GetOlderRecord(); r != fmt.Sprintf("%v", arrayEnd) ||
+			if r := h.getOlderRecord(); r != fmt.Sprintf("%v", arrayEnd) ||
 				r != h.commands[arrayEnd] {
-			t.Errorf("GetRecord did not return last record. Expected %s, got %s. Commands: %v",
-				fmt.Sprintf("%v", arrayEnd), r, h.commands)
+				t.Errorf("GetRecord did not return last record. Expected %s, got %s. Commands: %v",
+					fmt.Sprintf("%v", arrayEnd), r, h.commands)
 			}
 		})
 		t.Run("second GetRecord", func(t *testing.T) {
 			want := fmt.Sprintf("%v", arrayEnd-1)
-			if r := h.GetOlderRecord(); r != want || r != h.commands[arrayEnd-1] {
-			t.Errorf("GetRecord did not return second-to-last record. Expected %s, got %s. Commands: %v",
-				want, r, h.commands)
+			if r := h.getOlderRecord(); r != want || r != h.commands[arrayEnd-1] {
+				t.Errorf("GetRecord did not return second-to-last record. Expected %s, got %s. Commands: %v",
+					want, r, h.commands)
 			}
 		})
-		t.Run("edge of underflow", func(t *testing.T){
+		t.Run("edge of underflow", func(t *testing.T) {
 			want := fmt.Sprintf("%v", 0)
-			for i := arrayEnd-1; i > 1; i--{
-				_ = h.GetOlderRecord()
+			for i := arrayEnd - 1; i > 1; i-- {
+				_ = h.getOlderRecord()
 			}
-			r := h.GetOlderRecord();
-			if h.fetchedIndex != 0{
-				t.Fatalf("fetch index error. r: %s, h: %+v",r, h)
+			r := h.getOlderRecord()
+			if h.fetchedIndex != 0 {
+				t.Fatalf("fetch index error. r: %s, h: %+v", r, h)
 			}
-			if  r != want {
+			if r != want {
 				t.Errorf("GetRecord did not return oldest (first) record. Expected %s, got %s. Commands: %v",
-				want, r, h.commands)
+					want, r, h.commands)
 			}
 		})
-		t.Run("underflow", func(t *testing.T){
+		t.Run("underflow", func(t *testing.T) {
 			want := fmt.Sprintf("%v", 999)
-			r := h.GetOlderRecord();
-			if h.fetchedIndex != 999{
-				t.Fatalf("fetch index error. r: %s, h: %+v",r, h)
+			r := h.getOlderRecord()
+			if h.fetchedIndex != 999 {
+				t.Fatalf("fetch index error. r: %s, h: %+v", r, h)
 			}
-			if  r != want {
+			if r != want {
 				t.Errorf("GetRecord did not return oldest (first) record. Expected %s, got %s. Commands: %v",
-				want, r, h.commands)
+					want, r, h.commands)
 			}
 		})
 	})
 }
 
-func Test_history_GetAllRecords(t *testing.T){
+func Test_history_GetAllRecords(t *testing.T) {
 	t.Run("Clipped", func(t *testing.T) {
 		cap := 50
-		h := NewHistory()
+		h := newHistory()
 		want := make([]string, cap)
-		for i := 0; i < cap; i++{
-			h.Insert("command")
+		for i := 0; i < cap; i++ {
+			h.insert("command")
 			want[i] = "command"
 		}
-		rs := h.GetAllRecords()
+		rs := h.getAllRecords()
 		if len(rs) != cap {
 			t.Errorf("GetAllRecords did not clip return. Expected %v (len %d). Got %v (len %d).",
-			want, len(want), rs, len(rs))
+				want, len(want), rs, len(rs))
 		}
 	})
 
-
-	h := NewHistory()
+	h := newHistory()
 	t.Run("no overflow", func(t *testing.T) {
-		for i := int(arrayEnd); i >= 0; i--{
-			h.Insert(fmt.Sprintf("%d", -i))
+		for i := int(arrayEnd); i >= 0; i-- {
+			h.insert(fmt.Sprintf("%d", -i))
 		}
-		rs := h.GetAllRecords()
-		for i := 0; i < int(arrayEnd); i++{
-			if rs[i] != fmt.Sprintf("%d", -i){
+		rs := h.getAllRecords()
+		for i := 0; i < int(arrayEnd); i++ {
+			if rs[i] != fmt.Sprintf("%d", -i) {
 				t.Fatalf("value mismatch: (index: %d) (want: %s, got (rs[i]): %s)", i, fmt.Sprintf("%d", -i), rs[i])
 			}
 		}
 	})
-	t.Run("single overflow", func(t *testing.T){
-		h.Insert("A")
-		rs := h.GetAllRecords()
-		if rs[0] != "A" || rs[1] != "0"{
+	t.Run("single overflow", func(t *testing.T) {
+		h.insert("A")
+		rs := h.getAllRecords()
+		if rs[0] != "A" || rs[1] != "0" {
 			t.Errorf("GetAllRecords did not sort newest first."+
-			"Expected first record 'A' (got: %v), second record '0' (got: %v)", rs[0], 0)
+				"Expected first record 'A' (got: %v), second record '0' (got: %v)", rs[0], 0)
 		}
-		if h.commands[0] != "A" || h.commands[1] != fmt.Sprintf("-%d", arrayEnd-1){
+		if h.commands[0] != "A" || h.commands[1] != fmt.Sprintf("-%d", arrayEnd-1) {
 			t.Errorf("Command list corrupt on overflow."+
-			"Expected [A, -998, -997, ...]. Got: [%s, %s, %s, ...]", 
-			h.commands[0], h.commands[1], h.commands[2])
+				"Expected [A, -998, -997, ...]. Got: [%s, %s, %s, ...]",
+				h.commands[0], h.commands[1], h.commands[2])
 		}
 	})
-	
-	
+
 }

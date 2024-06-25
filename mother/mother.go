@@ -98,7 +98,7 @@ func new(root *navCmd, pwd *navCmd, _ *lipgloss.Renderer) Mother {
 	m.ti.Focus()
 	m.ti.Width = stylesheet.TIWidth
 
-	m.history = NewHistory()
+	m.history = newHistory()
 
 	return m
 }
@@ -158,19 +158,19 @@ func (m Mother) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, ContextHelp(&m, strings.Split(strings.TrimSpace(m.ti.Value()), " "))
 		}
 		if msg.Type == tea.KeyUp {
-			m.ti.SetValue(m.history.GetOlderRecord())
+			m.ti.SetValue(m.history.getOlderRecord())
 			// update cursor position
 			m.ti.CursorEnd()
 			return m, nil
 		}
 		if msg.Type == tea.KeyDown {
-			m.ti.SetValue(m.history.GetNewerRecord())
+			m.ti.SetValue(m.history.getNewerRecord())
 			// update cursor position
 			m.ti.CursorEnd()
 			return m, nil
 		}
 		if msg.Type == tea.KeyEnter { // submit
-			m.history.UnsetFetch()
+			m.history.unsetFetch()
 			cmd := processInput(&m)
 			return m, cmd
 		}
@@ -334,7 +334,7 @@ func (m *Mother) pushToHistory() (println tea.Cmd, userIn string, err error) {
 	}
 	p := m.promptString()
 
-	m.history.Insert(userIn)           // add prompt string to history
+	m.history.insert(userIn)           // add prompt string to history
 	m.ti.Reset()                       // empty out the input
 	return tea.Println(p), userIn, nil // print prompt
 }
@@ -377,7 +377,7 @@ func ContextHelp(m *Mother, args []string) tea.Cmd {
 
 func ListHistory(m *Mother, _ []string) tea.Cmd {
 	toPrint := strings.Builder{}
-	rs := m.history.GetAllRecords()
+	rs := m.history.getAllRecords()
 
 	// print the oldest record first, so newest record is directly over prompt
 	for i := len(rs) - 1; i > 0; i-- {
