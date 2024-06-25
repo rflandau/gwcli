@@ -20,6 +20,31 @@ import (
 	"github.com/spf13/pflag"
 )
 
+//#region enumeration
+
+type outputFormat uint
+
+const (
+	json outputFormat = iota
+	csv
+	table
+	unknown
+)
+
+func (f outputFormat) String() string {
+	switch f {
+	case json:
+		return "JSON"
+	case csv:
+		return "CSV"
+	case table:
+		return "table"
+	}
+	return fmt.Sprintf("unknown format (%d)", f)
+}
+
+//#endregion enumeration
+
 const use = "list"
 
 // NewListCmd creates and returns a cobra.Command suitable for use as a list
