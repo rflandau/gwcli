@@ -397,6 +397,10 @@ func TeaCmdContextHelp(c *cobra.Command) tea.Cmd {
 		}
 	}
 
+	// write help footer
+	s.WriteString("\nTry " + lipgloss.NewStyle().Italic(true).Render("help help") +
+		" for information on using the help command.")
+
 	// TODO store the string within mother somewhere so we can lazy-compile all strings
 	// chomp last newline and return
 	return tea.Println(strings.TrimSuffix(s.String(), "\n"))

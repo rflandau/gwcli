@@ -66,7 +66,7 @@ func ContextHelp(m *Mother, args []string) tea.Cmd {
 
 	}
 
-	clilog.Writer.Debugf("Doing nothing (%#v)", wr)
+	clilog.Writer.Infof("Doing nothing (%#v)", wr)
 
 	return nil
 }
