@@ -8,9 +8,6 @@
 package connection
 
 import (
-	"strings"
-
-	tea "github.com/charmbracelet/bubbletea"
 	grav "github.com/gravwell/gravwell/v3/client"
 	"github.com/gravwell/gravwell/v3/client/objlog"
 )
@@ -41,22 +38,16 @@ func Login(user, pass string) (err error) {
 }
 
 /* Logs out the current user and closes the connection to the server. */
-func End() tea.Msg {
+func End() error {
 	if Client == nil {
-		return ""
+		return nil
 	}
 
-	var errString strings.Builder
-	if err := Client.Logout(); err != nil {
-		errString.WriteString(err.Error())
-	}
+	// TODO move logout and logoutall to an action
+	/*if err := Client.Logout(); err != nil {
+		return err
+	}*/
 
-	if err := Client.Close(); err != nil {
-		if errString.String() != "" {
-			errString.WriteRune('|')
-		}
-		errString.Write([]byte(err.Error()))
-	}
-
-	return errString
+	Client.Close()
+	return nil
 }
