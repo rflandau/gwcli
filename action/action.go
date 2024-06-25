@@ -1,16 +1,20 @@
 /**
  * The action package tests and maintains the action map, which bolts
  * subroutines onto Actions (leaves) in the cobra command tree so Mother can
- * call them interactively.
+ * call them interactively. The action map is not utilized when gwcli is run
+ * from a Cobra context/non-interactively.
  *
  * Each Action's Model is implemented and *instantiated* in its own package
- * (ex: tree/tools/macros/macrosactions) and added to the map as part of the
+ * (ex: tree/tools/macros/create) and added to the map as part of the
  * tree's assembly.
  * When that cobra.Command is invoked interactively, Mother uses the action map
  * to find the bolted-on subroutines to supplant her own Update and View
  * subroutines until the action is `Done()`.
  * Reset() is used to clear the done status and any other no-longer-relevant
- * data so the action can be invoked again cleanly.
+ * data so the action can be invoked again cleanly. This is required because
+ * actions are only ever instantiated once, each, at start up.
+ *
+ * Utilize the boilerplate actions in utilities/scaffold where possible.
  */
 package action
 
@@ -32,26 +36,27 @@ var (
 //#endregion
 
 type Model interface {
-	Update(msg tea.Msg) tea.Cmd
-	View() string
-	Done() bool
-	Reset() error
+	Update(msg tea.Msg) tea.Cmd // action processing
+	View() string               // action displaying
+	Done() bool                 // should Mother reassert control?
+	Reset() error               // clean up action post-run
 	SetArgs(*pflag.FlagSet, []string) (invalid string, onStart []tea.Cmd, err error)
 }
 
-// Temp tuple used to construct the Action Map
-// Associates the Action command with its bolted-on Update/View subroutines
+// Duple used to construct the Action Map.
+// Associates the Action command with its bolted-on Update/View subroutines.
 type Pair struct {
-	Action *cobra.Command
-	Model  Model
+	Action *cobra.Command // the base model
+	Model  Model          // our bolted-on interactivity
 }
 
 //#region action map
 
-/* Maps key(command) -> Model (the bolted-on Elm Arch subroutines) */
+// Our singleton variable, accessed via Public subrotuines below.
+// Maps key(command) -> Model.
 var actions = map[string]Model{}
 
-/** GetModel returns the Model subroutines associated to the given Action. */
+// GetModel returns the Model subroutines associated to the given Action.
 func GetModel(c *cobra.Command) (m Model, err error) {
 	if !Is(c) {
 		return nil, ErrNotAnAction
@@ -59,13 +64,13 @@ func GetModel(c *cobra.Command) (m Model, err error) {
 	return actions[key(c)], nil
 }
 
-/** AddModel adds a new action and its subroutines to the action map */
+// AddModel adds a new action and its subroutines to the action map
 func AddModel(c *cobra.Command, m Model) {
-	//fmt.Printf("Inserting %s into action map\n", key(c))
 	actions[key(c)] = m
 }
 
-/* Generates a string key from a command. Extracted for consistency */
+// The internal "hashing' logic to reliably generate a string key associated
+// to a command.
 func key(c *cobra.Command) string {
 	var parentName string = "~"
 	if c.Parent() != nil {
@@ -75,10 +80,9 @@ func key(c *cobra.Command) string {
 }
 
 //#endregion
-/**
- * Given a cobra.Command, returns whether it is an Action (and thus can supplant
- * Mother's Elm cycle) or a Nav.
- */
+
+// Given a cobra.Command, returns whether it is an Action (and thus can supplant
+// Mother's Elm cycle) or a Nav.
 func Is(cmd *cobra.Command) bool {
 	if cmd == nil { // sanity check
 		panic("cmd cannot be nil!")
