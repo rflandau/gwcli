@@ -173,12 +173,14 @@ func run(cmd *cobra.Command, args []string) {
 		clilog.TeeError(cmd.ErrOrStderr(), err.Error())
 		return
 	}
-	// if results were not sent to file, they were returned and we need to print to terminal
-	if script { // do not allow interactivity
-		for _, r := range results {
-			fmt.Printf("%s\n", r.Data)
+	if len(results) > 0 {
+		// if results were not sent to file, they were returned and we need to display them
+		if script { // do not allow interactivity
+			for _, r := range results {
+				fmt.Printf("%s\n", r.Data)
+			}
+			return
 		}
-	} else { // spin up a scrolling pager to display
 		// convert data to string form for scope
 		// TODO we have a lot of loops of similar data; can we consolidate?
 		var strs []string = make([]string, len(results))
@@ -186,6 +188,7 @@ func run(cmd *cobra.Command, args []string) {
 			strs[i] = string(r.Data)
 		}
 
+		// spin up a scrolling pager to display
 		scrlPgrP := datascope.CobraNew(strs, "results")
 		if _, err := scrlPgrP.Run(); err != nil {
 			clilog.TeeError(cmd.ErrOrStderr(), err.Error())
@@ -304,7 +307,6 @@ func outputSearchResults(file *os.File, s grav.Search, json, csv bool) ([]types.
 	// only write to output file if it was given/not null
 	if file != nil {
 		// if we are outputting to a file, use the provided Download functionality
-		// TODO unclear if an empty TR will use the search's timeframe, as desired
 		var (
 			format string
 			rc     io.ReadCloser
