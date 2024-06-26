@@ -2,6 +2,7 @@ package list
 
 import (
 	"gwcli/action"
+	"gwcli/clilog"
 	"gwcli/connection"
 	"gwcli/utilities/scaffold"
 
@@ -21,8 +22,13 @@ var (
 )
 
 func NewListCmd() action.Pair {
+	addtlFlags := pflag.FlagSet{}
+	addtlFlags.Bool("all", false, "(admin-only) Fetch all macros on the system."+
+		" Supercedes --group. Ignored if you are not an admin.")
+	addtlFlags.Int32("group", 0, "Fetches all macros shared with the given grou id.")
+
 	return scaffold.NewListCmd(short, long, aliases, defaultColumns,
-		types.SearchMacro{}, listMacros, nil)
+		types.SearchMacro{}, listMacros, &addtlFlags)
 }
 
 func listMacros(c *grav.Client, fs *pflag.FlagSet) ([]types.SearchMacro, error) {
@@ -30,5 +36,16 @@ func listMacros(c *grav.Client, fs *pflag.FlagSet) ([]types.SearchMacro, error) 
 	if err != nil {
 		return nil, err
 	}
+	if all, err := fs.GetBool("all"); err != nil {
+		clilog.Writer.Errorf("failed to fetch '--all':%v\ndefaulting to false", err)
+	} else if all {
+		return c.GetAllMacros()
+	}
+	if gid, err := fs.GetInt32("group"); err != nil {
+		clilog.Writer.Errorf("failed to fetch '--group':%v\nignoring", err)
+	} else if gid != 0 {
+		return c.GetGroupMacros(gid)
+	}
+
 	return c.GetUserMacros(myinfo.UID)
 }
