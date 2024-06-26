@@ -19,32 +19,40 @@ import (
 // screen.
 //
 // NOTE: The tea.Cmd returned by act will be thrown away if run in a Cobra context.
-func NewBasicAction(use, short, long string, aliases []string, act func() (string, tea.Cmd)) action.Pair {
+func NewBasicAction(use, short, long string, aliases []string,
+	act func(*pflag.FlagSet) (string, tea.Cmd), addtlFlags *pflag.FlagSet) action.Pair {
+
 	cmd := treeutils.NewActionCommand(
 		use,
 		short,
 		long,
 		aliases,
 		func(c *cobra.Command, _ []string) {
-			s, _ := act()
+			s, _ := act(c.Flags())
 			fmt.Fprintf(c.OutOrStdout(), "%v\n", s)
 		})
 
-	return treeutils.GenerateAction(cmd, &BasicAction{fn: act})
+	if addtlFlags != nil {
+		cmd.Flags().AddFlagSet(addtlFlags)
+	}
+
+	return treeutils.GenerateAction(cmd, &BasicAction{fs: *cmd.Flags(), baseFS: *cmd.Flags(), fn: act})
 }
 
 //#region interactive mode (model) implementation
 
 type BasicAction struct {
-	done bool
-	fn   func() (string, tea.Cmd)
+	done   bool
+	fs     pflag.FlagSet
+	baseFS pflag.FlagSet // the flagset to restore to
+	fn     func(*pflag.FlagSet) (string, tea.Cmd)
 }
 
 var _ action.Model = &BasicAction{}
 
 func (ba *BasicAction) Update(msg tea.Msg) tea.Cmd {
 	ba.done = true
-	s, cmd := ba.fn()
+	s, cmd := ba.fn(&ba.fs)
 	return tea.Sequence(tea.Println(s), cmd)
 }
 
@@ -58,10 +66,16 @@ func (ba *BasicAction) Done() bool {
 
 func (ba *BasicAction) Reset() error {
 	ba.done = false
+	ba.fs = ba.baseFS
 	return nil
 }
 
-func (ba *BasicAction) SetArgs(_ *pflag.FlagSet, _ []string) (_ string, _ []tea.Cmd, _ error) {
+func (ba *BasicAction) SetArgs(_ *pflag.FlagSet, tokens []string) (_ string, _ []tea.Cmd, err error) {
+	// we must parse manually each interactive call, as we restore fs from base each invocation
+	err = ba.fs.Parse(tokens)
+	if err != nil {
+		return "", nil, err
+	}
 	return "", nil, nil
 }
 

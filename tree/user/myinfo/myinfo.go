@@ -9,6 +9,9 @@ import (
 	"gwcli/utilities/scaffold"
 
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/gravwell/gravwell/v3/client/types"
+	"github.com/gravwell/gravwell/v3/utils/weave"
+	"github.com/spf13/pflag"
 )
 
 var (
@@ -19,12 +22,35 @@ var (
 )
 
 func NewMyInfoAction() action.Pair {
-	return scaffold.NewBasicAction(use, short, long, aliases, func() (string, tea.Cmd) {
+	fs := pflag.FlagSet{}
+	fs.Bool("csv", false, "display as CSV")
+
+	return scaffold.NewBasicAction(use, short, long, aliases, func(fs *pflag.FlagSet) (string, tea.Cmd) {
 		ud, err := connection.Client.MyInfo()
 		if err != nil {
 			s := fmt.Sprintf("Unable to determine user info: %v", err)
 			clilog.Writer.Error(s)
 			return s, nil
+		}
+
+		if asCSV, err := fs.GetBool("csv"); err != nil {
+			s := fmt.Sprintf("Failed to fetch csv flag: %v", err)
+			clilog.Writer.Error(s)
+			return s, nil
+		} else if asCSV {
+			return weave.ToCSV([]types.UserDetails{ud}, []string{
+				"UID",
+				"User",
+				"Name",
+				"Email",
+				"Admin",
+				"Locked",
+				"TS",
+				"DefaultGID",
+				"Groups",
+				"Hash",
+				"Synced",
+				"CBAC"}), nil
 		}
 
 		sty := stylesheet.Header1Style.Bold(false)
@@ -34,5 +60,5 @@ func NewMyInfoAction() action.Pair {
 			sty.Render("Admin"), ud.Admin)
 
 		return out, nil
-	})
+	}, &fs)
 }
