@@ -98,7 +98,7 @@ func run(cmd *cobra.Command, args []string) {
 		return
 	}
 
-	if script, err = cmd.Flags().GetBool("no-interactive"); err != nil {
+	if script, err = cmd.Flags().GetBool("script"); err != nil {
 		clilog.TeeError(cmd.ErrOrStderr(), err.Error())
 		return
 	}

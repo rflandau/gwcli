@@ -69,15 +69,15 @@ func NewActionCommand(use, short, long string, aliases []string, runFunc func(*c
 
 /**
  * NavRun is the Run function for all Navs (nodes).
- * It checks for the --no-interactive flag and initializes Mother with the
- * command as her pwd if no-interactive is unset.
+ * It checks for the --script flag and initializes Mother with the
+ * command as her pwd if script is unset.
  */
 var NavRun = func(cmd *cobra.Command, args []string) {
-	noInteractive, err := cmd.Flags().GetBool("no-interactive")
+	script, err := cmd.Flags().GetBool("script")
 	if err != nil {
 		panic(err)
 	}
-	if noInteractive {
+	if script {
 		cmd.Help()
 		return
 	}

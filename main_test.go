@@ -48,7 +48,7 @@ func TestNonInteractive(t *testing.T) {
 			panic(err)
 		}
 
-		tree.Execute([]string{"--no-interactive"})
+		tree.Execute([]string{"--script"})
 		restoreIO()
 		results := <-stdoutData
 		resultsErr := <-stderrData
@@ -85,7 +85,7 @@ func TestNonInteractive(t *testing.T) {
 			panic(err)
 		}
 
-		args := strings.Split("-u admin -p changeme --insecure --no-interactive tools macros list --csv --columns=UID,Global,Name", " ")
+		args := strings.Split("-u admin -p changeme --insecure --script tools macros list --csv --columns=UID,Global,Name", " ")
 
 		// run the test body
 		errCode := tree.Execute(args)

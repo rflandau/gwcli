@@ -81,6 +81,7 @@ func EnforceLogin(cmd *cobra.Command, args []string) error {
 	if err := LoginViaToken(); err != nil {
 		// jwt token failure; log and move on
 		clilog.Writer.Warnf("Failed to login via JWT token: %v", err)
+
 		// log on via flags and prompt
 		u, err := cmd.Flags().GetString("username")
 		if err != nil {
@@ -90,6 +91,9 @@ func EnforceLogin(cmd *cobra.Command, args []string) error {
 		if err != nil {
 			return err
 		}
+
+		// check script mdoe
+		// TODO
 
 		if u == "" || p == "" {
 			return fmt.Errorf("no valid token found.\n" +
@@ -185,7 +189,7 @@ func ppost(cmd *cobra.Command, args []string) error {
 /** Generate Flags populates all root-relevant flags (ergo global and root-local flags) */
 func GenerateFlags(root *cobra.Command) {
 	// global flags
-	root.PersistentFlags().Bool("no-interactive", false,
+	root.PersistentFlags().Bool("script", false,
 		"disallows gwcli from entering interactive mode and prints context help instead.\n"+
 			"Recommended for use in scripts to avoid hanging on a malformed command.")
 	root.PersistentFlags().StringP("username", "u", "", "login credential.")

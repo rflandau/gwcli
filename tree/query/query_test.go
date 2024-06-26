@@ -168,7 +168,7 @@ func Test_run(t *testing.T) {
 		fs := initialLocalFlagSet()
 		cmd.Flags().AddFlagSet(&fs)
 		// mock the root persistent flags that should have been passed down
-		cmd.Flags().Bool("no-interactive", false,
+		cmd.Flags().Bool("script", false,
 			"disallows gwcli from entering interactive mode and prints context help instead.\n"+
 				"Recommended for use in scripts to avoid hanging on a malformed command.")
 		cmd.Flags().StringP("username", "u", "", "login credential.")
@@ -185,7 +185,7 @@ func Test_run(t *testing.T) {
 
 	t1 := "Test_run.output-to-file.results.txt"
 	t.Run("output to file '"+t1+"'", func(t *testing.T) {
-		flagArgs := strings.Split("-o "+t1+" --no-interactive", " ")
+		flagArgs := strings.Split("-o "+t1+" --script", " ")
 		args := strings.Split("tag=gravwell", " ")
 
 		cmd := prepCmd(flagArgs)
@@ -206,7 +206,7 @@ func Test_run(t *testing.T) {
 
 	t2 := "Test_run.output-to-file.results.json"
 	t.Run("output to file '"+t2+"'", func(t *testing.T) {
-		flagArgs := strings.Split("-o "+t2+" --no-interactive --json", " ")
+		flagArgs := strings.Split("-o "+t2+" --script --json", " ")
 		args := strings.Split("tag=gravwell", " ")
 
 		cmd := prepCmd(flagArgs)
