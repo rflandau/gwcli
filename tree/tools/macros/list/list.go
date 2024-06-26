@@ -6,6 +6,7 @@ import (
 	"gwcli/utilities/scaffold"
 
 	grav "github.com/gravwell/gravwell/v3/client"
+	"github.com/spf13/pflag"
 
 	"github.com/gravwell/gravwell/v3/client/types"
 )
@@ -21,10 +22,10 @@ var (
 
 func NewListCmd() action.Pair {
 	return scaffold.NewListCmd(short, long, aliases, defaultColumns,
-		types.SearchMacro{}, listMacros)
+		types.SearchMacro{}, listMacros, nil)
 }
 
-func listMacros(c *grav.Client) ([]types.SearchMacro, error) {
+func listMacros(c *grav.Client, fs *pflag.FlagSet) ([]types.SearchMacro, error) {
 	myinfo, err := connection.Client.MyInfo()
 	if err != nil {
 		return nil, err

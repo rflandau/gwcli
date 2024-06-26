@@ -45,28 +45,34 @@ func (f outputFormat) String() string {
 
 //#endregion enumeration
 
+// Function that retrieves an array of structs of type dataStruct
+type dataFunction[Any any] func(*grav.Client, *pflag.FlagSet) ([]Any, error)
+
 const use = "list"
 
 // NewListCmd creates and returns a cobra.Command suitable for use as a list
 // action, complete with common flags and a generic run function operating off
-// the given dataFunc.
+// the given dataFunction.
 //
-// Flags: {--csv|--json|--table} --columns <...>
+// Flags: {--csv|--json|--table} [--columns ...]
 //
 // If no output module is given, defaults to --table.
 //
-// ! `dataFunc` should be a static wrapper function for a method that returns an array of structures
+// ! `dataFn` should be a static wrapper function for a method that returns an array of structures
 // containing the data to be listed.
-// ! `dataStruct` must be the type of struct returned by dataFunc. Its values do not matter.
+//
+// ! `dataStruct` must be the type of struct returned in array by dataFunc.
+// Its values do not matter.
 //
 // Any data massaging required to get the data into an array of structures should be performed in
-// the data func.
-// See kitactions' ListKits() as an example
+// the data function. Non-list-standard flags (ex: those passed to addtlFlags, if not nil) should
+// also be handled in the data function.
+// See tree/kits/list's ListKits() as an example.
 //
 // Go's Generics are a godsend.
 func NewListCmd[Any any](short, long string,
 	aliases []string, defaultColumns []string,
-	dataStruct Any, dataFunc func(*grav.Client) ([]Any, error)) action.Pair {
+	dataStruct Any, dataFn dataFunction[Any], addtlFlags *pflag.FlagSet) action.Pair {
 	// assert developer provided a usable data struct
 	if reflect.TypeOf(dataStruct).Kind() != reflect.Struct {
 		panic("dataStruct must be a struct") // developer error
@@ -105,7 +111,7 @@ func NewListCmd[Any any](short, long string,
 			panic(err)
 		}
 
-		output, err := List(cmd.Flags(), columns, !noColor, dataStruct, dataFunc)
+		output, err := List(cmd.Flags(), columns, !noColor, dataStruct, dataFn)
 		if err != nil {
 			clilog.TeeError(cmd.ErrOrStderr(), err.Error())
 		}
@@ -115,14 +121,27 @@ func NewListCmd[Any any](short, long string,
 	// generate the command
 	cmd := treeutils.NewActionCommand(use, short, long, aliases, runFunc)
 
-	// define cmd-specific flag option
-	fs := NewListFlagSet()
+	// set up flags
+	fs := pflag.FlagSet{}
+	fs.Bool("csv", false, "output results as csv")
+	fs.Bool("json", false, "output results as json")
+	fs.Bool("table", true, "output results in a human-readable table") // default
+	fs.StringSlice("columns", []string{},
+		"comma-seperated list of columns to include in the output."+
+			"Use --show-columns to see the full list of columns.")
+	fs.Bool("show-columns", false, "display the list of fully qualified column names and die.")
+
+	// use above sorting
+	fs.SortFlags = false
 	cmd.Flags().AddFlagSet(&fs)
+	if addtlFlags != nil {
+		cmd.Flags().AddFlagSet(addtlFlags)
+	}
 	cmd.Flags().SortFlags = false // does not carry over to cmd, need repeat
 	cmd.MarkFlagsMutuallyExclusive("csv", "json", "table")
 
 	// spin up a list action for interactive use
-	la := NewListAction(defaultColumns, dataStruct, dataFunc)
+	la := NewListAction(defaultColumns, dataStruct, dataFn, *cmd.Flags())
 
 	// share the flagset with the interactive action model
 
@@ -152,27 +171,11 @@ func determineFormat(fs *pflag.FlagSet) outputFormat {
 	return format
 }
 
-func NewListFlagSet() pflag.FlagSet {
-	fs := pflag.FlagSet{}
-	fs.Bool("csv", false, "output results as csv")
-	fs.Bool("json", false, "output results as json")
-	fs.Bool("table", true, "output results in a human-readable table") // default
-	fs.StringSlice("columns", []string{},
-		"comma-seperated list of columns to include in the output."+
-			"Use --show-columns to see the full list of columns.")
-	fs.Bool("show-columns", false, "display the list of fully qualified column names and die.")
-
-	// use above sorting
-	fs.SortFlags = false
-
-	return fs
-}
-
 // outputs
 func List[Any any](fs *pflag.FlagSet, columns []string, color bool,
-	dataStruct Any, dataFunc func(*grav.Client) ([]Any, error)) (string, error) {
+	dataStruct Any, dataFn dataFunction[Any]) (string, error) {
 
-	data, err := dataFunc(connection.Client)
+	data, err := dataFn(connection.Client, fs)
 	if err != nil {
 		return "", err
 	}
@@ -211,26 +214,30 @@ type ListAction[Any any] struct {
 	fs          pflag.FlagSet // current flagset, parsed or unparsed
 
 	// data shielded from .Reset()
-	DefaultFormat      outputFormat
-	DefaultColumns     []string             // columns to output if unspecified
-	DefaultFlagSetFunc func() pflag.FlagSet // flagset generation function used for .Reset()
-	color              bool                 // inferred from the global "--no-color" flag
+	DefaultFormat  outputFormat
+	DefaultColumns []string      // columns to output if unspecified
+	baseFS         pflag.FlagSet // unparsed flagset to restore to
+	color          bool          // inferred from the global "--no-color" flag
 
 	// individualized for each user of list_generic
 	dataStruct Any
-	dataFunc   func(*grav.Client) ([]Any, error)
+	dataFunc   dataFunction[Any]
 }
 
 // Constructs a ListAction suitable for interactive use
-func NewListAction[Any any](defaultColumns []string, dataStruct Any, dataFunc func(*grav.Client) ([]Any, error)) ListAction[Any] {
-	return ListAction[Any]{
-		columns:            defaultColumns,
-		fs:                 NewListFlagSet(),
-		DefaultFormat:      table,
-		DefaultColumns:     defaultColumns,
-		DefaultFlagSetFunc: NewListFlagSet,
-		dataStruct:         dataStruct,
-		dataFunc:           dataFunc}
+func NewListAction[Any any](defaultColumns []string, dataStruct Any, dFn dataFunction[Any],
+	baseFS pflag.FlagSet) ListAction[Any] {
+
+	la := ListAction[Any]{
+		columns:        defaultColumns,
+		fs:             baseFS,
+		DefaultFormat:  table,
+		DefaultColumns: defaultColumns,
+		baseFS:         baseFS,
+		dataStruct:     dataStruct,
+		dataFunc:       dFn}
+
+	return la
 }
 
 func (la *ListAction[T]) Update(msg tea.Msg) tea.Cmd {
@@ -271,7 +278,9 @@ func (la *ListAction[T]) Reset() error {
 	la.done = false
 	la.columns = la.DefaultColumns
 	la.showColumns = false
-	la.fs = la.DefaultFlagSetFunc()
+	clilog.Writer.Debugf("baseFS ptr: %p (%v) | FS ptr: %p (%v)",
+		&la.baseFS, la.baseFS, &la.fs, la.fs)
+	la.fs = la.baseFS
 	return nil
 }
 
@@ -279,7 +288,9 @@ var _ action.Model = &ListAction[any]{}
 
 // Called when the action is invoked by the user and Mother *enters* handoff mode
 // Mother parses flags and provides us a handle to check against
-func (la *ListAction[T]) SetArgs(inherited *pflag.FlagSet, tokens []string) (invalid string, onStart []tea.Cmd, err error) {
+func (la *ListAction[T]) SetArgs(
+	inherited *pflag.FlagSet, tokens []string) (invalid string, onStart []tea.Cmd, err error) {
+
 	err = la.fs.Parse(tokens)
 	if err != nil {
 		return "", nil, err

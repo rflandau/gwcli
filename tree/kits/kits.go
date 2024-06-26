@@ -2,7 +2,7 @@ package kits
 
 import (
 	"gwcli/action"
-	"gwcli/tree/kits/kitactions"
+	"gwcli/tree/tools/macros/list"
 	"gwcli/treeutils"
 
 	"github.com/spf13/cobra"
@@ -17,5 +17,5 @@ var (
 
 func NewKitsNav() *cobra.Command {
 	// no sub navs
-	return treeutils.GenerateNav(use, short, long, aliases, []*cobra.Command{}, []action.Pair{kitactions.NewListCmd()})
+	return treeutils.GenerateNav(use, short, long, aliases, []*cobra.Command{}, []action.Pair{list.NewListCmd()})
 }
