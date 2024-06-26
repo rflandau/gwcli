@@ -21,6 +21,7 @@ import (
 	"gwcli/utilities/usage"
 	"os"
 	"path"
+	"strings"
 	"time"
 
 	"github.com/spf13/cobra"
@@ -83,7 +84,7 @@ func EnforceLogin(cmd *cobra.Command, args []string) error {
 		// jwt token failure; log and move on
 		clilog.Writer.Warnf("Failed to login via JWT token: %v", err)
 
-		// log on via flags and prompt
+		// fetch credentials from flags
 		u, err := cmd.Flags().GetString("username")
 		if err != nil {
 			return err
@@ -91,6 +92,19 @@ func EnforceLogin(cmd *cobra.Command, args []string) error {
 		p, err := cmd.Flags().GetString("password")
 		if err != nil {
 			return err
+		} else if p == "" {
+			// try the password file
+			pf, err := cmd.Flags().GetString("passfile")
+			if err != nil {
+				return err
+			}
+			if pf != "" {
+				b, err := os.ReadFile(pf)
+				if err != nil {
+					return fmt.Errorf("failed to read password from %v: %v", pf, err)
+				}
+				p = strings.TrimSpace(string(b))
+			}
 		}
 
 		// fetch additional data before attempting logon, if necessary
@@ -206,21 +220,21 @@ func ppost(cmd *cobra.Command, args []string) error {
 
 // TODO add lipgloss tree printing to help
 
-/** Generate Flags populates all root-relevant flags (ergo global and root-local flags) */
+// Generate Flags populates all root-relevant flags (ergo global and root-local flags)
 func GenerateFlags(root *cobra.Command) {
 	// global flags
 	root.PersistentFlags().Bool("script", false,
 		"disallows gwcli from entering interactive mode and prints context help instead.\n"+
 			"Recommended for use in scripts to avoid hanging on a malformed command.")
 	root.PersistentFlags().StringP("username", "u", "", "login credential.")
-	root.PersistentFlags().StringP("password", "p", "", "login credential.")
+	root.PersistentFlags().String("password", "", "login credential.")
+	root.PersistentFlags().StringP("passfile", "p", "", "the path to a file containing your password")
 	root.PersistentFlags().Bool("no-color", false, "disables colourized output.") // TODO via lipgloss.NoColor
 	root.PersistentFlags().String("server", "localhost:80", "<host>:<port> of instance to connect to.\n")
 	root.PersistentFlags().StringP("log", "l", "./gwcli.log", "log location for developer logs.\n")
 	root.PersistentFlags().String("loglevel", "DEBUG", "log level for developer logs (-l).\n"+
 		"Possible values: 'OFF', 'DEBUG', 'INFO', 'WARN', 'ERROR', 'CRITICAL', 'FATAL'.\n")
 	root.PersistentFlags().Bool("insecure", false, "do not use HTTPS and do not enforce certs.")
-	// TODO JSON global flag output
 }
 
 const ( // usage
