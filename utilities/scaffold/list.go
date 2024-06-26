@@ -47,6 +47,7 @@ func (f outputFormat) String() string {
 
 // Function that retrieves an array of structs of type dataStruct
 type dataFunction[Any any] func(*grav.Client, *pflag.FlagSet) ([]Any, error)
+type addtlFlagFunction func() pflag.FlagSet
 
 const use = "list"
 
@@ -72,7 +73,7 @@ const use = "list"
 // Go's Generics are a godsend.
 func NewListCmd[Any any](short, long string,
 	aliases []string, defaultColumns []string,
-	dataStruct Any, dataFn dataFunction[Any], addtlFlags *pflag.FlagSet) action.Pair {
+	dataStruct Any, dataFn dataFunction[Any], addtlFlagsFunc addtlFlagFunction) action.Pair {
 	// assert developer provided a usable data struct
 	if reflect.TypeOf(dataStruct).Kind() != reflect.Struct {
 		panic("dataStruct must be a struct") // developer error
@@ -121,7 +122,26 @@ func NewListCmd[Any any](short, long string,
 	// generate the command
 	cmd := treeutils.NewActionCommand(use, short, long, aliases, runFunc)
 
-	// set up flags
+	// attach normal list flags and, if applicable, additional flags
+	startFS := listStarterFlags()
+	cmd.Flags().AddFlagSet(&startFS)
+	var addtlFlags pflag.FlagSet
+	if addtlFlagsFunc != nil {
+		addtlFlags = addtlFlagsFunc()
+		cmd.Flags().AddFlagSet(&addtlFlags)
+	}
+
+	cmd.Flags().SortFlags = false // does not seem to be respected
+	cmd.MarkFlagsMutuallyExclusive("csv", "json", "table")
+
+	// spin up a list action for interactive use
+	la := newListAction(defaultColumns, dataStruct, dataFn, addtlFlagsFunc)
+
+	return treeutils.GenerateAction(cmd, &la)
+}
+
+// define the basic flags shared by all list actions
+func listStarterFlags() pflag.FlagSet {
 	fs := pflag.FlagSet{}
 	fs.Bool("csv", false, "output results as csv")
 	fs.Bool("json", false, "output results as json")
@@ -130,19 +150,7 @@ func NewListCmd[Any any](short, long string,
 		"comma-seperated list of columns to include in the output."+
 			"Use --show-columns to see the full list of columns.")
 	fs.Bool("show-columns", false, "display the list of fully qualified column names and die.")
-
-	// attach normal list flags and, if applicable, additional flags
-	cmd.Flags().AddFlagSet(&fs)
-	if addtlFlags != nil {
-		cmd.Flags().AddFlagSet(addtlFlags)
-	}
-	cmd.Flags().SortFlags = false // does not seem to be respected
-	cmd.MarkFlagsMutuallyExclusive("csv", "json", "table")
-
-	// spin up a list action for interactive use
-	la := newListAction(defaultColumns, dataStruct, dataFn, *cmd.Flags())
-
-	return treeutils.GenerateAction(cmd, &la)
+	return fs
 }
 
 // Given a **parsed** flagset, determines and returns output format
@@ -212,9 +220,9 @@ type ListAction[Any any] struct {
 
 	// data shielded from .Reset()
 	DefaultFormat  outputFormat
-	DefaultColumns []string      // columns to output if unspecified
-	baseFS         pflag.FlagSet // unparsed flagset to restore to
-	color          bool          // inferred from the global "--no-color" flag
+	DefaultColumns []string          // columns to output if unspecified
+	afsFunc        addtlFlagFunction // the additional flagset to add to the starter when restoring
+	color          bool              // inferred from the global "--no-color" flag
 
 	// individualized for each user of list_generic
 	dataStruct Any
@@ -223,14 +231,20 @@ type ListAction[Any any] struct {
 
 // Constructs a ListAction suitable for interactive use
 func newListAction[Any any](defaultColumns []string, dataStruct Any, dFn dataFunction[Any],
-	baseFS pflag.FlagSet) ListAction[Any] {
+	addtlFlags addtlFlagFunction) ListAction[Any] {
+
+	fs := listStarterFlags()
+	if addtlFlags != nil {
+		afs := addtlFlags()
+		fs.AddFlagSet(&afs)
+	}
 
 	la := ListAction[Any]{
 		columns:        defaultColumns,
-		fs:             baseFS,
+		fs:             fs,
 		DefaultFormat:  table,
 		DefaultColumns: defaultColumns,
-		baseFS:         baseFS,
+		afsFunc:        addtlFlags,
 		dataStruct:     dataStruct,
 		dataFunc:       dFn}
 
@@ -275,7 +289,13 @@ func (la *ListAction[T]) Reset() error {
 	la.done = false
 	la.columns = la.DefaultColumns
 	la.showColumns = false
-	la.fs = la.baseFS
+
+	la.fs = listStarterFlags()
+	// if a function providing additional flags was given, add them
+	if la.afsFunc != nil {
+		afs := la.afsFunc()
+		la.fs.AddFlagSet(&afs)
+	}
 	return nil
 }
 

@@ -22,13 +22,16 @@ var (
 )
 
 func NewListCmd() action.Pair {
+	return scaffold.NewListCmd(short, long, aliases, defaultColumns,
+		types.SearchMacro{}, listMacros, flags)
+}
+
+func flags() pflag.FlagSet {
 	addtlFlags := pflag.FlagSet{}
 	addtlFlags.Bool("all", false, "(admin-only) Fetch all macros on the system."+
 		" Supercedes --group. Ignored if you are not an admin.")
 	addtlFlags.Int32("group", 0, "Fetches all macros shared with the given grou id.")
-
-	return scaffold.NewListCmd(short, long, aliases, defaultColumns,
-		types.SearchMacro{}, listMacros, &addtlFlags)
+	return addtlFlags
 }
 
 func listMacros(c *grav.Client, fs *pflag.FlagSet) ([]types.SearchMacro, error) {

@@ -19,12 +19,16 @@ var (
 )
 
 func NewListCmd() action.Pair {
+	return scaffold.NewListCmd(short, long, aliases, defaultColumns,
+		types.IdKitState{}, ListKits, flags)
+}
+
+func flags() pflag.FlagSet {
 	addtlFlags := pflag.FlagSet{}
 	addtlFlags.Bool("all", false, "(admin-only) Fetch all kits on the system."+
 		"Ignored if you are not an admin.")
 
-	return scaffold.NewListCmd(short, long, aliases, defaultColumns,
-		types.IdKitState{}, ListKits, &addtlFlags)
+	return addtlFlags
 }
 
 // Retrieve and return array of kit structs via gravwell client
