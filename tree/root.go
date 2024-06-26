@@ -214,7 +214,6 @@ func GenerateFlags(root *cobra.Command) {
 			"Recommended for use in scripts to avoid hanging on a malformed command.")
 	root.PersistentFlags().StringP("username", "u", "", "login credential.")
 	root.PersistentFlags().StringP("password", "p", "", "login credential.")
-	root.MarkFlagsRequiredTogether("username", "password")
 	root.PersistentFlags().Bool("no-color", false, "disables colourized output.") // TODO via lipgloss.NoColor
 	root.PersistentFlags().String("server", "localhost:80", "<host>:<port> of instance to connect to.\n")
 	root.PersistentFlags().StringP("log", "l", "./gwcli.log", "log location for developer logs.\n")
