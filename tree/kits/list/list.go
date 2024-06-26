@@ -2,6 +2,7 @@ package list
 
 import (
 	"gwcli/action"
+	"gwcli/clilog"
 	"gwcli/utilities/scaffold"
 
 	grav "github.com/gravwell/gravwell/v3/client"
@@ -28,5 +29,12 @@ func NewListCmd() action.Pair {
 
 // Retrieve and return array of kit structs via gravwell client
 func ListKits(c *grav.Client, flags *pflag.FlagSet) ([]types.IdKitState, error) {
+	// if --all, use the admin version
+	if all, err := flags.GetBool("all"); err != nil {
+		clilog.Writer.Errorf("failed to fetch '--all':%v\ndefaulting to false", err)
+	} else if all {
+		return c.AdminListKits()
+	}
+
 	return c.ListKits()
 }
