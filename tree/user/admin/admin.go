@@ -24,6 +24,6 @@ func NewAdminAction() action.Pair {
 		if !connection.Client.AdminMode() {
 			not = " not"
 		}
-		return fmt.Sprintf("You are%v an admin", not), nil
+		return fmt.Sprintf("You are%v in admin mode", not), nil
 	}, nil)
 }
