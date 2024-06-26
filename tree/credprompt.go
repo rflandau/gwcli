@@ -4,6 +4,7 @@ package tree
 import (
 	"fmt"
 	"gwcli/stylesheet"
+	"gwcli/utilities/killer"
 
 	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
@@ -37,11 +38,13 @@ func (c cred) Init() tea.Cmd {
 }
 
 func (c cred) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+	if kill := killer.CheckKillKeys(msg); kill != killer.None {
+		c.killed = true
+		return c, tea.Quit
+	}
+
 	if msg, ok := msg.(tea.KeyMsg); ok {
 		switch msg.Type {
-		case tea.KeyCtrlC: // kill key
-			c.killed = true
-			return c, tea.Quit
 		case tea.KeyTab, tea.KeyShiftTab, tea.KeyUp, tea.KeyDown: // swap
 			return c.swap(), textinput.Blink
 		case tea.KeyEnter: // submit or swap
