@@ -140,7 +140,7 @@ func NewListCmd[Any any](short, long string,
 	cmd.MarkFlagsMutuallyExclusive("csv", "json", "table")
 
 	// spin up a list action for interactive use
-	la := NewListAction(defaultColumns, dataStruct, dataFn, *cmd.Flags())
+	la := newListAction(defaultColumns, dataStruct, dataFn, *cmd.Flags())
 
 	return treeutils.GenerateAction(cmd, &la)
 }
@@ -222,7 +222,7 @@ type ListAction[Any any] struct {
 }
 
 // Constructs a ListAction suitable for interactive use
-func NewListAction[Any any](defaultColumns []string, dataStruct Any, dFn dataFunction[Any],
+func newListAction[Any any](defaultColumns []string, dataStruct Any, dFn dataFunction[Any],
 	baseFS pflag.FlagSet) ListAction[Any] {
 
 	la := ListAction[Any]{
