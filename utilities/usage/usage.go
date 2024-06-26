@@ -26,7 +26,7 @@ func Usage(c *cobra.Command) error {
 	}()
 
 	bldr.WriteString(stylesheet.Header1Style.Render("Usage:") +
-		strings.TrimRight(fmt.Sprintf(" %v -u USER -p PASS %s",
+		strings.TrimRight(fmt.Sprintf(" %v %s",
 			root, path,
 		), " "))
 
