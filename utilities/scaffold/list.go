@@ -131,19 +131,16 @@ func NewListCmd[Any any](short, long string,
 			"Use --show-columns to see the full list of columns.")
 	fs.Bool("show-columns", false, "display the list of fully qualified column names and die.")
 
-	// use above sorting
-	fs.SortFlags = false
+	// attach normal list flags and, if applicable, additional flags
 	cmd.Flags().AddFlagSet(&fs)
 	if addtlFlags != nil {
 		cmd.Flags().AddFlagSet(addtlFlags)
 	}
-	cmd.Flags().SortFlags = false // does not carry over to cmd, need repeat
+	cmd.Flags().SortFlags = false // does not seem to be respected
 	cmd.MarkFlagsMutuallyExclusive("csv", "json", "table")
 
 	// spin up a list action for interactive use
 	la := NewListAction(defaultColumns, dataStruct, dataFn, *cmd.Flags())
-
-	// share the flagset with the interactive action model
 
 	return treeutils.GenerateAction(cmd, &la)
 }
@@ -171,7 +168,7 @@ func determineFormat(fs *pflag.FlagSet) outputFormat {
 	return format
 }
 
-// outputs
+// Driver function to call the provided data func and format its output via weave
 func List[Any any](fs *pflag.FlagSet, columns []string, color bool,
 	dataStruct Any, dataFn dataFunction[Any]) (string, error) {
 
@@ -278,8 +275,6 @@ func (la *ListAction[T]) Reset() error {
 	la.done = false
 	la.columns = la.DefaultColumns
 	la.showColumns = false
-	clilog.Writer.Debugf("baseFS ptr: %p (%v) | FS ptr: %p (%v)",
-		&la.baseFS, la.baseFS, &la.fs, la.fs)
 	la.fs = la.baseFS
 	return nil
 }
