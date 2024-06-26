@@ -112,7 +112,7 @@ func NewListCmd[Any any](short, long string,
 			panic(err)
 		}
 
-		output, err := List(cmd.Flags(), columns, !noColor, dataStruct, dataFn)
+		output, err := list(cmd.Flags(), columns, !noColor, dataFn)
 		if err != nil {
 			clilog.TeeError(cmd.ErrOrStderr(), err.Error())
 		}
@@ -177,8 +177,8 @@ func determineFormat(fs *pflag.FlagSet) outputFormat {
 }
 
 // Driver function to call the provided data func and format its output via weave
-func List[Any any](fs *pflag.FlagSet, columns []string, color bool,
-	dataStruct Any, dataFn dataFunction[Any]) (string, error) {
+func list[Any any](fs *pflag.FlagSet, columns []string, color bool,
+	dataFn dataFunction[Any]) (string, error) {
 
 	data, err := dataFn(connection.Client, fs)
 	if err != nil {
@@ -265,7 +265,7 @@ func (la *ListAction[T]) Update(msg tea.Msg) tea.Cmd {
 		return tea.Println(strings.Join(cols, " "))
 	}
 
-	s, err := List(&la.fs, la.columns, la.color, la.dataStruct, la.dataFunc)
+	s, err := list(&la.fs, la.columns, la.color, la.dataFunc)
 	if err != nil {
 		panic(err)
 	}
