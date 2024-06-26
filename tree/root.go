@@ -7,6 +7,7 @@
 package tree
 
 import (
+	"errors"
 	"fmt"
 	"gwcli/action"
 	"gwcli/clilog"
@@ -92,13 +93,32 @@ func EnforceLogin(cmd *cobra.Command, args []string) error {
 			return err
 		}
 
-		// check script mdoe
-		// TODO
-
+		// fetch additional data before attempting logon, if necessary
 		if u == "" || p == "" {
-			return fmt.Errorf("no valid token found.\n" +
-				"Please login via username (-u) and password (-p)")
+			// if script mode, do not prompt
+			if script, err := cmd.Flags().GetBool("script"); err != nil {
+				clilog.Writer.Fatal("developer error: script flag is undefined")
+			} else if script {
+				return fmt.Errorf("no valid token found.\n" +
+					"Please login via username (-u) and password (-p)")
+			}
+
+			// prompt for credentials
+			creds, err := CredPrompt(u, p)
+			if err != nil {
+				return err
+			}
+			// pull input results
+			if creds, ok := creds.(cred); !ok {
+				return err
+			} else if creds.killed {
+				return errors.New("you must authenticate to use gwcli")
+			} else {
+				u = creds.UserTI.Value()
+				p = creds.PassTI.Value()
+			}
 		}
+
 		if err = connection.Login(u, p); err != nil {
 			return err
 		}
