@@ -1,26 +1,22 @@
 # gwcli
 
-A redesigned Gravwell client for terminal, supporting both TUI-served interactivity and non-interactive script calls. 
+A redesigned Gravwell client for the terminal, supporting both TUI-served interactivity and non-interactive script calls. 
 
 # Usage
 
-`./gwcli -u USERNAME -p PASSWORD`
+`./gwcli`
 
 The CLI can be used interactively or as a script tool.
 
-Calling an action directly (ex: `./gwcli -u USERNAME -p PASSWORD query tag=gravwell`) will invoke the action and return the results.
+Calling an action directly (ex: `./gwcli query tag=gravwell`) will invoke the action and return the results.
 
-Calling gwcli bare or from a menu (ex: `./gwlic -u USERNAME -p PASSWORD tools macros`) will start an interactive prompt at that directory (unless `--no-interactive` is given, in which case it will fail out).
+Calling gwcli bare or from a menu (ex: `./gwcli tools macros`) will start an interactive prompt at that directory (unless `--no-interactive` is given, in which case it will display help).
 
-Check `-h` for full details on flags and commands. 
+Attach `-h` to any command for full details on flags and commands.
 
-## Special Keys
+## Login
 
-In interactive mode, certain keys have special functionality.
-
-CTRL+C (SIGINT) is caught and will return the user to the main prompt (if an action is running) or exit the prompt.
-
-ESC will do the former and nothing otherwise.
+gwcli automatically logs in via token once one has been created. Use `-u USER -p PASS` the first call to generate the token automatically, then `./gwcli` can be invoked without.
 
 # Design
 

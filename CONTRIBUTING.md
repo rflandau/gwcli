@@ -1,11 +1,14 @@
 # Overview
-gwcli is built to build to allow more functionality to be easily plugged in. As such, it follows design principles closer to that of a toolbox or framework. For instance, list_generic provides complete functionality for listing any kind of data in a unified way while requiring minimal new code. The goal is to genericize as much as possible, so future developers can simply call these genericized subrotuines.
+gwcli is built to allow more functionality to be easily plugged in. As such, it follows design principles closer to that of a toolbox or framework. For instance, [list scaffolding](utilities/scaffold/list) provides complete functionality for listing any kind of data in a unified way while requiring minimal new code. The goal is to genericize as much as possible, so future developers can simply call these genericized subrotuines.
 
 # Keep In Mind
 
 - Actions' Update subroutines should *always* return a tea.Cmd when handing control back to Mother.
+
     - If you do not have anything to tea.Println on completion, use a .Blink method
+
 - Remember that this is a prompt; anything not immediately interactive should be output via tea.Print* as history, rather than in the .View() that will be lost on redraw. 
+
 - Do not include newlines in lipgloss renders. It produces weird results.
 
 # More on Design
@@ -74,11 +77,9 @@ We have a few options:
 
 2) Maintain a data structure of Actions within Mother so we can look up subroutines associated to it when called. This keeps Cobra and Mother paired and allows us to continue leveraging Cobra's tree directly without maintaining a parallel tree. On the other hand, it separates Actions from their subroutines somewhat significantly and would require care to ensure equity, similar to the parallel trees of option #1. 
 
-3) Fork Cobra, attach the required function signatures (ex: `.Update()`, `.View()`, ...) to the Cobra struct directly, and include the fork as a submodule. This is the most straightforward and lowest-initial-lift option. We can navigate and act *entirely* off the cobra.Command tree, supplanting Mother's Model-Update-View with that of the selected Action's stored directly inside the Action's command. However, we now how two packages to maintain, instead of just one.   
+3) Fork Cobra, attach the required function signatures (ex: `.Update()`, `.View()`, ...) to the Cobra struct directly (or convert the cobra struct to an interface), and include the fork as a submodule. This is the most straightforward and lowest-initial-lift option. We can navigate and act *entirely* off the cobra.Command tree, supplanting Mother's Model-Update-View with that of the selected Action's stored directly inside the Action's command. However, we now how two packages to maintain, instead of just one.
 
-While Option 3 seems like the best option right now, future maintainers may not agree, especially as changes occur to the upstream Cobra package. Therefore, option 2 is how interoperability is currently designed. Mother/interactive mode can function entirely off Cobra's navigation and Cobra can operate entirely as normal. The only adaptation takes place in interactive mode, when an action is invoked; Mother uses the action cobra.Command to fetch the methods that should supplant her standard model.
-
-*If you can figure a better adaption pattern, I am all ears.*
+While Option 3 is the most straightforward initially, future maintainers may not agree, especially as changes occur to the upstream Cobra package. Therefore, option 2 is how interoperability is designed. Mother/interactive mode can function entirely off Cobra's navigation and Cobra can operate entirely as normal. The only adaptation takes place in interactive mode, when an action is invoked; Mother uses the action cobra.Command to fetch the methods that should supplant her standard model.
 
 ## Actions
 
@@ -103,3 +104,7 @@ flowchart
 
     Done --true--> ExitHandoff>Exit<br>Handoff Mode] --> Reset[child.Reset]
 ```
+
+### Scaffolding
+
+Where possible, use the functionality in the scaffold to rapidly construct new actions that fit one of the scaffold archetypes.
