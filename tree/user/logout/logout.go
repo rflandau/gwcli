@@ -19,7 +19,9 @@ var (
 
 func NewLogoutAction() action.Pair {
 	return scaffold.NewBasicAction(use, short, long, aliases, func(*pflag.FlagSet) (string, tea.Cmd) {
+		connection.Client.Logout()
 		connection.End()
+
 		return "Successfully logged out", tea.Quit
 	}, nil)
 }
