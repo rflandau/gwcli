@@ -74,6 +74,9 @@ func new(root *navCmd, pwd *navCmd, _ *lipgloss.Renderer) Mother {
 	m.ti.Prompt = stylesheet.TIPromptPrefix
 	m.ti.Focus()
 	m.ti.Width = stylesheet.TIWidth
+	// add ctrl+left/right to the word traversal keys
+	m.ti.KeyMap.WordForward.SetKeys("ctrl+right", "alt+right", "alt+f")
+	m.ti.KeyMap.WordBackward.SetKeys("ctrl+left", "alt+left", "alt+b")
 
 	m.history = newHistory()
 
