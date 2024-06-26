@@ -21,7 +21,7 @@ var (
 func NewListCmd() action.Pair {
 	addtlFlags := pflag.FlagSet{}
 	addtlFlags.Bool("all", false, "(admin-only) Fetch all kits on the system."+
-		"Ignored if you are not an admin. ")
+		"Ignored if you are not an admin.")
 
 	return scaffold.NewListCmd(short, long, aliases, defaultColumns,
 		types.IdKitState{}, ListKits, &addtlFlags)
