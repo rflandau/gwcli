@@ -26,16 +26,6 @@ Does your gravwell instance have a valid cert? If not, make sure you are using `
 
 # Design
 
-## Terminology
+gwcli is built on the fabulous BubbleTea and Cobra libraries. In the simplest of terms, gwcli is a cobra.Command tree with a bubbletea.Model crawling around it, interacting with Gravwell via their batteries-included client library.
 
-Bubble Tea has the `tea.Model` interface that must be implemented by a model struct of our own. Bubbles.TextInput is a tea.Model under the hood. Cobra is composed of `cobra.Commands` and Bubble Tea drives its I/O via `tea.Cmds`. CLI invocation is composed of commands, arguments, and flags.
-
-So we are using our own terminology to avoid further homonyms. 
-
-Our Bubble Tea model implementation, our controller, is *Mother*.
-
-Tree leaves (commands that can be invoked interactively or from a script), such as `search`, are *Actions*.
-
-Tree nodes, commands that require further input, such as `admin`, are *Navs*.
-
-## See [Contributing](CONTRIBUTING.md) for more design information
+## See [Contributing](CONTRIBUTING.md) for a deep dive on the design philosophy and practical implementation.
