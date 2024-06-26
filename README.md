@@ -18,6 +18,12 @@ Attach `-h` to any command for full details on flags and commands.
 
 gwcli automatically logs in via token once one has been created. Use `-u USER -p PASS` the first call to generate the token automatically, then `./gwcli` can be invoked without.
 
+# Troubleshooting
+
+## Client Not Ready For Login
+
+Does your gravwell instance have a valid cert? If not, make sure you are using `--insecure`.
+
 # Design
 
 ## Terminology
