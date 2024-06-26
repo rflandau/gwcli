@@ -22,8 +22,6 @@ var (
 )
 
 func NewMyInfoAction() action.Pair {
-	fs := pflag.FlagSet{}
-	fs.Bool("csv", false, "display as CSV")
 
 	return scaffold.NewBasicAction(use, short, long, aliases, func(fs *pflag.FlagSet) (string, tea.Cmd) {
 		ud, err := connection.Client.MyInfo()
@@ -60,5 +58,11 @@ func NewMyInfoAction() action.Pair {
 			sty.Render("Admin"), ud.Admin)
 
 		return out, nil
-	}, &fs)
+	}, flags)
+}
+
+func flags() pflag.FlagSet {
+	fs := pflag.FlagSet{}
+	fs.Bool("csv", false, "display as CSV")
+	return fs
 }

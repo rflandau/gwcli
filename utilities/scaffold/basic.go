@@ -1,6 +1,8 @@
 // A basic action is the simplest action: it does its thing and returns a string to be printed to the
 // terminal. Give it the function you want performed when the action is invoked and have it return
 // whatever string value you want printed to the screen, if at all.
+//
+// Basic actions have no default flags and will not handle flags unless a flagFunc is given.
 
 package scaffold
 
@@ -20,7 +22,7 @@ import (
 //
 // NOTE: The tea.Cmd returned by act will be thrown away if run in a Cobra context.
 func NewBasicAction(use, short, long string, aliases []string,
-	act func(*pflag.FlagSet) (string, tea.Cmd), addtlFlags *pflag.FlagSet) action.Pair {
+	act func(*pflag.FlagSet) (string, tea.Cmd), flagFunc func() pflag.FlagSet) action.Pair {
 
 	cmd := treeutils.NewActionCommand(
 		use,
@@ -32,20 +34,30 @@ func NewBasicAction(use, short, long string, aliases []string,
 			fmt.Fprintf(c.OutOrStdout(), "%v\n", s)
 		})
 
-	if addtlFlags != nil {
-		cmd.Flags().AddFlagSet(addtlFlags)
+	if flagFunc != nil {
+		f := flagFunc()
+		cmd.Flags().AddFlagSet(&f)
 	}
 
-	return treeutils.GenerateAction(cmd, &BasicAction{fs: *cmd.Flags(), baseFS: *cmd.Flags(), fn: act})
+	ba := BasicAction{fn: act}
+	if flagFunc != nil {
+		ba.fs = flagFunc()
+		ba.fsFunc = flagFunc
+	}
+
+	return treeutils.GenerateAction(cmd, &ba)
 }
 
 //#region interactive mode (model) implementation
 
 type BasicAction struct {
-	done   bool
-	fs     pflag.FlagSet
-	baseFS pflag.FlagSet // the flagset to restore to
-	fn     func(*pflag.FlagSet) (string, tea.Cmd)
+	done bool
+
+	fs     pflag.FlagSet        // the current state of the flagset; destroyed on .Reset()
+	fsFunc func() pflag.FlagSet // used by .Reset() to restore the base flagset
+
+	// the function performing the basic action
+	fn func(*pflag.FlagSet) (string, tea.Cmd)
 }
 
 var _ action.Model = &BasicAction{}
@@ -66,16 +78,23 @@ func (ba *BasicAction) Done() bool {
 
 func (ba *BasicAction) Reset() error {
 	ba.done = false
-	ba.fs = ba.baseFS
+	if ba.fsFunc != nil {
+		ba.fs = ba.fsFunc()
+	}
 	return nil
 }
 
 func (ba *BasicAction) SetArgs(_ *pflag.FlagSet, tokens []string) (_ string, _ []tea.Cmd, err error) {
-	// we must parse manually each interactive call, as we restore fs from base each invocation
-	err = ba.fs.Parse(tokens)
-	if err != nil {
-		return "", nil, err
+	// if no additional flags could be given, we have nothing more to do
+	// (basic actions have no starter flags)
+	if ba.fsFunc != nil {
+		// we must parse manually each interactive call, as we restore fs from base each invocation
+		err = ba.fs.Parse(tokens)
+		if err != nil {
+			return "", nil, err
+		}
 	}
+
 	return "", nil, nil
 }
 
