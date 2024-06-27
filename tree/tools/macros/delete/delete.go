@@ -46,26 +46,26 @@ func NewMacroDeleteAction() action.Pair {
 
 func run(c *cobra.Command, _ []string) {
 	// if an ID was given, just issue a delete
-	if duid, err := c.Flags().GetUint64("uid"); err != nil {
+	if did, err := c.Flags().GetUint64("id"); err != nil {
 		clilog.TeeError(c.ErrOrStderr(), fmt.Sprintf(errorNoDeleteText, err))
 		return
-	} else if duid != 0 {
-		if dr, err := deleteMacro(c.Flags(), duid); err != nil {
+	} else if did != 0 {
+		if dr, err := deleteMacro(c.Flags(), did); err != nil {
 			clilog.TeeError(c.ErrOrStderr(),
-				fmt.Sprintf("failed to delete macro (UID: %v): %v", duid, err))
+				fmt.Sprintf("failed to delete macro (UID: %v): %v", did, err))
 			return
 		} else if dr {
-			fmt.Fprintf(c.OutOrStdout(), "DRYRUN: Macro (UID: %v) would have been deleted\n", duid)
+			fmt.Fprintf(c.OutOrStdout(), "DRYRUN: Macro (UID: %v) would have been deleted\n", did)
 			return
 		}
-		fmt.Fprintf(c.OutOrStdout(), "Deleted macro (UID: %v).\n", duid)
+		fmt.Fprintf(c.OutOrStdout(), "Deleted macro (UID: %v).\n", did)
 	}
 	// in script mode, fail out
 	if script, err := c.Flags().GetBool("script"); err != nil {
 		clilog.TeeError(c.ErrOrStderr(), fmt.Sprintf(errorNoDeleteText, err))
 		return
 	} else if script { // no id given, fail out
-		clilog.TeeError(c.OutOrStdout(), "--uid is required in script mode")
+		clilog.TeeError(c.OutOrStdout(), "--id is required in script mode")
 		return
 	}
 	// TODO spin up standalone prompt selection
@@ -74,7 +74,7 @@ func run(c *cobra.Command, _ []string) {
 
 func flags() pflag.FlagSet {
 	fs := pflag.FlagSet{}
-	fs.Uint64("uid", 0, "macro id to delete")
+	fs.Uint64("id", 0, "macro id to delete")
 	fs.Bool("dryrun", false, "skips the actual deletion")
 
 	return fs
@@ -222,10 +222,10 @@ func (d *delete) SetArgs(_ *pflag.FlagSet, tokens []string) (invalid string, onS
 		return "", nil, err
 	}
 
-	// if --uid was given attempt to act and quit immediately
-	if uid, err := d.fs.GetUint64("uid"); err != nil {
+	// if --id was given attempt to act and quit immediately
+	if id, err := d.fs.GetUint64("iid"); err != nil {
 		return "", nil, err
-	} else if uid != 0 {
+	} else if id != 0 {
 
 	}
 
@@ -253,11 +253,11 @@ func deleteMacro(fs *pflag.FlagSet, macroID uint64) (dryrun bool, err error) {
 // Returns all user macros as an item array ready for the list bubble
 func fetchMacroListAsItems() ([]list.Item, error) {
 	var items []list.Item
-	ud, err := connection.Client.MyInfo()
+	myinfo, err := connection.Client.MyInfo()
 	if err != nil {
 		return nil, err
 	}
-	if macros, err := connection.Client.GetUserMacros(ud.UID); err != nil {
+	if macros, err := connection.Client.GetUserMacros(myinfo.UID); err != nil {
 		return nil, err
 	} else {
 		items = make([]list.Item, len(macros))
