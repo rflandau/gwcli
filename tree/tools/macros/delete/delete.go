@@ -214,24 +214,11 @@ func (d *delete) SetArgs(_ *pflag.FlagSet, tokens []string) (invalid string, onS
 		d.list = list.New([]list.Item{}, itemDelegate{}, 80, 20)
 		d.list.Title = "Select a macro to delete"
 
-		var items []list.Item
-		ud, err := connection.Client.MyInfo()
+		itms, err := fetchMacroListAsItems()
 		if err != nil {
 			return "", nil, err
 		}
-		if macros, err := connection.Client.GetUserMacros(ud.UID); err != nil {
-			return "", nil, err
-		} else {
-			items = make([]list.Item, len(macros))
-			slices.SortFunc(macros, func(m1, m2 types.SearchMacro) int {
-				return strings.Compare(m1.Name, m2.Name)
-			})
-			for i := range macros {
-				items[i] = item(macros[i])
-			}
-		}
-		clilog.Writer.Debugf("Setting %d items", len(items))
-		d.list.SetItems(items)
+		d.list.SetItems(itms)
 		d.list.SetFilteringEnabled(false)
 
 		// disable quit keys; they clash with mother
@@ -239,27 +226,17 @@ func (d *delete) SetArgs(_ *pflag.FlagSet, tokens []string) (invalid string, onS
 		d.list.KeyMap.Quit.SetEnabled(false)
 
 		d.listInitialized = true
-	} else { // on future runs, merge the current set of macros to our list
-		//macros, err := connection.Client.GetUserMacros(connection.Client.MyUID())
-	}
-
-	// otherwise, compare the list for differences with the current set of macros
-	// TODO
-	// TODO async
-	// when setting args, fetch the current set of macros and asyncronously add them to the list
-	/*go func() {
-		macros, err := connection.Client.GetUserMacros(connection.Client.MyUID())
+	} else {
+		// this could probably be optimized to directly operate just on changed records
+		// rather than overwriting with a full re-sort
+		// or at least by making it async with a ready-check in Update (plus timeout cancel context)
+		itms, err := fetchMacroListAsItems()
 		if err != nil {
-			// TODO lock error before setting it
-			d.err = err
-			return
+			return "", nil, err
 		}
-		items := d.list.Items()
+		d.list.SetItems(itms)
 
-		// TODO may need to queue returned cmd
-		d.list.SetItems(merge(macros, items))
-	}()*/
-
+	}
 	// flagset
 	d.fs = flags()
 	if err := d.fs.Parse(tokens); err != nil {
@@ -267,4 +244,26 @@ func (d *delete) SetArgs(_ *pflag.FlagSet, tokens []string) (invalid string, onS
 	}
 
 	return "", nil, nil
+}
+
+// Returns all user macros as an item array ready for the list bubble
+func fetchMacroListAsItems() ([]list.Item, error) {
+	var items []list.Item
+	ud, err := connection.Client.MyInfo()
+	if err != nil {
+		return nil, err
+	}
+	if macros, err := connection.Client.GetUserMacros(ud.UID); err != nil {
+		return nil, err
+	} else {
+		items = make([]list.Item, len(macros))
+		slices.SortFunc(macros, func(m1, m2 types.SearchMacro) int {
+			return strings.Compare(m1.Name, m2.Name)
+		})
+		for i := range macros {
+			items[i] = item(macros[i])
+		}
+	}
+
+	return items, nil
 }
