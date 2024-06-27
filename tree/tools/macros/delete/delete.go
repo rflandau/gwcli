@@ -30,9 +30,6 @@ var (
 	aliases []string = []string{""}
 )
 
-// text to display when a macro would have been deleted if not for --dryrun
-const dryrunDeletionText = "DRYRUN: Would have deleted macro %v(UID: %v)"
-
 // text to display when deletion is skipped due to error
 const errorNoDeleteText = "An error occured: %v.\nAbstained from deletion."
 
@@ -48,36 +45,20 @@ func NewMacroDeleteAction() action.Pair {
 }
 
 func run(c *cobra.Command, _ []string) {
-	var (
-		dryrun bool
-		err    error
-	)
-	if dryrun, err = c.Flags().GetBool("dryrun"); err != nil {
-		clilog.TeeError(c.ErrOrStderr(), fmt.Sprintf(errorNoDeleteText, err))
-		return
-	}
-
 	// if an ID was given, just issue a delete
 	if duid, err := c.Flags().GetUint64("uid"); err != nil {
 		clilog.TeeError(c.ErrOrStderr(), fmt.Sprintf(errorNoDeleteText, err))
 		return
 	} else if duid != 0 {
-		if dryrun { // just fetch the macro
-			m, err := connection.Client.GetMacro(duid)
-			if err != nil {
-				clilog.TeeError(c.ErrOrStderr(), fmt.Sprintf(errorNoDeleteText, err))
-				return
-			}
-			tea.Printf(dryrunDeletionText,
-				m.Name, m.UID)
+		if dr, err := deleteMacro(c.Flags(), duid); err != nil {
+			clilog.TeeError(c.ErrOrStderr(),
+				fmt.Sprintf("failed to delete macro (UID: %v): %v", duid, err))
+			return
+		} else if dr {
+			fmt.Fprintf(c.OutOrStdout(), "DRYRUN: Macro (UID: %v) would have been deleted\n", duid)
 			return
 		}
-		if err := connection.Client.DeleteMacro(duid); err != nil {
-			clilog.TeeError(c.ErrOrStderr(), fmt.Sprintf(errorNoDeleteText, err))
-			return
-		}
-		fmt.Printf("Successfully deleted macro (UID: %v)\n", duid)
-		return
+		fmt.Fprintf(c.OutOrStdout(), "Deleted macro (UID: %v).\n", duid)
 	}
 	// in script mode, fail out
 	if script, err := c.Flags().GetBool("script"); err != nil {
@@ -126,6 +107,9 @@ func Initial() *delete {
 }
 
 func (d *delete) Update(msg tea.Msg) tea.Cmd {
+	if d.mode == quitting {
+		return nil
+	}
 	if len(d.list.Items()) == 0 {
 		d.done = true
 		return tea.Println("You have no macros that can be deleted.")
@@ -146,23 +130,18 @@ func (d *delete) Update(msg tea.Msg) tea.Cmd {
 			} else {
 				d.done = true
 				d.mode = quitting
-				if dryrun, err := d.fs.GetBool("dryrun"); err != nil {
-					clilog.Writer.Warnf("failed to fetch dryrun flag: %v", err)
-					return tea.Printf(errorNoDeleteText+"\n", err)
-				} else if dryrun {
-					return tea.Printf(dryrunDeletionText,
-						itm.Title(), itm.UID)
-				} else {
-					// destroy the selected macro
-					if err := connection.Client.DeleteMacro(itm.ID); err != nil {
-						clilog.Writer.Warnf("failed to delete macro (ID: %v): %v", itm.ID, err)
-						return tea.Printf(errorNoDeleteText+"\n", err)
-					}
-					// remove it from the list
-					d.list.RemoveItem(d.list.Cursor())
+				if dr, err := deleteMacro(&d.fs, itm.ID); err != nil {
+					clilog.Writer.Errorf("failed to delete macro %v (ID: %v/UID: %v): %v",
+						itm.Name, itm.ID, itm.UID, err)
+					return tea.Printf(errorNoDeleteText, err)
+				} else if dr {
+					return tea.Printf("DRYRUN: Macro %v (ID: %v/UID: %v) would have been deleted",
+						itm.Name, itm.ID, itm.UID)
 				}
+				// remove it from the list
+				d.list.RemoveItem(d.list.Cursor())
 
-				return tea.Printf("Deleted macro %v(ID: %v/UID: %v)", itm.Title(), itm.ID, itm.UID)
+				return tea.Printf("Deleted macro %v(ID: %v/UID: %v)", itm.Name, itm.ID, itm.UID)
 			}
 		}
 	}
@@ -243,7 +222,32 @@ func (d *delete) SetArgs(_ *pflag.FlagSet, tokens []string) (invalid string, onS
 		return "", nil, err
 	}
 
+	// if --uid was given attempt to act and quit immediately
+	if uid, err := d.fs.GetUint64("uid"); err != nil {
+		return "", nil, err
+	} else if uid != 0 {
+
+	}
+
 	return "", nil, nil
+}
+
+// Deletes (or feigns deletion, if dryrun) the macro associated to the given ID.
+func deleteMacro(fs *pflag.FlagSet, macroID uint64) (dryrun bool, err error) {
+	if dryrun, err := fs.GetBool("dryrun"); err != nil {
+		return false, err
+	} else if dryrun { // fetch the macro to check existence
+		_, err := connection.Client.GetMacro(macroID)
+		if err != nil {
+			return true, err
+		}
+		return true, nil
+	}
+	// destroy the selected macro
+	if err := connection.Client.DeleteMacro(macroID); err != nil {
+		return false, err
+	}
+	return false, nil
 }
 
 // Returns all user macros as an item array ready for the list bubble
