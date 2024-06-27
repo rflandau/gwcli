@@ -87,11 +87,10 @@ const (
 )
 
 type delete struct {
-	mode            mode
-	list            list.Model
-	listInitialized bool
-	err             error
-	fs              pflag.FlagSet
+	mode mode
+	list list.Model
+	err  error
+	fs   pflag.FlagSet
 }
 
 func NewDelete() *delete {
@@ -184,33 +183,21 @@ func (d *delete) Reset() error {
 }
 
 func (d *delete) SetArgs(_ *pflag.FlagSet, tokens []string) (invalid string, onStart []tea.Cmd, err error) {
-	if !d.listInitialized { // if the this the first run, initialize the list from all macros
-		d.list = list.New([]list.Item{}, itemDelegate{}, 80, 20)
-		d.list.Title = "Select a macro to delete"
+	// initialize the list
+	d.list = list.New([]list.Item{}, itemDelegate{}, 80, 20)
+	d.list.Title = "Select a macro to delete"
 
-		itms, err := fetchMacroListAsItems()
-		if err != nil {
-			return "", nil, err
-		}
-		d.list.SetItems(itms)
-		d.list.SetFilteringEnabled(false)
-
-		// disable quit keys; they clash with mother
-		d.list.KeyMap.ForceQuit.SetEnabled(false)
-		d.list.KeyMap.Quit.SetEnabled(false)
-
-		d.listInitialized = true
-	} else {
-		// this could probably be optimized to directly operate just on changed records
-		// rather than overwriting with a full re-sort
-		// or at least by making it async with a ready-check in Update (plus timeout cancel context)
-		itms, err := fetchMacroListAsItems()
-		if err != nil {
-			return "", nil, err
-		}
-		d.list.SetItems(itms)
-
+	itms, err := fetchMacroListAsItems()
+	if err != nil {
+		return "", nil, err
 	}
+	d.list.SetItems(itms)
+	d.list.SetFilteringEnabled(false) // TODO enable filtering
+
+	// disable quit keys; they clash with mother
+	d.list.KeyMap.ForceQuit.SetEnabled(false)
+	d.list.KeyMap.Quit.SetEnabled(false)
+
 	// flagset
 	if err := d.fs.Parse(tokens); err != nil {
 		return "", nil, err
