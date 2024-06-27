@@ -14,7 +14,6 @@ import (
 	"gwcli/connection"
 	"gwcli/tree/kits"
 	"gwcli/tree/query"
-	"gwcli/tree/systems"
 	"gwcli/tree/tools"
 	"gwcli/tree/user"
 	"gwcli/treeutils"
@@ -257,7 +256,6 @@ const ( // mousetrap
 func Execute(args []string) int {
 	rootCmd := treeutils.GenerateNav(use, short, long, []string{},
 		[]*cobra.Command{
-			systems.NewSystemsNav(),
 			tools.NewToolsNav(),
 			kits.NewKitsNav(),
 			user.NewUserNav(),
