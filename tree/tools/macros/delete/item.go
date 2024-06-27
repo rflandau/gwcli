@@ -2,6 +2,7 @@ package delete
 
 import (
 	"fmt"
+	"gwcli/stylesheet"
 	"io"
 	"strings"
 
@@ -13,13 +14,11 @@ import (
 
 type item types.SearchMacro
 
-func (i item) Title() string       { return i.Name }
-func (i item) Desc() string        { return i.Description }
-func (i item) Exp() string         { return i.Expansion }
+// the string value used to compare against a user-given filter to determine eligibility
 func (i item) FilterValue() string { return i.Name }
 
-var itemStyle = lipgloss.NewStyle().PaddingLeft(4)
-var selectedItemStyle = lipgloss.NewStyle().PaddingLeft(2).Foreground(lipgloss.Color("170"))
+var itemStyle = stylesheet.Composable.Unfocused.PaddingLeft(2)
+var selectedItemStyle = lipgloss.NewStyle().PaddingLeft(2).Foreground(stylesheet.PrimaryColor)
 
 type itemDelegate struct{}
 
@@ -32,7 +31,7 @@ func (id itemDelegate) Render(w io.Writer, m list.Model, index int, listItem lis
 		return
 	}
 
-	str := fmt.Sprintf("%d. %s", index+1, i.Name)
+	str := fmt.Sprintf("%d. $%s --> %s\n  %s", index+1, i.Name, i.Expansion, i.Description)
 
 	fn := itemStyle.Render
 	if index == m.Index() {
