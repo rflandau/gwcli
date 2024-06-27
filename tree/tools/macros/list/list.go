@@ -18,7 +18,7 @@ var (
 		"(NYI) Use the x flag to get all macros system-wide or the y <user>" +
 		"parameter to all macros associated to a <user> (if you are an admin)"
 	aliases        []string = []string{}
-	defaultColumns []string = []string{"UID", "Name", "Description", "Expansion"}
+	defaultColumns []string = []string{"ID", "Name", "Description", "Expansion"}
 )
 
 func NewListCmd() action.Pair {
