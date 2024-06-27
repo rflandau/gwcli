@@ -1,5 +1,7 @@
-- [ ] Implement `dry-run` flag for shell access
+- [~] Implement `dry-run` flag for shell access
     - Validate syntax and exit
+    - this may be case-by-case functionality?
+        - unclear if it should be supported by a global flag 
 
 - [ ] create CSV exclude variant
 - [ ] create JSON exclude variant
@@ -8,12 +10,12 @@
 
 - [ ] Display suggestions beneath current prompt
 
-- [ ] displaying help should not establish a connection
+- [x] displaying help should not establish a connection
     - especially important for nav-runs executed with --no-interactive mode 
 
 - [x] Colourize Cobra help
 
-- [ ] Allow list commands to pass in additional flags to treeutils.NewListCmd()
+- [x] Allow list commands to pass in additional flags to treeutils.NewListCmd()
 
 - [ ] Add support for home (~) or root (/) navigation
 
@@ -21,7 +23,7 @@
 
 - [ ] If an action that required arguments (ex: query) is called bare and --script is not supplied, invoke Mother
 
-- [ ] Handle CTRL+left/right word jumping
+- [x] Handle CTRL+left/right word jumping
 
 - [x] BUG: Spinner only spins on the first submitted query; it is frozen on future queries
 
@@ -45,6 +47,10 @@
     - [x] result pagination and/or scrollable viewport
         - [?] pass in pagination increment
 
-- [ ] Move List_generic to boiler pkg
+- [x] Move List_generic to boiler pkg
 
-- [ ] rename basic_generic to just basic
+- [x] rename basic_generic to just basic
+
+- [ ] rework tools/macros/delete interactive styling in items.go
+    - Could be cleaner
+    - [ ] provide a struct in stylesheet for list-like (but not list-action-like!) displays such as this  
