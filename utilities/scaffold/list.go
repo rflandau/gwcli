@@ -51,7 +51,7 @@ type addtlFlagFunction func() pflag.FlagSet
 
 const use = "list"
 
-// NewListCmd creates and returns a cobra.Command suitable for use as a list
+// NewListAction creates and returns a cobra.Command suitable for use as a list
 // action, complete with common flags and a generic run function operating off
 // the given dataFunction.
 //
@@ -71,7 +71,7 @@ const use = "list"
 // See tree/kits/list's ListKits() as an example.
 //
 // Go's Generics are a godsend.
-func NewListCmd[Any any](short, long string,
+func NewListAction[Any any](short, long string,
 	aliases []string, defaultColumns []string,
 	dataStruct Any, dataFn dataFunction[Any], addtlFlagsFunc addtlFlagFunction) action.Pair {
 	// assert developer provided a usable data struct

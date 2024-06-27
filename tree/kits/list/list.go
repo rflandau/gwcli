@@ -19,7 +19,7 @@ var (
 )
 
 func NewKitsListAction() action.Pair {
-	return scaffold.NewListCmd(short, long, aliases, defaultColumns,
+	return scaffold.NewListAction(short, long, aliases, defaultColumns,
 		types.IdKitState{}, ListKits, flags)
 }
 
