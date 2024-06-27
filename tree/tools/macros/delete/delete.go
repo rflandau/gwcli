@@ -18,6 +18,7 @@ import (
 
 	"github.com/charmbracelet/bubbles/list"
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/gravwell/gravwell/v3/client"
 	"github.com/gravwell/gravwell/v3/client/types"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
@@ -27,21 +28,19 @@ var (
 	use     string   = "delete"
 	short   string   = "Delete a macro"
 	long    string   = "Delete a macro by id or selection"
-	aliases []string = []string{""}
+	aliases []string = []string{}
 )
 
 // text to display when deletion is skipped due to error
 const errorNoDeleteText = "An error occured: %v.\nAbstained from deletion."
 
-var localFS pflag.FlagSet
-
 func NewMacroDeleteAction() action.Pair {
 	cmd := treeutils.NewActionCommand(use, short, long, aliases, run)
 
-	localFS = flags()
-	cmd.Flags().AddFlagSet(&localFS)
+	fs := flags()
+	cmd.Flags().AddFlagSet(&fs)
 
-	return treeutils.GenerateAction(cmd, Delete)
+	return treeutils.GenerateAction(cmd, NewDelete())
 }
 
 func run(c *cobra.Command, _ []string) {
@@ -95,11 +94,10 @@ type delete struct {
 	fs              pflag.FlagSet
 }
 
-var Delete action.Model = Initial()
-
-func Initial() *delete {
+func NewDelete() *delete {
 	d := &delete{mode: selecting}
 
+	d.fs = flags()
 	// list initialization is done in SetArgs()
 
 	return d
@@ -180,6 +178,7 @@ func (d *delete) Done() bool {
 func (d *delete) Reset() error {
 	d.mode = selecting
 	d.err = nil
+	d.fs = flags()
 	// the current state of the list is retained
 	return nil
 }
@@ -213,7 +212,6 @@ func (d *delete) SetArgs(_ *pflag.FlagSet, tokens []string) (invalid string, onS
 
 	}
 	// flagset
-	d.fs = flags()
 	if err := d.fs.Parse(tokens); err != nil {
 		return "", nil, err
 	}
@@ -225,6 +223,11 @@ func (d *delete) SetArgs(_ *pflag.FlagSet, tokens []string) (invalid string, onS
 		d.mode = quitting
 		dr, err := deleteMacro(&d.fs, id)
 		if err != nil {
+			// check for sentinel errors
+			if err, ok := err.(*client.ClientError); ok && err.StatusCode == 404 {
+				return "", []tea.Cmd{tea.Printf("Did not find a valid macro with ID %v", id)}, nil
+			}
+
 			return "", nil, err
 		} else if dr {
 			return "",
