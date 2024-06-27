@@ -1,3 +1,9 @@
+// Macro deletion action.
+// Displays a list of all available macros that the user can pick from in interactive mode.
+// Note that list initialization and updating occurs in SetArgs.
+// This is allow lazy-processing; do not want to add startup time when we do not know a user will
+// invoke this action. Similarly, we cannot guarentee that the server connection will be established
+// yet (in fact, it likely would not be if we prepared the list in Initial()).
 package delete
 
 import (
@@ -113,8 +119,6 @@ var Delete action.Model = Initial()
 func Initial() *delete {
 	d := &delete{mode: selecting}
 
-	// TODO modify key map
-
 	// list initialization is done in SetArgs()
 
 	return d
@@ -202,7 +206,7 @@ func (d *delete) SetArgs(_ *pflag.FlagSet, tokens []string) (invalid string, onS
 	// if the this the first run, initialize the list from all macros
 	if !d.listInitialized {
 		d.list = list.New([]list.Item{}, itemDelegate{}, 80, 20)
-		d.list.Title = "Select a Macro to delete"
+		d.list.Title = "Select a macro to delete"
 
 		var items []list.Item
 		ud, err := connection.Client.MyInfo()
@@ -224,6 +228,10 @@ func (d *delete) SetArgs(_ *pflag.FlagSet, tokens []string) (invalid string, onS
 		clilog.Writer.Debugf("Setting %d items", len(items))
 		d.list.SetItems(items)
 		d.list.SetFilteringEnabled(false)
+
+		// disable quit keys; they clash with mother
+		d.list.KeyMap.ForceQuit.SetEnabled(false)
+		d.list.KeyMap.Quit.SetEnabled(false)
 
 		d.listInitialized = true
 	}
