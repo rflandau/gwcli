@@ -126,7 +126,11 @@ func Initial() *delete {
 }
 
 func (d *delete) Update(msg tea.Msg) tea.Cmd {
-	// TODO fail out if there are no macros
+	if len(d.list.Items()) == 0 {
+		d.done = true
+		return tea.Println("You have no macros that can be deleted.")
+	}
+
 	switch msg := msg.(type) {
 	case tea.WindowSizeMsg:
 		d.list.SetSize(msg.Width, msg.Height)
