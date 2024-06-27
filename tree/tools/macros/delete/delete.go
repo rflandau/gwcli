@@ -26,49 +26,56 @@ var (
 var localFS pflag.FlagSet
 
 func NewMacroDeleteAction() action.Pair {
-	cmd := treeutils.NewActionCommand(use, short, long, aliases,
-		func(c *cobra.Command, s []string) {
-			// if an ID was given, just issue a delete
-			if did, err := c.Flags().GetUint64("id"); err != nil {
-				clilog.TeeError(c.ErrOrStderr(), err.Error())
-				return
-			} else if did != 0 {
-				if dryrun, err := c.Flags().GetBool("dryrun"); err != nil {
-					clilog.TeeError(c.ErrOrStderr(), err.Error())
-					return
-				} else if dryrun {
-					// just fetch the macro
-					if m, err := connection.Client.GetMacro(did); err != nil {
-						clilog.TeeError(c.ErrOrStderr(), err.Error())
-						return
-					} else {
-						tea.Printf("DRYRUN: Would have deleted macro %v(UID: %v)",
-							m.Name, m.UID)
-					}
-				}
-				if err := connection.Client.DeleteMacro(did); err != nil {
-					clilog.TeeError(c.ErrOrStderr(), err.Error())
-					return
-				}
-				fmt.Printf("Successfully deleted macro #%v\n", did)
-				return
-			}
-			// in script mode, fail out
-			if script, err := c.Flags().GetBool("script"); err != nil {
-				clilog.TeeError(c.ErrOrStderr(), err.Error())
-				return
-			} else if script {
-				// fail out
-				fmt.Fprint(c.OutOrStdout(), "--id is required in script mode")
-				return
-			}
-			// TODO spin up standalone prompt selection
-		})
+	cmd := treeutils.NewActionCommand(use, short, long, aliases, run)
 
 	localFS = flags()
 	cmd.Flags().AddFlagSet(&localFS)
 
 	return treeutils.GenerateAction(cmd, Delete)
+}
+
+func run(c *cobra.Command, _ []string) {
+	var (
+		dryrun bool
+		err    error
+	)
+	if dryrun, err = c.Flags().GetBool("dryrun"); err != nil {
+		clilog.TeeError(c.ErrOrStderr(), err.Error())
+		return
+	}
+
+	// if an ID was given, just issue a delete
+	if did, err := c.Flags().GetUint64("id"); err != nil {
+		clilog.TeeError(c.ErrOrStderr(), err.Error())
+		return
+	} else if did != 0 {
+		if dryrun { // just fetch the macro
+			m, err := connection.Client.GetMacro(did)
+			if err != nil {
+				clilog.TeeError(c.ErrOrStderr(), err.Error())
+				return
+			}
+			tea.Printf("DRYRUN: Would have deleted macro %v(UID: %v)",
+				m.Name, m.UID)
+			return
+		}
+		if err := connection.Client.DeleteMacro(did); err != nil {
+			clilog.TeeError(c.ErrOrStderr(), err.Error())
+			return
+		}
+		fmt.Printf("Successfully deleted macro #%v\n", did)
+		return
+	}
+	// in script mode, fail out
+	if script, err := c.Flags().GetBool("script"); err != nil {
+		clilog.TeeError(c.ErrOrStderr(), err.Error())
+		return
+	} else if script { // no id given, fail out
+		clilog.TeeError(c.OutOrStdout(), "--id is required in script mode")
+		return
+	}
+	// TODO spin up standalone prompt selection
+
 }
 
 func flags() pflag.FlagSet {
