@@ -53,10 +53,8 @@ func ppre(cmd *cobra.Command, args []string) error {
 	return EnforceLogin(cmd, args)
 }
 
-/**
- * Logs the client into the Gravwell instance dictated by the --server flag.
- * Safe (ineffectual) to call if already logged in.
- */
+// Logs the client into the Gravwell instance dictated by the --server flag.
+// Safe (ineffectual) to call if already logged in.
 func EnforceLogin(cmd *cobra.Command, args []string) error {
 	if connection.Client == nil { // if we just started, initialize connection
 		server, err := cmd.Flags().GetString("server")
@@ -240,7 +238,8 @@ func GenerateFlags(root *cobra.Command) {
 const ( // usage
 	use   string = "gwcli"
 	short string = "Gravwell CLI Client"
-	long  string = "gwcli is a CLI client for interacting with your Gravwell instance directly from your terminal.\n" +
+	long  string = "gwcli is a CLI client for interacting with your Gravwell instance directly" +
+		"from your terminal.\n" +
 		"It can be used non-interactively in your scripts or interactively via the built-in TUI.\n" +
 		"To invoke the TUI, simply call `gwcli`."
 )
@@ -252,11 +251,9 @@ const ( // mousetrap
 	mousetrapDuration time.Duration = (0 * time.Second)
 )
 
-/**
- * Execute adds all child commands to the root command, sets flags
- * appropriately, and launches the program according to the given parameters
- * (via cobra.Command.Execute()).
- */
+// Execute adds all child commands to the root command, sets flags appropriately, and launches the
+// program according to the given parameters
+// (via cobra.Command.Execute()).
 func Execute(args []string) int {
 	rootCmd := treeutils.GenerateNav(use, short, long, []string{},
 		[]*cobra.Command{
