@@ -61,6 +61,7 @@ func NewMacroDeleteAction() action.Pair {
 func flags() pflag.FlagSet {
 	fs := pflag.FlagSet{}
 	fs.Uint64("id", 0, "macro id to delete")
+	fs.Bool("dryrun", false, "skips the actual deletion")
 
 	return fs
 }
@@ -78,12 +79,15 @@ type delete struct {
 	list            list.Model
 	listInitialized bool
 	err             error
+	fs              pflag.FlagSet
 }
 
 var Delete action.Model = Initial()
 
 func Initial() *delete {
 	d := &delete{mode: selecting}
+
+	// TODO modify key map
 
 	// list initialization is done in SetArgs()
 
@@ -93,10 +97,38 @@ func Initial() *delete {
 func (d *delete) Update(msg tea.Msg) tea.Cmd {
 	switch msg := msg.(type) {
 	case tea.WindowSizeMsg:
-		d.list.SetWidth(msg.Width)
+		d.list.SetSize(msg.Width, msg.Height)
 		return nil
 	case tea.KeyMsg:
+		switch msg.Type {
+		case tea.KeyEnter:
+			// fetch the item under the cursor
+			baseitm := d.list.Items()[d.list.Cursor()]
+			if itm, ok := baseitm.(item); !ok {
+				clilog.Writer.Warnf("failed to type assert %v as an item", baseitm)
+				return tea.Println("An error occured.\nAbstained from deletion.")
+			} else {
+				d.done = true
+				d.mode = quitting
+				if dryrun, err := d.fs.GetBool("dryrun"); err != nil {
+					clilog.Writer.Warnf("failed to fetch dryrun flag: %v", err)
+					return tea.Println("An error occured.\nAbstained from deletion.")
+				} else if dryrun {
+					return tea.Printf("DRYRUN: Would have deleted macro %v(UID: %v)",
+						itm.Title(), itm.UID)
+				} else {
+					// destroy the selected macro
+					if err := connection.Client.DeleteMacro(itm.ID); err != nil {
+						clilog.Writer.Warnf("failed to delete macro (ID: %v): %v", itm.ID, err)
+						return tea.Println("An error occured.\nAbstained from deletion.")
+					}
+					// remove it from the list
+					d.list.RemoveItem(d.list.Cursor())
+				}
 
+				return tea.Printf("Deleted macro %v(UID: %v)", itm.Title(), itm.UID)
+			}
+		}
 	}
 
 	var cmd tea.Cmd
@@ -108,6 +140,7 @@ func (d *delete) Update(msg tea.Msg) tea.Cmd {
 func (d *delete) View() string {
 	switch d.mode {
 	case quitting:
+		// This is unlikely to ever be shown before Mother reasserts control and wipes it
 		itm := d.list.SelectedItem()
 		if itm == nil {
 			return "Not deleting any macros..."
@@ -142,14 +175,19 @@ func (d *delete) Reset() error {
 func (d *delete) SetArgs(_ *pflag.FlagSet, tokens []string) (invalid string, onStart []tea.Cmd, err error) {
 	// if the this the first run, initialize the list from all macros
 	if !d.listInitialized {
-		d.list = list.New([]list.Item{}, list.DefaultDelegate{}, 80, 20)
+		d.list = list.New([]list.Item{}, itemDelegate{}, 80, 20)
 		d.list.Title = "Select a Macro to delete"
 
 		var items []list.Item
-		if macros, err := connection.Client.GetUserMacros(connection.Client.MyUID()); err != nil {
+		ud, err := connection.Client.MyInfo()
+		if err != nil {
+			return "", nil, err
+		}
+		if macros, err := connection.Client.GetUserMacros(ud.UID); err != nil {
 			return "", nil, err
 		} else {
 			items = make([]list.Item, len(macros))
+			clilog.Writer.Debugf("macros: %v", macros)
 			slices.SortFunc(macros, func(m1, m2 types.SearchMacro) int {
 				return strings.Compare(m1.Name, m2.Name)
 			})
@@ -157,6 +195,9 @@ func (d *delete) SetArgs(_ *pflag.FlagSet, tokens []string) (invalid string, onS
 				items[i] = item(macros[i])
 			}
 		}
+		clilog.Writer.Debugf("Setting %d items", len(items))
+		d.list.SetItems(items)
+		d.list.SetFilteringEnabled(false)
 
 		d.listInitialized = true
 	}
@@ -177,6 +218,12 @@ func (d *delete) SetArgs(_ *pflag.FlagSet, tokens []string) (invalid string, onS
 		// TODO may need to queue returned cmd
 		d.list.SetItems(merge(macros, items))
 	}()*/
+
+	// flagset
+	d.fs = flags()
+	if err := d.fs.Parse(tokens); err != nil {
+		return "", nil, err
+	}
 
 	return "", nil, nil
 }
