@@ -89,7 +89,6 @@ const (
 
 type delete struct {
 	mode            mode
-	done            bool
 	list            list.Model
 	listInitialized bool
 	err             error
@@ -111,7 +110,7 @@ func (d *delete) Update(msg tea.Msg) tea.Cmd {
 		return nil
 	}
 	if len(d.list.Items()) == 0 {
-		d.done = true
+		d.mode = quitting
 		return tea.Println("You have no macros that can be deleted.")
 	}
 
@@ -128,7 +127,6 @@ func (d *delete) Update(msg tea.Msg) tea.Cmd {
 				clilog.Writer.Warnf("failed to type assert %v as an item", baseitm)
 				return tea.Printf(errorNoDeleteText+"\n", "failed type assertion")
 			} else {
-				d.done = true
 				d.mode = quitting
 				if dr, err := deleteMacro(&d.fs, itm.ID); err != nil {
 					clilog.Writer.Errorf("failed to delete macro %v (ID: %v/UID: %v): %v",
@@ -176,13 +174,11 @@ func (d *delete) View() string {
 }
 
 func (d *delete) Done() bool {
-	return d.done
-
+	return d.mode == quitting
 }
 
 func (d *delete) Reset() error {
 	d.mode = selecting
-	d.done = false
 	d.err = nil
 	// the current state of the list is retained
 	return nil
@@ -227,7 +223,6 @@ func (d *delete) SetArgs(_ *pflag.FlagSet, tokens []string) (invalid string, onS
 		return "", nil, err
 	} else if id != 0 {
 		d.mode = quitting
-		d.done = true
 		dr, err := deleteMacro(&d.fs, id)
 		if err != nil {
 			return "", nil, err
@@ -239,9 +234,7 @@ func (d *delete) SetArgs(_ *pflag.FlagSet, tokens []string) (invalid string, onS
 		return "",
 			[]tea.Cmd{tea.Printf("Deleted macro (UID: %v)\n", id)},
 			nil
-
 	}
-
 	return "", nil, nil
 }
 
