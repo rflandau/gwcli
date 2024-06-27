@@ -21,7 +21,7 @@ var (
 	aliases []string = []string{}
 )
 
-func NewMyInfoAction() action.Pair {
+func NewUserMyInfoAction() action.Pair {
 
 	return scaffold.NewBasicAction(use, short, long, aliases, func(fs *pflag.FlagSet) (string, tea.Cmd) {
 		ud, err := connection.Client.MyInfo()

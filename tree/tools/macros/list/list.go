@@ -21,7 +21,7 @@ var (
 	defaultColumns []string = []string{"ID", "Name", "Description", "Expansion"}
 )
 
-func NewListCmd() action.Pair {
+func NewMacroListAction() action.Pair {
 	return scaffold.NewListCmd(short, long, aliases, defaultColumns,
 		types.SearchMacro{}, listMacros, flags)
 }

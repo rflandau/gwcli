@@ -14,6 +14,6 @@ var (
 	aliases []string = []string{"resources"}
 )
 
-func GenerateTree() *cobra.Command {
-	return treeutils.GenerateNav(use, short, long, aliases, []*cobra.Command{macros.GenerateNav()}, nil)
+func NewToolsNav() *cobra.Command {
+	return treeutils.GenerateNav(use, short, long, aliases, []*cobra.Command{macros.NewMacrosNav()}, nil)
 }

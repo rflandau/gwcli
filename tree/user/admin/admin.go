@@ -18,7 +18,7 @@ var (
 	aliases []string = []string{}
 )
 
-func NewAdminAction() action.Pair {
+func NewUserAdminAction() action.Pair {
 	return scaffold.NewBasicAction(use, short, long, aliases, func(*pflag.FlagSet) (string, tea.Cmd) {
 		var not string
 		if !connection.Client.AdminMode() {

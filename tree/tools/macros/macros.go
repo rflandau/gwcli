@@ -17,7 +17,7 @@ var (
 	aliases []string = []string{"macro"}
 )
 
-func GenerateNav() *cobra.Command {
+func NewMacrosNav() *cobra.Command {
 	return treeutils.GenerateNav(use, short, long, aliases, []*cobra.Command{},
-		[]action.Pair{list.NewListCmd(), create.GenerateAction(), delete.NewMacroDeleteAction()})
+		[]action.Pair{list.NewMacroListAction(), create.NewMacroCreateAction(), delete.NewMacroDeleteAction()})
 }

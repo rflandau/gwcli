@@ -22,7 +22,7 @@ import (
 
 var localFlagset pflag.FlagSet
 
-func GenerateAction() action.Pair {
+func NewMacroCreateAction() action.Pair {
 	// create the action
 	cmd := treeutils.NewActionCommand("create", "create a new macro", "", []string{}, run)
 

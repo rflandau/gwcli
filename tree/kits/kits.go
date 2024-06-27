@@ -16,6 +16,7 @@ var (
 )
 
 func NewKitsNav() *cobra.Command {
-	// no sub navs
-	return treeutils.GenerateNav(use, short, long, aliases, []*cobra.Command{}, []action.Pair{list.NewListCmd()})
+	return treeutils.GenerateNav(use, short, long, aliases,
+		[]*cobra.Command{},
+		[]action.Pair{list.NewKitsListAction()})
 }

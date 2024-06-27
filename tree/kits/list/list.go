@@ -18,7 +18,7 @@ var (
 	defaultColumns []string = []string{"UUID", "KitState.Name", "KitState.Description", "KitState.Version"}
 )
 
-func NewListCmd() action.Pair {
+func NewKitsListAction() action.Pair {
 	return scaffold.NewListCmd(short, long, aliases, defaultColumns,
 		types.IdKitState{}, ListKits, flags)
 }

@@ -41,7 +41,7 @@ var localFS pflag.FlagSet
 
 //#region command/action set up
 
-func GenerateAction() action.Pair {
+func NewQueryAction() action.Pair {
 	cmd := treeutils.NewActionCommand("query", "submit a query",
 		"Generate and send a query to the remote server either by arguments or the interactive query builder.\n"+
 			"All bare arguments after `query` will be passed to the instance as the query string.", []string{"q", "search"}, run)

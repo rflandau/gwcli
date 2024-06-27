@@ -261,12 +261,12 @@ func Execute(args []string) int {
 	rootCmd := treeutils.GenerateNav(use, short, long, []string{},
 		[]*cobra.Command{
 			systems.NewSystemsNav(),
-			tools.GenerateTree(),
+			tools.NewToolsNav(),
 			kits.NewKitsNav(),
-			user.GenerateTree(),
+			user.NewUserNav(),
 		},
 		[]action.Pair{
-			query.GenerateAction(),
+			query.NewQueryAction(),
 		})
 	rootCmd.SilenceUsage = true
 	rootCmd.PersistentPreRunE = ppre

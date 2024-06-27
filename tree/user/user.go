@@ -17,7 +17,7 @@ var (
 	aliases []string = []string{"self"}
 )
 
-func GenerateTree() *cobra.Command {
+func NewUserNav() *cobra.Command {
 	return treeutils.GenerateNav(use, short, long, aliases, nil,
-		[]action.Pair{logout.NewLogoutAction(), admin.NewAdminAction(), myinfo.NewMyInfoAction()})
+		[]action.Pair{logout.NewUserLogoutAction(), admin.NewUserAdminAction(), myinfo.NewUserMyInfoAction()})
 }

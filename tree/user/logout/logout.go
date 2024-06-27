@@ -17,7 +17,7 @@ var (
 	aliases []string = []string{}
 )
 
-func NewLogoutAction() action.Pair {
+func NewUserLogoutAction() action.Pair {
 	return scaffold.NewBasicAction(use, short, long, aliases, func(*pflag.FlagSet) (string, tea.Cmd) {
 		connection.Client.Logout()
 		connection.End()
