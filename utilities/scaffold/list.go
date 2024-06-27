@@ -262,6 +262,7 @@ func (la *ListAction[T]) Update(msg tea.Msg) tea.Cmd {
 		if err != nil {
 			panic(err)
 		}
+		la.done = true
 		return tea.Println(strings.Join(cols, " "))
 	}
 
