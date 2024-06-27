@@ -23,6 +23,12 @@ var (
 	aliases []string = []string{""}
 )
 
+// text to display when a macro would have been deleted if not for --dryrun
+const dryrunDeletionText = "DRYRUN: Would have deleted macro %v(UID: %v)"
+
+// text to display when deletion is skipped due to error
+const errorNoDeleteText = "An error occured: %v.\nAbstained from deletion."
+
 var localFS pflag.FlagSet
 
 func NewMacroDeleteAction() action.Pair {
@@ -40,27 +46,27 @@ func run(c *cobra.Command, _ []string) {
 		err    error
 	)
 	if dryrun, err = c.Flags().GetBool("dryrun"); err != nil {
-		clilog.TeeError(c.ErrOrStderr(), err.Error())
+		clilog.TeeError(c.ErrOrStderr(), fmt.Sprintf(errorNoDeleteText, err))
 		return
 	}
 
 	// if an ID was given, just issue a delete
 	if did, err := c.Flags().GetUint64("id"); err != nil {
-		clilog.TeeError(c.ErrOrStderr(), err.Error())
+		clilog.TeeError(c.ErrOrStderr(), fmt.Sprintf(errorNoDeleteText, err))
 		return
 	} else if did != 0 {
 		if dryrun { // just fetch the macro
 			m, err := connection.Client.GetMacro(did)
 			if err != nil {
-				clilog.TeeError(c.ErrOrStderr(), err.Error())
+				clilog.TeeError(c.ErrOrStderr(), fmt.Sprintf(errorNoDeleteText, err))
 				return
 			}
-			tea.Printf("DRYRUN: Would have deleted macro %v(UID: %v)",
+			tea.Printf(dryrunDeletionText,
 				m.Name, m.UID)
 			return
 		}
 		if err := connection.Client.DeleteMacro(did); err != nil {
-			clilog.TeeError(c.ErrOrStderr(), err.Error())
+			clilog.TeeError(c.ErrOrStderr(), fmt.Sprintf(errorNoDeleteText, err))
 			return
 		}
 		fmt.Printf("Successfully deleted macro #%v\n", did)
@@ -68,7 +74,7 @@ func run(c *cobra.Command, _ []string) {
 	}
 	// in script mode, fail out
 	if script, err := c.Flags().GetBool("script"); err != nil {
-		clilog.TeeError(c.ErrOrStderr(), err.Error())
+		clilog.TeeError(c.ErrOrStderr(), fmt.Sprintf(errorNoDeleteText, err))
 		return
 	} else if script { // no id given, fail out
 		clilog.TeeError(c.OutOrStdout(), "--id is required in script mode")
@@ -126,21 +132,21 @@ func (d *delete) Update(msg tea.Msg) tea.Cmd {
 			baseitm := d.list.Items()[d.list.Cursor()]
 			if itm, ok := baseitm.(item); !ok {
 				clilog.Writer.Warnf("failed to type assert %v as an item", baseitm)
-				return tea.Println("An error occured.\nAbstained from deletion.")
+				return tea.Printf(errorNoDeleteText+"\n", "failed type assertion")
 			} else {
 				d.done = true
 				d.mode = quitting
 				if dryrun, err := d.fs.GetBool("dryrun"); err != nil {
 					clilog.Writer.Warnf("failed to fetch dryrun flag: %v", err)
-					return tea.Println("An error occured.\nAbstained from deletion.")
+					return tea.Printf(errorNoDeleteText+"\n", err)
 				} else if dryrun {
-					return tea.Printf("DRYRUN: Would have deleted macro %v(UID: %v)",
+					return tea.Printf(dryrunDeletionText,
 						itm.Title(), itm.UID)
 				} else {
 					// destroy the selected macro
 					if err := connection.Client.DeleteMacro(itm.ID); err != nil {
 						clilog.Writer.Warnf("failed to delete macro (ID: %v): %v", itm.ID, err)
-						return tea.Println("An error occured.\nAbstained from deletion.")
+						return tea.Printf(errorNoDeleteText+"\n", err)
 					}
 					// remove it from the list
 					d.list.RemoveItem(d.list.Cursor())
