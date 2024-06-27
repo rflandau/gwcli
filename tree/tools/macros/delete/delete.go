@@ -223,9 +223,22 @@ func (d *delete) SetArgs(_ *pflag.FlagSet, tokens []string) (invalid string, onS
 	}
 
 	// if --id was given attempt to act and quit immediately
-	if id, err := d.fs.GetUint64("iid"); err != nil {
+	if id, err := d.fs.GetUint64("id"); err != nil {
 		return "", nil, err
 	} else if id != 0 {
+		d.mode = quitting
+		d.done = true
+		dr, err := deleteMacro(&d.fs, id)
+		if err != nil {
+			return "", nil, err
+		} else if dr {
+			return "",
+				[]tea.Cmd{tea.Printf("DRYRUN: Macro (UID: %v) would have been deleted\n", id)},
+				nil
+		}
+		return "",
+			[]tea.Cmd{tea.Printf("Deleted macro (UID: %v)\n", id)},
+			nil
 
 	}
 
