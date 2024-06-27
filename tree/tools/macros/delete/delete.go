@@ -1,5 +1,6 @@
 // Macro deletion action.
 // Displays a list of all available macros that the user can pick from in interactive mode.
+// Macros are sorted by name in the list itself.
 // Note that list initialization and updating occurs in SetArgs.
 // This is allow lazy-processing; do not want to add startup time when we do not know a user will
 // invoke this action. Similarly, we cannot guarentee that the server connection will be established
@@ -57,12 +58,12 @@ func run(c *cobra.Command, _ []string) {
 	}
 
 	// if an ID was given, just issue a delete
-	if did, err := c.Flags().GetUint64("id"); err != nil {
+	if duid, err := c.Flags().GetUint64("uid"); err != nil {
 		clilog.TeeError(c.ErrOrStderr(), fmt.Sprintf(errorNoDeleteText, err))
 		return
-	} else if did != 0 {
+	} else if duid != 0 {
 		if dryrun { // just fetch the macro
-			m, err := connection.Client.GetMacro(did)
+			m, err := connection.Client.GetMacro(duid)
 			if err != nil {
 				clilog.TeeError(c.ErrOrStderr(), fmt.Sprintf(errorNoDeleteText, err))
 				return
@@ -71,11 +72,11 @@ func run(c *cobra.Command, _ []string) {
 				m.Name, m.UID)
 			return
 		}
-		if err := connection.Client.DeleteMacro(did); err != nil {
+		if err := connection.Client.DeleteMacro(duid); err != nil {
 			clilog.TeeError(c.ErrOrStderr(), fmt.Sprintf(errorNoDeleteText, err))
 			return
 		}
-		fmt.Printf("Successfully deleted macro #%v\n", did)
+		fmt.Printf("Successfully deleted macro (UID: %v)\n", duid)
 		return
 	}
 	// in script mode, fail out
@@ -83,7 +84,7 @@ func run(c *cobra.Command, _ []string) {
 		clilog.TeeError(c.ErrOrStderr(), fmt.Sprintf(errorNoDeleteText, err))
 		return
 	} else if script { // no id given, fail out
-		clilog.TeeError(c.OutOrStdout(), "--id is required in script mode")
+		clilog.TeeError(c.OutOrStdout(), "--uid is required in script mode")
 		return
 	}
 	// TODO spin up standalone prompt selection
@@ -92,7 +93,7 @@ func run(c *cobra.Command, _ []string) {
 
 func flags() pflag.FlagSet {
 	fs := pflag.FlagSet{}
-	fs.Uint64("id", 0, "macro id to delete")
+	fs.Uint64("uid", 0, "macro id to delete")
 	fs.Bool("dryrun", false, "skips the actual deletion")
 
 	return fs
@@ -125,6 +126,7 @@ func Initial() *delete {
 }
 
 func (d *delete) Update(msg tea.Msg) tea.Cmd {
+	// TODO fail out if there are no macros
 	switch msg := msg.(type) {
 	case tea.WindowSizeMsg:
 		d.list.SetSize(msg.Width, msg.Height)
@@ -156,7 +158,7 @@ func (d *delete) Update(msg tea.Msg) tea.Cmd {
 					d.list.RemoveItem(d.list.Cursor())
 				}
 
-				return tea.Printf("Deleted macro %v(UID: %v)", itm.Title(), itm.UID)
+				return tea.Printf("Deleted macro %v(ID: %v/UID: %v)", itm.Title(), itm.ID, itm.UID)
 			}
 		}
 	}
@@ -179,7 +181,8 @@ func (d *delete) View() string {
 			clilog.Writer.Warnf("Failed to assert selected item as SearchMacro (%v)", itm)
 			return "An error has occurred. Exitting..."
 		} else {
-			return fmt.Sprintf("Deleting %v (UID: %v)...\n", searchitm.Name, searchitm.UID)
+			return fmt.Sprintf("Deleting %v (ID: %v/UID: %v)...\n",
+				searchitm.Name, searchitm.ID, searchitm.UID)
 		}
 	case selecting:
 		return "\n" + d.list.View()
@@ -203,8 +206,7 @@ func (d *delete) Reset() error {
 }
 
 func (d *delete) SetArgs(_ *pflag.FlagSet, tokens []string) (invalid string, onStart []tea.Cmd, err error) {
-	// if the this the first run, initialize the list from all macros
-	if !d.listInitialized {
+	if !d.listInitialized { // if the this the first run, initialize the list from all macros
 		d.list = list.New([]list.Item{}, itemDelegate{}, 80, 20)
 		d.list.Title = "Select a macro to delete"
 
@@ -217,7 +219,6 @@ func (d *delete) SetArgs(_ *pflag.FlagSet, tokens []string) (invalid string, onS
 			return "", nil, err
 		} else {
 			items = make([]list.Item, len(macros))
-			clilog.Writer.Debugf("macros: %v", macros)
 			slices.SortFunc(macros, func(m1, m2 types.SearchMacro) int {
 				return strings.Compare(m1.Name, m2.Name)
 			})
@@ -234,6 +235,8 @@ func (d *delete) SetArgs(_ *pflag.FlagSet, tokens []string) (invalid string, onS
 		d.list.KeyMap.Quit.SetEnabled(false)
 
 		d.listInitialized = true
+	} else { // on future runs, merge the current set of macros to our list
+		//macros, err := connection.Client.GetUserMacros(connection.Client.MyUID())
 	}
 
 	// otherwise, compare the list for differences with the current set of macros
