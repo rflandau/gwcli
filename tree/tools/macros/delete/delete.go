@@ -33,6 +33,19 @@ func NewMacroDeleteAction() action.Pair {
 				clilog.TeeError(c.ErrOrStderr(), err.Error())
 				return
 			} else if did != 0 {
+				if dryrun, err := c.Flags().GetBool("dryrun"); err != nil {
+					clilog.TeeError(c.ErrOrStderr(), err.Error())
+					return
+				} else if dryrun {
+					// just fetch the macro
+					if m, err := connection.Client.GetMacro(did); err != nil {
+						clilog.TeeError(c.ErrOrStderr(), err.Error())
+						return
+					} else {
+						tea.Printf("DRYRUN: Would have deleted macro %v(UID: %v)",
+							m.Name, m.UID)
+					}
+				}
 				if err := connection.Client.DeleteMacro(did); err != nil {
 					clilog.TeeError(c.ErrOrStderr(), err.Error())
 					return
