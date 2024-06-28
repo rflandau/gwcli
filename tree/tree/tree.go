@@ -7,9 +7,11 @@ package tree
 import (
 	"gwcli/action"
 	"gwcli/group"
+	"gwcli/stylesheet"
 	"gwcli/utilities/scaffold"
 
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/charmbracelet/lipgloss"
 	"github.com/charmbracelet/lipgloss/tree"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
@@ -26,21 +28,7 @@ var (
 func NewTreeAction() action.Pair {
 	return scaffold.NewBasicAction(use, short, long, aliases,
 		func(c *cobra.Command, _ *pflag.FlagSet) (string, tea.Cmd) {
-			lgt := tree.New()
-			lgt.Root("gwcli")
-			root := c.Root()
-			// traverse down the command tree, setting each nav as a new sub tree and each action
-			//	as a leaf
-			for _, child := range root.Commands() {
-				switch child.GroupID {
-				case group.ActionID:
-					lgt.Child(child.Name())
-				case group.NavID:
-					lgt.Child(walkBranch(child))
-				default:
-					lgt.Child(child.Name())
-				}
-			}
+			lgt := walkBranch(c.Root())
 
 			return lgt.String(), nil
 		}, nil)
@@ -49,17 +37,24 @@ func NewTreeAction() action.Pair {
 func walkBranch(nav *cobra.Command) *tree.Tree {
 	// generate a new tree, stemming from the given nav
 	branchRoot := tree.New()
-	branchRoot.Root(nav.Name())
+
+	navSty := stylesheet.NavStyle //.PaddingLeft(1)
+	actionSty := stylesheet.ActionStyle.PaddingLeft(1)
+
+	branchRoot.Root(navSty.Render(nav.Name()))
+	branchRoot.EnumeratorStyle(lipgloss.NewStyle().Foreground(stylesheet.TertiaryColor).PaddingLeft(1))
 
 	// add children of this nav to its tree
 	for _, child := range nav.Commands() {
 		switch child.GroupID {
 		case group.ActionID:
-			branchRoot.Child(child.Name())
+			branchRoot.Child(actionSty.Render(child.Name()))
 		case group.NavID:
 			branchRoot.Child(walkBranch(child))
 		default:
-			branchRoot.Child(child.Name())
+			// this will encompass Cobra's default commands (ex: help and completions)
+			// nothing else should fall in here
+			branchRoot.Child(actionSty.Render(child.Name()))
 		}
 	}
 
