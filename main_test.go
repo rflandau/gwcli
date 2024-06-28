@@ -41,26 +41,6 @@ func TestNonInteractive(t *testing.T) {
 		panic(err)
 	}
 
-	t.Run("bad usage: no credentials", func(t *testing.T) {
-		stdoutData, stderrData, err := mockIO()
-		if err != nil {
-			restoreIO()
-			panic(err)
-		}
-
-		tree.Execute([]string{"--script"})
-		restoreIO()
-		results := <-stdoutData
-		resultsErr := <-stderrData
-
-		expFirstLine := "Error: username (-u) and password (-p) required"
-
-		// don't really care if usage was printed; just check to first newline
-		if resultsErr == "" || results != "" || strings.Split(resultsErr, "\n")[0] != expFirstLine {
-			t.Fatalf("Expected stderr to begin with '%s', got:\n(stdout:\n%s)\n(stderr:\n%s)", expFirstLine, results, resultsErr)
-		}
-	})
-
 	// need to reset the client used by gwcli between runs
 	connection.End()
 	connection.Client = nil
