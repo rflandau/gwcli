@@ -5,6 +5,7 @@ import (
 	"gwcli/clilog"
 	"gwcli/connection"
 	"os"
+	"path"
 	"strings"
 	"testing"
 	"time"
@@ -23,7 +24,11 @@ const (
 func TestGenerateQueryString(t *testing.T) {
 	const uuid1str = "" // ex: 52985695-ae81-4e82-ba1d-bce54f96def7
 
-	if err := connection.Initialize(server, false, true); err != nil {
+	var (
+		restLogFile = path.Join(os.TempDir(), "gwcli.Test_GenerateQueryString.rest.log")
+	)
+
+	if err := connection.Initialize(server, restLogFile, false, true); err != nil {
 		panic(err)
 	}
 	if err := connection.Login(user, pass); err != nil {
@@ -86,15 +91,20 @@ func TestGenerateQueryString(t *testing.T) {
 }
 
 func Test_tryQuery(t *testing.T) {
+	var (
+		logFile     = path.Join(os.TempDir(), "gwcli.Test_tryQuery.log")
+		restLogFile = path.Join(os.TempDir(), "gwcli.Test_tryQuery.rest.log")
+	)
+
 	// establish connection
-	if err := connection.Initialize(server, false, true); err != nil {
+	if err := connection.Initialize(server, restLogFile, false, true); err != nil {
 		panic(err)
 	}
 	if err := connection.Login(user, pass); err != nil {
 		panic(err)
 	}
 	// establish cli writer
-	clilog.Init("gwcli.Test_tryQuery.log", "DEBUG")
+	clilog.Init(logFile, "DEBUG")
 
 	type args struct {
 		qry      string
@@ -150,16 +160,20 @@ func Test_tryQuery(t *testing.T) {
 // Simple tests to check for basic functionality without deep checking the results.
 // Primarily checking that data was successfully put to a file or the terminal.
 func Test_run(t *testing.T) {
+	var (
+		logFile     = path.Join(os.TempDir(), "gwcli.Test_run.log")
+		restLogFile = path.Join(os.TempDir(), "gwcli.Test_run.rest.log")
+	)
+
 	// establish connection
-	if err := connection.Initialize(server, false, true); err != nil {
+	if err := connection.Initialize(server, restLogFile, false, true); err != nil {
 		panic(err)
 	}
 	if err := connection.Login(user, pass); err != nil {
 		panic(err)
 	}
-	logFn := "gwcli.Test_run.log"
 	// establish cli writer
-	clilog.Init(logFn, "DEBUG")
+	clilog.Init(logFile, "DEBUG")
 
 	prepCmd := func(flagArgs []string) *cobra.Command {
 		// setup the command instance
@@ -229,7 +243,7 @@ func Test_run(t *testing.T) {
 	connection.End()
 
 	// clean up log
-	os.Remove(logFn)
+	os.Remove(logFile)
 }
 
 //#region helpers

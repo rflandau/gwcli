@@ -15,8 +15,8 @@ import (
 var Client *grav.Client
 
 // Initializes Client using the given connection string of the form <host>:<port>
-func Initialize(conn string, UseHttps, InsecureNoEnforceCerts bool) (err error) {
-	l, err := objlog.NewJSONLogger("rest_client.json")
+func Initialize(conn string, restLogPath string, UseHttps, InsecureNoEnforceCerts bool) (err error) {
+	l, err := objlog.NewJSONLogger(restLogPath)
 	if err != nil {
 		return err
 	}

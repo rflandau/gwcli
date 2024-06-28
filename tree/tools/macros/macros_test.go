@@ -21,6 +21,11 @@ const (
 	pass   = "changeme"
 )
 
+var (
+	logFile     = path.Join(os.TempDir(), "gwcli.Test_NewMacroCreateAndDestroy.log")
+	restLogFile = path.Join(os.TempDir(), "gwcli.Test_NewMacroCreateAndDestroy.rest.log")
+)
+
 var rgxCreatedID = regexp.MustCompile(`\(ID: \d*`)
 
 // Using the normal generation method, tests creating a macro via flags and then
@@ -28,10 +33,13 @@ var rgxCreatedID = regexp.MustCompile(`\(ID: \d*`)
 // Assumes the macro does not exist prior to this function
 func TestNewMacroCreateAndDestroy(t *testing.T) {
 	// set up the logger
-	clilog.Init(path.Join(os.TempDir(), "gwcli.Test_NewMacroCreateAction.log"), "DEBUG")
+	clilog.Init(logFile, "DEBUG")
 
 	// connect to the server
-	if err := connection.Initialize(server, false, true); err != nil {
+	if err := connection.Initialize(server,
+		restLogFile,
+		false,
+		true); err != nil {
 		panic(err)
 	}
 	if err := connection.Login(user, pass); err != nil {

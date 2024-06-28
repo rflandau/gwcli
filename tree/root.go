@@ -28,6 +28,7 @@ import (
 
 const (
 	tokenFileName = "token"
+	restLogName   = "rest.log"
 	cfgSubFolder  = "gwcli" // $config_folder + configSubFolder
 )
 
@@ -64,7 +65,12 @@ func EnforceLogin(cmd *cobra.Command, args []string) error {
 		if err != nil {
 			return err
 		}
-		if err = connection.Initialize(server, !insecure, insecure); err != nil {
+		cfgDir, err := os.UserConfigDir()
+		if err != nil {
+			return err
+		}
+		if err = connection.Initialize(server, path.Join(cfgDir, cfgSubFolder, restLogName),
+			!insecure, insecure); err != nil {
 			return err
 		}
 	}
