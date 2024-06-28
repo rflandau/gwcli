@@ -190,7 +190,7 @@ func (d *delete) SetArgs(_ *pflag.FlagSet, tokens []string) (invalid string, onS
 		return "", nil, err
 	}
 	d.list.SetItems(itms)
-	d.list.SetFilteringEnabled(false)
+	d.list.SetFilteringEnabled(true)
 
 	// disable quit keys; they clash with mother
 	d.list.KeyMap.ForceQuit.SetEnabled(false)
