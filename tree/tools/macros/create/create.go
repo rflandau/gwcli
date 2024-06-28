@@ -48,18 +48,19 @@ func initialLocalFlagSet() pflag.FlagSet {
 	return fs
 }
 
-func createMacro(name, desc, value string) error {
+// Creates a macro with the given values anmd returns the id it was assigned
+func createMacro(name, desc, value string) (uint64, error) {
 	// via the web gui, adding a macro requies a name and value (plus optional desc)
 	macro := types.SearchMacro{Name: name, Description: desc, Expansion: value}
 
-	_, err := connection.Client.AddMacro(macro)
+	id, err := connection.Client.AddMacro(macro)
 	if err != nil {
 		clilog.Writer.Warnf("Failed to create Macro: %s", err.Error())
 		// TODO unwrap http error messages
-		return err
+		return 0, err
 	}
 
-	return nil
+	return id, nil
 }
 
 //#region cobra command
@@ -85,10 +86,10 @@ func run(cmd *cobra.Command, _ []string) {
 		return
 	}
 
-	if err = createMacro(name, desc, value); err != nil {
+	if id, err := createMacro(name, desc, value); err != nil {
 		fmt.Fprintf(cmd.ErrOrStderr(), "Failed to create macro: %v", err.Error())
 	} else {
-		fmt.Fprintln(cmd.OutOrStdout(), "Successfully created macro "+name)
+		fmt.Fprintf(cmd.OutOrStdout(), "Successfully created macro %v (ID: %v)\n", name, id)
 	}
 }
 
@@ -185,13 +186,13 @@ func (c *create) Update(msg tea.Msg) tea.Cmd {
 				c.ti[name].Value() != "" &&
 				c.ti[desc].Value() != "" &&
 				c.ti[value].Value() != "" { // if last input and inputs are populated, attempt to create the macros
-				if err := createMacro(c.ti[name].Value(), c.ti[desc].Value(), c.ti[value].Value()); err != nil {
+				if id, err := createMacro(c.ti[name].Value(), c.ti[desc].Value(), c.ti[value].Value()); err != nil {
 					c.Reset()
 					// TODO output error message below prompt
 					return nil
 				} else {
 					c.done = true
-					return nil
+					return tea.Printf("Successfully created macro %v (ID: %v)\n", name, id)
 				}
 
 			} else {
