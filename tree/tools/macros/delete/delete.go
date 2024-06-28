@@ -118,8 +118,8 @@ func (d *delete) Update(msg tea.Msg) tea.Cmd {
 	case tea.KeyMsg:
 		switch msg.Type {
 		case tea.KeyEnter:
-			// fetch the item under the cursor
-			baseitm := d.list.Items()[d.list.Cursor()]
+			// fetch the item under the cursor (using the index relative to the slice, not the page)
+			baseitm := d.list.Items()[d.list.Index()]
 			if itm, ok := baseitm.(item); !ok {
 				clilog.Writer.Warnf("failed to type assert %v as an item", baseitm)
 				return tea.Printf(errorNoDeleteText+"\n", "failed type assertion")
@@ -134,7 +134,7 @@ func (d *delete) Update(msg tea.Msg) tea.Cmd {
 						itm.Name, itm.ID, itm.UID)
 				}
 				// remove it from the list
-				d.list.RemoveItem(d.list.Cursor())
+				d.list.RemoveItem(d.list.Index())
 
 				return tea.Printf("Deleted macro %v(ID: %v/UID: %v)", itm.Name, itm.ID, itm.UID)
 			}
