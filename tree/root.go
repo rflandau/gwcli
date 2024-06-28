@@ -245,7 +245,9 @@ const ( // usage
 	long  string = "gwcli is a CLI client for interacting with your Gravwell instance directly" +
 		"from your terminal.\n" +
 		"It can be used non-interactively in your scripts or interactively via the built-in TUI.\n" +
-		"To invoke the TUI, simply call `gwcli`."
+		"To invoke the TUI, simply call `gwcli`.\n" +
+		"You can view help for any submenu or action by providing help a path.\n" +
+		"For instance, try: `gwcli help tools macros create` or `gwcli query -h`"
 )
 
 const ( // mousetrap
