@@ -15,6 +15,7 @@ import (
 	"gwcli/tree/kits"
 	"gwcli/tree/query"
 	"gwcli/tree/tools"
+	"gwcli/tree/tree"
 	"gwcli/tree/user"
 	"gwcli/treeutils"
 	"gwcli/utilities/usage"
@@ -266,6 +267,7 @@ func Execute(args []string) int {
 		},
 		[]action.Pair{
 			query.NewQueryAction(),
+			tree.NewTreeAction(),
 		})
 	rootCmd.SilenceUsage = true
 	rootCmd.PersistentPreRunE = ppre
