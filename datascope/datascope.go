@@ -64,12 +64,16 @@ func (s DataScope) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			s.vp.Height = msg.Height - s.marginHeight
 		}
 	}
+	prevPage := s.pager.Page
 	s.pager, cmd = s.pager.Update(msg)
 	cmds = append(cmds, cmd)
 	// pass the new content to the view
 	s.vp.SetContent(s.displayPage())
 	s.vp, cmd = s.vp.Update(msg)
 	cmds = append(cmds, cmd)
+	if prevPage != s.pager.Page { // if page changed, reset to top of view
+		s.vp.GotoTop()
+	}
 	return s, tea.Sequence(cmds...)
 }
 
