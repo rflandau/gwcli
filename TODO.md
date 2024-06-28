@@ -68,4 +68,5 @@
 
 - [ ] check for sentinel errors in createMacro
 
-- [ ] enable macro filtering functionality in macro delete
+- [ ] search around for a BubbleTea rendering fix for window size messages in non-altmode.
+    - currently, get artefacting above most recent draw
