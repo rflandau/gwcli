@@ -96,12 +96,6 @@ func run(cmd *cobra.Command, _ []string) {
 
 //#region actor implementation
 
-var promptWidth []int = []int{
-	20, // name
-	40, // desc
-	60, // value
-}
-
 type input int
 
 const (
@@ -133,7 +127,7 @@ func Initial() *create {
 	c.ti = make([]textinput.Model, 3)
 	for i := 0; i < 3; i++ {
 		c.ti[i] = textinput.New()
-		c.ti[i].Width = promptWidth[i]
+		c.ti[i].Width = stylesheet.TIWidth
 	}
 	// the first ti (name) requires extra initialization (focus and validation)
 	c.ti[0].Validate = func(s string) error {
