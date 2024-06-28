@@ -53,7 +53,7 @@ require (
 
 require (
 	github.com/charmbracelet/bubbles v0.18.0
-	github.com/charmbracelet/lipgloss v0.11.0
+	github.com/charmbracelet/lipgloss v0.11.1-0.20240618201632-5a82e41aea3a
 	github.com/gravwell/gravwell/v3 v3.8.32
 	github.com/inconshreveable/mousetrap v1.1.0 // indirect
 	github.com/spf13/pflag v1.0.5
