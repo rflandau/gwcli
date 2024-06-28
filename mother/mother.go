@@ -354,7 +354,6 @@ func (m *Mother) updateSuggestions() {
 	}
 
 	m.ti.SetSuggestions(suggest)
-	clilog.Writer.Debugf("Set suggestions (len: %v): %v", len(suggest), suggest)
 }
 
 // unsetAction resets the current active command/action, clears actives, and returns control to
