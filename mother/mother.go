@@ -68,9 +68,12 @@ func new(root *navCmd, pwd *navCmd, _ *lipgloss.Renderer) Mother {
 		m.pwd = pwd
 	}
 
-	// TODO properly disable completions command in Mother
-	/*root.CompletionOptions = cobra.CompletionOptions{DisableDefaultCmd: true}
-	root.Commands()*/
+	// disable completions command when mother is spun up
+	if c, _, err := root.Find([]string{"completion"}); err != nil {
+		clilog.Writer.Warnf("failed to disable 'completion' command: %v", err)
+	} else if c != nil {
+		root.RemoveCommand(c)
+	}
 
 	// text input
 	m.ti = textinput.New()
