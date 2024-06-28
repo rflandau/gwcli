@@ -7,6 +7,7 @@ import (
 	"gwcli/utilities/scaffold"
 
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 )
 
@@ -18,10 +19,11 @@ var (
 )
 
 func NewUserLogoutAction() action.Pair {
-	return scaffold.NewBasicAction(use, short, long, aliases, func(*pflag.FlagSet) (string, tea.Cmd) {
-		connection.Client.Logout()
-		connection.End()
+	return scaffold.NewBasicAction(use, short, long, aliases,
+		func(*cobra.Command, *pflag.FlagSet) (string, tea.Cmd) {
+			connection.Client.Logout()
+			connection.End()
 
-		return "Successfully logged out", tea.Quit
-	}, nil)
+			return "Successfully logged out", tea.Quit
+		}, nil)
 }

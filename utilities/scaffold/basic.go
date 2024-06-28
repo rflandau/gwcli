@@ -1,8 +1,26 @@
-// A basic action is the simplest action: it does its thing and returns a string to be printed to the
-// terminal. Give it the function you want performed when the action is invoked and have it return
-// whatever string value you want printed to the screen, if at all.
-//
-// Basic actions have no default flags and will not handle flags unless a flagFunc is given.
+/**
+ * A basic action is the simplest action: it does its thing and returns a string to be printed to the
+ * terminal. Give it the function you want performed when the action is invoked and have it return
+ * whatever string value you want printed to the screen, if at all.
+ *
+ * Basic actions have no default flags and will not handle flags unless a flagFunc is given.
+ *
+ * Implementations will probably look a lot like:
+ *
+var (
+	use     string   = ""
+	short   string   = ""
+	long    string   = ""
+	aliases []string = []string{}
+)
+
+func New[parentpkg][pkg]Action() action.Pair {
+	return scaffold.NewBasicAction(use, short, long, aliases, func(*pflag.FlagSet) (string, tea.Cmd) {
+
+	}, nil)
+}
+ *
+*/
 
 package scaffold
 
@@ -22,7 +40,7 @@ import (
 //
 // NOTE: The tea.Cmd returned by act will be thrown away if run in a Cobra context.
 func NewBasicAction(use, short, long string, aliases []string,
-	act func(*pflag.FlagSet) (string, tea.Cmd), flagFunc func() pflag.FlagSet) action.Pair {
+	act func(*cobra.Command, *pflag.FlagSet) (string, tea.Cmd), flagFunc func() pflag.FlagSet) action.Pair {
 
 	cmd := treeutils.NewActionCommand(
 		use,
@@ -30,7 +48,7 @@ func NewBasicAction(use, short, long string, aliases []string,
 		long,
 		aliases,
 		func(c *cobra.Command, _ []string) {
-			s, _ := act(c.Flags())
+			s, _ := act(c, c.Flags())
 			fmt.Fprintf(c.OutOrStdout(), "%v\n", s)
 		})
 
@@ -39,7 +57,7 @@ func NewBasicAction(use, short, long string, aliases []string,
 		cmd.Flags().AddFlagSet(&f)
 	}
 
-	ba := BasicAction{fn: act}
+	ba := BasicAction{cmd: cmd, fn: act}
 	if flagFunc != nil {
 		ba.fs = flagFunc()
 		ba.fsFunc = flagFunc
@@ -56,15 +74,17 @@ type BasicAction struct {
 	fs     pflag.FlagSet        // the current state of the flagset; destroyed on .Reset()
 	fsFunc func() pflag.FlagSet // used by .Reset() to restore the base flagset
 
+	cmd *cobra.Command // the command associated to this basic action
+
 	// the function performing the basic action
-	fn func(*pflag.FlagSet) (string, tea.Cmd)
+	fn func(*cobra.Command, *pflag.FlagSet) (string, tea.Cmd)
 }
 
 var _ action.Model = &BasicAction{}
 
 func (ba *BasicAction) Update(msg tea.Msg) tea.Cmd {
 	ba.done = true
-	s, cmd := ba.fn(&ba.fs)
+	s, cmd := ba.fn(ba.cmd, &ba.fs)
 	return tea.Sequence(tea.Println(s), cmd)
 }
 

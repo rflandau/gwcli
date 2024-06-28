@@ -8,6 +8,7 @@ import (
 	"gwcli/utilities/scaffold"
 
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 )
 
@@ -19,11 +20,13 @@ var (
 )
 
 func NewUserAdminAction() action.Pair {
-	return scaffold.NewBasicAction(use, short, long, aliases, func(*pflag.FlagSet) (string, tea.Cmd) {
-		var not string
-		if !connection.Client.AdminMode() {
-			not = " not"
-		}
-		return fmt.Sprintf("You are%v in admin mode", not), nil
-	}, nil)
+	p := scaffold.NewBasicAction(use, short, long, aliases,
+		func(*cobra.Command, *pflag.FlagSet) (string, tea.Cmd) {
+			var not string
+			if !connection.Client.AdminMode() {
+				not = " not"
+			}
+			return fmt.Sprintf("You are%v in admin mode", not), nil
+		}, nil)
+	return p
 }
