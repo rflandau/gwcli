@@ -8,7 +8,8 @@
     - [ ] blocked by Gabs
 - [ ] create Table exclude variant
 
-- [ ] Display suggestions beneath current prompt
+- [ ] Upgrade suggestions to dynamically map the entire tree
+    - Currently only works on immediate children and builtins
 
 - [ ] Add support for home (~) or root (/) navigation
 

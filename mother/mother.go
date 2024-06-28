@@ -198,7 +198,8 @@ func (m Mother) View() string {
 	if m.active.model != nil {
 		return m.active.model.View()
 	}
-	return CommandPath(&m) + m.ti.View()
+	return fmt.Sprintf("%s%v\n",
+		CommandPath(&m), m.ti.View())
 }
 
 //#endregion
