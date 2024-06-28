@@ -41,8 +41,6 @@
 
 - [ ] Store help strings within mother somewhere so we can lazy-compile them rather than regenerating each call
 
-- [ ] add lipgloss tree printing to help or as a standalone persistent command
-
 - [ ] confirm the status of the no-color flag
     - likely not respected, but should be implementable via lipgloss.NoColor
     - [ ] check for respect of the NoColor env, per https://no-color.org/
