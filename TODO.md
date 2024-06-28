@@ -36,3 +36,5 @@
 - [ ] rework tools/macros/delete interactive styling in items.go
     - Could be cleaner
     - [ ] provide a struct in stylesheet for list-like (but not list-action-like!) displays such as this  
+
+- [ ] when changing page in the data scope, return to the top of the page
