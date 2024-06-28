@@ -221,8 +221,6 @@ func ppost(cmd *cobra.Command, args []string) error {
 	return connection.End()
 }
 
-// TODO add lipgloss tree printing to help
-
 // Generate Flags populates all root-relevant flags (ergo global and root-local flags)
 func GenerateFlags(root *cobra.Command) {
 	// global flags
@@ -232,7 +230,7 @@ func GenerateFlags(root *cobra.Command) {
 	root.PersistentFlags().StringP("username", "u", "", "login credential.")
 	root.PersistentFlags().String("password", "", "login credential.")
 	root.PersistentFlags().StringP("passfile", "p", "", "the path to a file containing your password")
-	root.PersistentFlags().Bool("no-color", false, "disables colourized output.") // TODO via lipgloss.NoColor
+	root.PersistentFlags().Bool("no-color", false, "disables colourized output.")
 	root.PersistentFlags().String("server", "localhost:80", "<host>:<port> of instance to connect to.\n")
 	root.PersistentFlags().StringP("log", "l", "./gwcli.log", "log location for developer logs.\n")
 	root.PersistentFlags().String("loglevel", "DEBUG", "log level for developer logs (-l).\n"+
@@ -277,7 +275,6 @@ func Execute(args []string) int {
 	// associate flags
 	GenerateFlags(rootCmd)
 
-	// TODO move this into a testing package
 	if !rootCmd.AllChildCommandsHaveGroup() {
 		panic("some children missing a group")
 	}

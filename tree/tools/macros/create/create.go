@@ -56,7 +56,6 @@ func createMacro(name, desc, value string) (uint64, error) {
 	id, err := connection.Client.AddMacro(macro)
 	if err != nil {
 		clilog.Writer.Warnf("Failed to create Macro: %s", err.Error())
-		// TODO unwrap http error messages
 		return 0, err
 	}
 
@@ -188,8 +187,7 @@ func (c *create) Update(msg tea.Msg) tea.Cmd {
 				c.ti[value].Value() != "" { // if last input and inputs are populated, attempt to create the macros
 				if id, err := createMacro(c.ti[name].Value(), c.ti[desc].Value(), c.ti[value].Value()); err != nil {
 					c.Reset()
-					// TODO output error message below prompt
-					return nil
+					return tea.Printf("Failed to create macro %v (ID: %v):%v\n", name, id, err)
 				} else {
 					c.done = true
 					return tea.Printf("Successfully created macro %v (ID: %v)\n", name, id)

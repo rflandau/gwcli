@@ -187,7 +187,7 @@ func Test_run(t *testing.T) {
 				"Recommended for use in scripts to avoid hanging on a malformed command.")
 		cmd.Flags().StringP("username", "u", "", "login credential.")
 		cmd.Flags().StringP("password", "p", "", "login credential.")
-		cmd.Flags().Bool("no-color", false, "disables colourized output.") // TODO via lipgloss.NoColor
+		cmd.Flags().Bool("no-color", false, "disables colourized output.")
 		cmd.Flags().String("server", "localhost:80", "<host>:<port> of instance to connect to.\n")
 		cmd.Flags().StringP("log", "l", "./gwcli.log", "log location for developer logs.\n")
 		cmd.Flags().String("loglevel", "DEBUG", "log level for developer logs (-l).\n"+

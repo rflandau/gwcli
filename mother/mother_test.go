@@ -25,7 +25,6 @@ func TestFieldsPopulated(t *testing.T) {
 		t.Error("root is nil")
 	}
 
-	// TODO this test needs to be expanded to be run with equal renderers to
 	// ensure styling is being discarded only when required
 	/*if m.style.nav.Render("text") != lipgloss.NewStyle().Render("text") {
 		t.Error("nav style is not bare")

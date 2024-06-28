@@ -14,7 +14,7 @@
 - [ ] Add support for home (~) or root (/) navigation
 
 - [ ] If an action that required arguments (ex: query) is called bare and --script is not supplied, invoke Mother
-
+    - [ ] spin up standalone deletion picker if delete is called from cli and !script
 - [ ] Provide debouncer utility for children to use while loading
 
 - Search Improvements
@@ -37,4 +37,35 @@
     - Could be cleaner
     - [ ] provide a struct in stylesheet for list-like (but not list-action-like!) displays such as this  
 
-- [ ] when changing page in the data scope, return to the top of the page
+- [ ] Add datascope support and keys for downloading all data or just the current page of data
+
+- [ ] Store help strings within mother somewhere so we can lazy-compile them rather than regenerating each call
+
+- [ ] add lipgloss tree printing to help or as a standalone persistent command
+
+- [ ] confirm the status of the no-color flag
+    - likely not respected, but should be implementable via lipgloss.NoColor
+    - [ ] check for respect of the NoColor env, per https://no-color.org/
+
+- [ ] actor.go's BurnFirstView...
+
+- [ ] expand RenderToDownload to encompass the remaining types.Download* constants
+    - Renders -> Download
+        - Hex,Raw,Text -> Text
+        - Pcap -> PCAP
+        - Table -> ?
+        - Guage -> ?
+        - Numbercard -> ?
+        - Char -> ?
+        - Fdg -> ?
+        - Stackgraph -> ?
+        - Pointmap -> ?
+        - Heatmap -> ?
+        - P2P -> ?
+        - ? -> LookupData
+        - ? -> IPExists
+        - ? -> Archive
+
+- [ ] check for sentinel errors in createMacro
+
+- [ ] enable macro filtering functionality in macro delete

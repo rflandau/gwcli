@@ -282,7 +282,6 @@ func openFile(path string, append bool) (*os.File, error) {
 // Maps Render module and csv/json flag state to a string usable with DownloadSearch().
 // JSON, then CSV, take precidence over a direct render -> format map
 func RenderToDownload(r string, csv, json bool) (string, error) {
-	// TODO this needs to be expanded to associate the remaining types.Download* constants.
 	if json {
 		return types.DownloadJSON, nil
 	}

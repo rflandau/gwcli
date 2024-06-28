@@ -374,7 +374,6 @@ func BurnFirstView(ta textarea.Model) {
 	 * Omitting this superfluous view outputs rgb control characters to the *first* instance of the
 	 * query editor.
 	 */
-	// TODO figure out why this works and what the proper fix is
 	_ = ta.View()
 
 	/**

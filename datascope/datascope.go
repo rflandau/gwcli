@@ -3,8 +3,6 @@
 // As the user pages through, the viewport automatically updates with the contents of the new page.
 //
 // Like busywait, this can be invoked for Cobra or for Mother.
-//
-// TODO Add support and keys for downloading all data or just the current page of data
 package datascope
 
 import (
