@@ -88,7 +88,7 @@ func run(cmd *cobra.Command, _ []string) {
 	if err = createMacro(name, desc, value); err != nil {
 		fmt.Fprintf(cmd.ErrOrStderr(), "Failed to create macro: %v", err.Error())
 	} else {
-		fmt.Println("Successfully created macro " + name)
+		fmt.Fprintln(cmd.OutOrStdout(), "Successfully created macro "+name)
 	}
 }
 
