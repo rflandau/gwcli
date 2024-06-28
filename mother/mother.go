@@ -214,11 +214,12 @@ func processInput(m *Mother) tea.Cmd {
 		m.ti.Err = nil
 	}
 
-	onComplete := make([]tea.Cmd, 1) // tea.Cmds to execute on completion
-	var input string
-	var err error
-	onComplete[0], input, err = m.pushToHistory()
-	if err != nil {
+	var (
+		historyCmd tea.Cmd
+		input      string
+		err        error
+	)
+	if historyCmd, input, err = m.pushToHistory(); err != nil {
 		clilog.Writer.Warnf("pushToHistory returned %v", err)
 		return nil
 	}
@@ -226,13 +227,12 @@ func processInput(m *Mother) tea.Cmd {
 	// tokenize input
 	given := strings.Split(strings.TrimSpace(input), " ")
 
-	wr := walk(m.pwd, given, onComplete)
+	wr := walk(m.pwd, given)
 	if wr.errString != "" {
 		return tea.Sequence(
-			append(
-				onComplete,
-				tea.Println(stylesheet.ErrStyle.Render(wr.errString)),
-			)...)
+			historyCmd,
+			tea.Println(stylesheet.ErrStyle.Render(wr.errString)),
+		)
 	}
 
 	// split on action or nav
@@ -241,74 +241,28 @@ func processInput(m *Mother) tea.Cmd {
 		// if the built-in is not the first command, we don't care about it
 		// so re-test only the first token
 		if bi, ok := builtins[given[0]]; ok {
-			onComplete = append(onComplete, bi(m, given[1:]))
-			return tea.Sequence(onComplete...)
+			return tea.Sequence(historyCmd, bi(m, given[1:]))
 		}
+		clilog.Writer.Errorf(
+			"walk returned built in, but first token in %v is not a known builtin", given)
+		return tea.Sequence(
+			historyCmd,
+			tea.Println("An error has occurred: unknown builtin. No action taken."),
+		)
 	case foundNav:
 		m.pwd = wr.endCommand // move mother to target directory
 		// update her suggestions
 		m.updateSuggestions()
+		return historyCmd
 	case foundAction:
-		m.mode = handoff
-
-		// look up the subroutines to load
-		m.active.model, _ = action.GetModel(wr.endCommand) // save add-on subroutines
-		if m.active.model == nil {
-			// undo handoff mode
-			m.mode = prompting
-
-			return tea.Sequence(append(
-				onComplete,
-				tea.Printf("Developer issue: Did not find actor associated to '%s'."+
-					" Please submit a bug report.\n",
-					wr.endCommand.Name()))...)
-		}
-		m.active.command = wr.endCommand
-
-		var fStr strings.Builder
-
-		// don't bother visiting if it won't be printed
-		if clilog.Writer.GetLevel() == log.DEBUG {
-			m.active.command.InheritedFlags().Visit(func(f *pflag.Flag) {
-				fStr.WriteString(
-					fmt.Sprintf("%s - %s", f.Name, f.Value),
-				)
-			})
-		}
-
-		clilog.Writer.Debugf("Passing args (%v) and inherited flags (%#v) into %s\n",
-			wr.remainingTokens,
-			fStr.String(),
-			m.active.command.Name())
-
-		// NOTE: the inherited flags here may have a combination of parsed and !parsed flags
-		// persistent commands defined below root may not be parsed
-		if invalid, cmds, err := m.active.model.SetArgs(m.active.command.InheritedFlags(), wr.remainingTokens); err != nil {
-			m.unsetAction()
-
-			errString := fmt.Sprintf("Failed to set args %v: %v", wr.remainingTokens, err)
-			clilog.Writer.Errorf("%v\nactive model %v\nactive command%v", errString, m.active.model, wr.endCommand)
-
-			return tea.Sequence(append(
-				onComplete,
-				tea.Println(errString))...)
-		} else if invalid != "" {
-			return tea.Sequence(append(
-				onComplete,
-				tea.Println("invalid arguments. See help for invocation requirements"))...)
-		} else if cmds != nil {
-			onComplete = append(onComplete, cmds...)
-		}
-
-		clilog.Writer.Debugf("Handing off control to %s", m.active.command.Name())
+		cmd := processActionHandoff(m, wr.endCommand, wr.remainingTokens)
+		return tea.Sequence(historyCmd, cmd)
 
 	case invalidCommand:
 		clilog.Writer.Errorf("walking input %v returned invalid", given)
 	}
 
-	// do not include pushToHistory in the sequence to ensure it doesn't get delayed due to
-	// sequencing
-	return tea.Batch(onComplete[0], tea.Sequence(onComplete[1:]...))
+	return historyCmd
 }
 
 // pushToHistory generates and stores historical record of the prompt (as a
@@ -329,6 +283,64 @@ func (m *Mother) pushToHistory() (println tea.Cmd, userIn string, err error) {
 // Returns a composition resembling the full prompt.
 func (m *Mother) promptString() string {
 	return fmt.Sprintf("%s> %s", CommandPath(m), m.ti.Value())
+}
+
+// helper subroutine for processInput
+// Prepares mother and the named action for handoff, undoing itself if an error occurs.
+//
+// Returns commands to run after the push-to-history command.
+// These commands are either commands the action wants run to setup or an error print if an error
+// occurred
+func processActionHandoff(m *Mother, actionCmd *cobra.Command, remTokens []string) tea.Cmd {
+	m.mode = handoff
+
+	// look up the subroutines to load
+	m.active.model, _ = action.GetModel(actionCmd) // save add-on subroutines
+	if m.active.model == nil {                     // undo and return
+		m.unsetAction()
+
+		return tea.Printf("Developer issue: Did not find actor associated to '%s'."+
+			" Please submit a bug report.\n", actionCmd.Name())
+	}
+	m.active.command = actionCmd
+
+	// don't bother visiting if it won't be printed
+	if clilog.Writer.GetLevel() == log.DEBUG {
+		var fStr strings.Builder
+		m.active.command.InheritedFlags().Visit(func(f *pflag.Flag) {
+			fStr.WriteString(fmt.Sprintf("%s - %s", f.Name, f.Value))
+		})
+		clilog.Writer.Debugf("Passing args (%v) and inherited flags (%#v) into %s\n",
+			remTokens,
+			fStr.String(),
+			m.active.command.Name())
+	}
+
+	// NOTE: the inherited flags here may have a combination of parsed and !parsed flags
+	// persistent commands defined below root may not be parsed
+	var (
+		invalid string
+		cmds    []tea.Cmd
+		err     error
+	)
+	if invalid, cmds, err = m.active.model.SetArgs(
+		m.active.command.InheritedFlags(), remTokens,
+	); err != nil { // undo and return
+		m.unsetAction()
+
+		errString := fmt.Sprintf("Failed to set args %v: %v", remTokens, err)
+		clilog.Writer.Errorf("%v\nactive model %v\nactive command%v",
+			errString, m.active.model, remTokens)
+
+		return tea.Println(errString)
+	} else if invalid != "" {
+		return tea.Println("invalid arguments. See help for invocation requirements")
+	}
+	clilog.Writer.Debugf("Handing off control to %s", m.active.command.Name())
+	if cmds != nil {
+		return tea.Sequence(cmds...)
+	}
+	return nil
 }
 
 // Call *after* moving to update the current command suggestions

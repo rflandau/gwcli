@@ -29,10 +29,9 @@ const (
 )
 
 type walkResult struct {
-	endCommand     *cobra.Command // the relevent command walk completed on
-	status         walkStatus     // ending state
-	onCompleteCmds []tea.Cmd      // ordered list of commands to pass to the bubble tea driver
-	errString      string
+	endCommand *cobra.Command // the relevent command walk completed on
+	status     walkStatus     // ending state
+	errString  string
 
 	// builtin function information, if relevant (else Zero vals)
 	builtinStr  string
@@ -47,27 +46,25 @@ type walkResult struct {
 // Returns the relevant command (ending Nav destination or action to invoke),
 // the type of the command (action, nav, invalid), a list of commands to pass to
 // tea, and an error (if one occurred).
-func walk(dir *cobra.Command, tokens []string, onCompleteCmds []tea.Cmd) walkResult {
+func walk(dir *cobra.Command, tokens []string) walkResult {
 	if len(tokens) == 0 {
 		// only move if the final command was a nav
 		return walkResult{
-			endCommand:     dir,
-			status:         foundNav,
-			onCompleteCmds: onCompleteCmds,
+			endCommand: dir,
+			status:     foundNav,
 		}
 	}
 
 	curToken := strings.TrimSpace(tokens[0])
 	// if there is no token, just keep walking
 	if curToken == "" {
-		return walk(dir, tokens[1:], onCompleteCmds)
+		return walk(dir, tokens[1:])
 	}
 
 	if bif, ok := builtins[curToken]; ok { // check for built-in command
 		return walkResult{
 			endCommand:      nil,
 			status:          foundBuiltin,
-			onCompleteCmds:  onCompleteCmds,
 			builtinStr:      curToken,
 			builtinFunc:     bif,
 			remainingTokens: tokens[1:],
@@ -76,7 +73,7 @@ func walk(dir *cobra.Command, tokens []string, onCompleteCmds []tea.Cmd) walkRes
 
 	if curToken == ".." { // navigate upward
 		dir = up(dir)
-		return walk(dir, tokens[1:], onCompleteCmds)
+		return walk(dir, tokens[1:])
 	}
 
 	// test for a local command
@@ -106,7 +103,6 @@ func walk(dir *cobra.Command, tokens []string, onCompleteCmds []tea.Cmd) walkRes
 		return walkResult{
 			endCommand:      nil,
 			status:          invalidCommand,
-			onCompleteCmds:  onCompleteCmds,
 			errString:       fmt.Sprintf("unknown command '%s'. Press F1 or type 'help' for relevant commands.", curToken),
 			remainingTokens: tokens[1:],
 		}
@@ -117,12 +113,11 @@ func walk(dir *cobra.Command, tokens []string, onCompleteCmds []tea.Cmd) walkRes
 		return walkResult{
 			endCommand:      invocation,
 			status:          foundAction,
-			onCompleteCmds:  onCompleteCmds,
 			remainingTokens: tokens[1:],
 		}
 	} else { // nav
 		// navigate given path
 		dir = invocation
-		return walk(dir, tokens[1:], onCompleteCmds)
+		return walk(dir, tokens[1:])
 	}
 }

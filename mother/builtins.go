@@ -46,7 +46,7 @@ func contextHelp(m *Mother, args []string) tea.Cmd {
 	// walk the command tree
 	// action or nav, print help about it
 	// if invalid/no destination, print error
-	wr := walk(m.pwd, args, make([]tea.Cmd, 1))
+	wr := walk(m.pwd, args)
 
 	if wr.errString != "" { // erroneous input
 		return tea.Println(stylesheet.ErrStyle.Render(wr.errString))
