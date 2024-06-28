@@ -68,6 +68,10 @@ func new(root *navCmd, pwd *navCmd, _ *lipgloss.Renderer) Mother {
 		m.pwd = pwd
 	}
 
+	// TODO properly disable completions command in Mother
+	/*root.CompletionOptions = cobra.CompletionOptions{DisableDefaultCmd: true}
+	root.Commands()*/
+
 	// text input
 	m.ti = textinput.New()
 	m.ti.Placeholder = "help"
@@ -77,6 +81,9 @@ func new(root *navCmd, pwd *navCmd, _ *lipgloss.Renderer) Mother {
 	// add ctrl+left/right to the word traversal keys
 	m.ti.KeyMap.WordForward.SetKeys("ctrl+right", "alt+right", "alt+f")
 	m.ti.KeyMap.WordBackward.SetKeys("ctrl+left", "alt+left", "alt+b")
+
+	m.ti.ShowSuggestions = true
+	m.updateSuggestions()
 
 	m.history = newHistory()
 
@@ -234,7 +241,9 @@ func processInput(m *Mother) tea.Cmd {
 			return tea.Sequence(onComplete...)
 		}
 	case foundNav:
-		m.pwd = wr.endCommand
+		m.pwd = wr.endCommand // move mother to target directory
+		// update her suggestions
+		m.updateSuggestions()
 	case foundAction:
 		m.mode = handoff
 
@@ -316,6 +325,32 @@ func (m *Mother) pushToHistory() (println tea.Cmd, userIn string, err error) {
 // Returns a composition resembling the full prompt.
 func (m *Mother) promptString() string {
 	return fmt.Sprintf("%s> %s", CommandPath(m), m.ti.Value())
+}
+
+// Call *after* moving to update the current command suggestions
+func (m *Mother) updateSuggestions() {
+	var suggest []string
+	children := m.pwd.Commands()
+	suggest = make([]string, len(children)+len(builtins))
+	// add builtins
+	var i int = 0
+	for k := range builtins {
+		suggest[i] = k
+		i++
+	}
+
+	// add current sub commands
+	for _, c := range children {
+		// disable cobra-special commands
+		if c.Name() == "help" || c.Name() == "completions" {
+			continue
+		}
+		suggest[i] = c.Name()
+		i++
+	}
+
+	m.ti.SetSuggestions(suggest)
+	clilog.Writer.Debugf("Set suggestions (len: %v): %v", len(suggest), suggest)
 }
 
 // unsetAction resets the current active command/action, clears actives, and returns control to
