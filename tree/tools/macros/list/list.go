@@ -30,7 +30,7 @@ func flags() pflag.FlagSet {
 	addtlFlags := pflag.FlagSet{}
 	addtlFlags.Bool("all", false, "(admin-only) Fetch all macros on the system."+
 		" Supercedes --group. Ignored if you are not an admin.")
-	addtlFlags.Int32("group", 0, "Fetches all macros shared with the given grou id.")
+	addtlFlags.Int32("group", 0, "Fetches all macros shared with the given group id.")
 	return addtlFlags
 }
 
