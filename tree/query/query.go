@@ -48,7 +48,7 @@ func NewQueryAction() action.Pair {
 
 	localFS = initialLocalFlagSet()
 
-	cmd.Example = "./gwcli -u USERNAME -p PASSWORD query tag=gravwell"
+	cmd.Example = "./gwcli query tag=gravwell"
 
 	cmd.Flags().AddFlagSet(&localFS)
 
@@ -156,8 +156,7 @@ func run(cmd *cobra.Command, args []string) {
 		return
 	}
 	if schID != 0 { // if scheduled, do not wait for it
-		fmt.Fprintf(cmd.OutOrStdout(), "Scheduled search for %v (ID: %v)",
-			schedule.cronfreq, schID)
+		fmt.Fprintf(cmd.OutOrStdout(), "Scheduled search (ID: %v)", schID)
 		return
 	}
 
@@ -241,6 +240,7 @@ func fetchQueryString(fs *pflag.FlagSet, args []string) (query string, err error
 	return strings.TrimSpace(strings.Join(args, " ")), nil
 }
 
+// just enough information to schedule a given query
 type schedule struct {
 	name     string
 	desc     string
@@ -248,8 +248,7 @@ type schedule struct {
 }
 
 func (sch *schedule) empty() bool {
-	return sch == &schedule{}
-
+	return sch.name == "" || sch.desc == "" || sch.cronfreq == ""
 }
 
 // Given a *parsed* flagset, pulls name, description and start, erroring if required flags are not
@@ -294,7 +293,8 @@ func tryQuery(qry string, duration time.Duration, nohistory bool, sch schedule) 
 	}
 
 	// check for scheduling
-	if !sch.empty() {
+	if sch.empty() {
+		clilog.Writer.Debugf("schedule request: %v", sch)
 		// todo cache user's myinfo
 		myinfo, err := connection.Client.MyInfo()
 		if err != nil {

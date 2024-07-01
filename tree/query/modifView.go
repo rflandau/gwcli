@@ -6,7 +6,6 @@ package query
 import (
 	"errors"
 	"fmt"
-	"gwcli/clilog"
 	"gwcli/stylesheet"
 	"strings"
 	"unicode"
@@ -17,6 +16,17 @@ import (
 	"github.com/charmbracelet/lipgloss"
 )
 
+/**
+ * when adding new items to the view, make sure to:
+ * 1: add a new modfSelection constant
+ * 2: add enter/space/selection functionality to the update function
+ * 3: if it is a text input:
+ *		a: initialize it!
+ *		b: include it in focusedSelected()
+ *		c: call its update function in Update()
+ * 4: clear it in .Reset()
+ * 5: if it has an associated flag, make sure it is set in `actor.go`.SetArgs()
+ */
 type modifSelection = uint
 
 const (
@@ -27,6 +37,10 @@ const (
 	json
 	csv
 	nohistory
+	scheduled
+	name
+	desc
+	cronfreq
 	highBound
 )
 
@@ -44,12 +58,28 @@ type modifView struct {
 	json         bool
 	csv          bool
 	nohistory    bool
+	schedule     struct {
+		enabled    bool
+		nameTI     textinput.Model
+		descTI     textinput.Model
+		cronfreqTI textinput.Model
+	}
 
 	keys []key.Binding
 }
 
 // generate the second view to be composed with the query editor
 func initialModifView(height, width uint) modifView {
+
+	// helper function for setting up a standard text input
+	newTI := func(dflt string) textinput.Model {
+		ti := textinput.New()
+		ti.Width = int(width)
+		ti.Blur()
+		ti.Prompt = ""
+		ti.SetValue(dflt)
+		return ti
+	}
 
 	mv := modifView{
 		width:    width,
@@ -63,11 +93,7 @@ func initialModifView(height, width uint) modifView {
 	}
 
 	// build duration ti
-	mv.durationTI = textinput.New()
-	mv.durationTI.Width = int(width)
-	mv.durationTI.Blur()
-	mv.durationTI.Prompt = ""
-	mv.durationTI.SetValue(defaultDuration.String())
+	mv.durationTI = newTI(defaultDuration.String())
 	mv.durationTI.Placeholder = "1h00m00s00ms00us00ns"
 	mv.durationTI.Validate = func(s string) error {
 		// checks that the string is composed of valid characters for duration parsing
@@ -89,11 +115,25 @@ func initialModifView(height, width uint) modifView {
 	}
 
 	// build outFile ti
-	mv.outfileTI = textinput.New()
-	mv.outfileTI.Width = int(width)
-	mv.outfileTI.Blur()
+	mv.outfileTI = newTI("")
 	mv.outfileTI.Placeholder = "(optional)"
-	mv.outfileTI.Prompt = ""
+
+	// build name ti
+	mv.schedule.nameTI = newTI("")
+
+	// build description ti
+	mv.schedule.descTI = newTI("")
+
+	// buid schedule frequency ti
+	mv.schedule.cronfreqTI = newTI("")
+	mv.schedule.cronfreqTI.Placeholder = "* * * * *"
+	mv.schedule.cronfreqTI.Validate = func(s string) error {
+		exploded := strings.Split(s, " ")
+		if len(exploded) > 5 {
+			return errors.New("must be exactly 5 values")
+		}
+		return nil
+	}
 
 	return mv
 
@@ -103,6 +143,9 @@ func initialModifView(height, width uint) modifView {
 func (mv *modifView) blur() {
 	mv.durationTI.Blur()
 	mv.outfileTI.Blur()
+	mv.schedule.nameTI.Blur()
+	mv.schedule.descTI.Blur()
+	mv.schedule.cronfreqTI.Blur()
 }
 
 func (mv *modifView) update(msg tea.Msg) []tea.Cmd {
@@ -125,20 +168,26 @@ func (mv *modifView) update(msg tea.Msg) []tea.Cmd {
 			switch mv.selected {
 			case appendToFile:
 				mv.appendToFile = !mv.appendToFile
+				return nil
 			case json:
 				mv.json = !mv.json
 				if mv.json {
 					mv.csv = false
 				}
+				return nil
 			case csv:
 				mv.csv = !mv.csv
 				if mv.csv {
 					mv.json = false
 				}
+				return nil
 			case nohistory:
 				mv.nohistory = !mv.nohistory
+				return nil
+			case scheduled:
+				mv.schedule.enabled = !mv.schedule.enabled
+				return nil
 			}
-			return nil
 		}
 	}
 	var cmds []tea.Cmd = []tea.Cmd{}
@@ -151,53 +200,109 @@ func (mv *modifView) update(msg tea.Msg) []tea.Cmd {
 	if t != nil {
 		cmds = append(cmds, t)
 	}
+	mv.schedule.nameTI, t = mv.schedule.nameTI.Update(msg)
+	if t != nil {
+		cmds = append(cmds, t)
+	}
+	mv.schedule.descTI, t = mv.schedule.descTI.Update(msg)
+	if t != nil {
+		cmds = append(cmds, t)
+	}
+	mv.schedule.cronfreqTI, t = mv.schedule.cronfreqTI.Update(msg)
+	if t != nil {
+		cmds = append(cmds, t)
+	}
 
 	return cmds
 }
 
 // Focuses the text input associated with the current selection, blurring all others
 func (mv *modifView) focusSelected() {
+	mv.blur()
+
 	switch mv.selected {
 	case duration:
 		mv.durationTI.Focus()
-		mv.outfileTI.Blur()
 	case outFile:
-		mv.durationTI.Blur()
 		mv.outfileTI.Focus()
-	case appendToFile, json, csv, nohistory:
-		mv.durationTI.Blur()
-		mv.outfileTI.Blur()
-	default:
-		clilog.Writer.Errorf("Failed to update modifier view focus: unknown selected field %d",
-			mv.selected)
+	case name:
+		mv.schedule.nameTI.Focus()
+	case desc:
+		mv.schedule.descTI.Focus()
+	case cronfreq:
+		mv.schedule.cronfreqTI.Focus()
 	}
 }
 
 func (mv *modifView) view() string {
+	// TODO need to rework the look of modifView to make dependent fields clearer
 	var bldr strings.Builder
+	tiSty := stylesheet.Header1Style
 
-	bldr.WriteString(stylesheet.Header1Style.Render("Duration:") + "\n")
+	bldr.WriteString(" " + tiSty.Render("Duration:") + "\n")
 	bldr.WriteString(
-		fmt.Sprintf("%c %s\n", pip(mv.selected, duration), mv.durationTI.View()),
+		fmt.Sprintf("%c%s\n", pip(mv.selected, duration), mv.durationTI.View()),
 	)
 
-	bldr.WriteString(stylesheet.Header1Style.Render("Output Path:") + "\n")
+	//#region output to file
+	bldr.WriteString(" " + tiSty.Render("Output Path:") + "\n")
 	bldr.WriteString(
-		fmt.Sprintf("%c %s\n", pip(mv.selected, outFile), mv.outfileTI.View()),
+		fmt.Sprintf("%c%s\n", pip(mv.selected, outFile), mv.outfileTI.View()),
 	)
-
-	// view boolean switches
-	// first three depend on outfile
-	bldr.WriteString(viewBool(pip(mv.selected, appendToFile),
+	bldr.WriteString(stylesheet.Indent + viewBool(pip(mv.selected, appendToFile),
 		mv.appendToFile, "Append?", mv.outfileTI))
-	bldr.WriteString(viewBool(pip(mv.selected, json),
+	bldr.WriteString(stylesheet.Indent + viewBool(pip(mv.selected, json),
 		mv.json, "JSON", mv.outfileTI))
-	bldr.WriteString(viewBool(pip(mv.selected, csv),
+	bldr.WriteString(stylesheet.Indent + viewBool(pip(mv.selected, csv),
 		mv.csv, "CSV", mv.outfileTI))
+	//#endregion output to file
 
 	bldr.WriteString(viewBool(pip(mv.selected, nohistory),
-		mv.nohistory, "No History", nil))
+		mv.nohistory, "Exclude from History?", nil))
+
+	//#region schedule search
+	bldr.WriteString(viewBool(pip(mv.selected, scheduled),
+		mv.schedule.enabled, "Schedule?", nil))
+	schsty := tiSty
+	schPromptSty := lipgloss.NewStyle()
+	if !mv.schedule.enabled { // if not scheduled, grey out 'scheduled' fields
+		schsty = stylesheet.GreyedOutStyle
+		schPromptSty = stylesheet.GreyedOutStyle
+	}
+	bldr.WriteString(stylesheet.Indent + schsty.Render("Name:") + "\n")
+	bldr.WriteString(
+		fmt.Sprintf("%c"+stylesheet.Indent+"%s\n",
+			pip(mv.selected, name), schPromptSty.Render(mv.schedule.nameTI.View())),
+	)
+	bldr.WriteString(stylesheet.Indent + schsty.Render("Desc:") + "\n")
+	bldr.WriteString(
+		fmt.Sprintf("%c"+stylesheet.Indent+"%s\n",
+			pip(mv.selected, desc), schPromptSty.Render(mv.schedule.descTI.View())),
+	)
+	bldr.WriteString(stylesheet.Indent + schsty.Render("Schedule:") + "\n")
+	bldr.WriteString(
+		fmt.Sprintf("%c"+stylesheet.Indent+"%s\n",
+			pip(mv.selected, cronfreq), schPromptSty.Render(mv.schedule.cronfreqTI.View())),
+	)
+	//#endregion schedule search
+
 	return bldr.String()
+}
+
+func (mv *modifView) reset() {
+	mv.selected = defaultModifSelection
+	mv.durationTI.Reset()
+	mv.outfileTI.Reset()
+	mv.blur()
+	mv.appendToFile = false
+	mv.json = false
+	mv.csv = false
+	mv.nohistory = false
+	mv.schedule.enabled = false
+	mv.schedule.nameTI.Reset()
+	mv.schedule.descTI.Reset()
+	mv.schedule.cronfreqTI.Reset()
+
 }
 
 // if this field is the selected field, returns the selection rune.
@@ -226,5 +331,5 @@ func viewBool(pip rune, val bool, fieldName string, dependsOn dependsOn) string 
 	if val {
 		checked = '✓'
 	}
-	return fmt.Sprintf("%c [%s] %s\n", pip, sty.Render(string(checked)), sty.Render(fieldName))
+	return fmt.Sprintf("%c[%s] %s\n", pip, sty.Render(string(checked)), sty.Render(fieldName))
 }

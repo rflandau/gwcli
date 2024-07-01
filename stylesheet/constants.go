@@ -8,4 +8,5 @@ const (
 	SelectionPrefix = '»'
 	UpDown          = "↑/↓"
 	LeftRight       = "←/→"
+	Indent          = "  "
 )

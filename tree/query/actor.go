@@ -248,12 +248,7 @@ func (q *query) Reset() error {
 	q.editor.err = ""
 	q.editor.ta.Blur()
 	// reset modifier view
-	q.modifiers.selected = defaultModifSelection
-	q.modifiers.durationTI.Reset()
-	q.modifiers.outfileTI.Reset()
-	q.modifiers.blur()
-	q.modifiers.appendToFile = false
-	q.modifiers.nohistory = false
+	q.modifiers.reset()
 
 	// clear query fields
 	q.curSearch = nil
@@ -278,20 +273,38 @@ func (q *query) SetArgs(_ *pflag.FlagSet, tokens []string) (string, []tea.Cmd, e
 	}
 
 	// fetch and set normal flags
-	if d, err := localFS.GetDuration("duration"); err != nil {
+	if x, err := localFS.GetDuration("duration"); err != nil {
 		return "", []tea.Cmd{}, err
-	} else if d != 0 {
-		q.modifiers.durationTI.SetValue(d.String())
+	} else if x != 0 {
+		q.modifiers.durationTI.SetValue(x.String())
 	}
-	if o, err := localFS.GetString("output"); err != nil {
+	if x, err := localFS.GetString("output"); err != nil {
 		return "", []tea.Cmd{}, err
-	} else if o != "" {
-		q.modifiers.outfileTI.SetValue(o)
+	} else if x != "" {
+		q.modifiers.outfileTI.SetValue(x)
 	}
-	if h, err := localFS.GetBool("no-history"); err != nil {
+	if x, err := localFS.GetBool("no-history"); err != nil {
 		return "", []tea.Cmd{}, err
 	} else {
-		q.modifiers.nohistory = h
+		q.modifiers.nohistory = x
+	}
+	if x, err := localFS.GetString("name"); err != nil {
+		return "", []tea.Cmd{}, err
+	} else if x != "" {
+		q.modifiers.schedule.nameTI.SetValue(x)
+		//q.modifiers.schedule.enabled = true
+	}
+	if x, err := localFS.GetString("description"); err != nil {
+		return "", []tea.Cmd{}, err
+	} else if x != "" {
+		q.modifiers.schedule.descTI.SetValue(x)
+		//.modifiers.schedule.enabled = true
+	}
+	if x, err := localFS.GetString("schedule"); err != nil {
+		return "", []tea.Cmd{}, err
+	} else if x != "" {
+		q.modifiers.schedule.descTI.SetValue(x)
+		q.modifiers.schedule.enabled = true
 	}
 
 	// fetch and set a query, if given
@@ -343,12 +356,24 @@ func (q *query) submitQuery() tea.Cmd {
 		q.output = nil
 	}
 
-	// TODO incorporate scheduling into interactive mode
-	s, _, err := tryQuery(qry, -duration, q.modifiers.nohistory, schedule{})
+	// fetch schedule
+	sch := schedule{}
+	if q.modifiers.schedule.enabled {
+		sch.name = q.modifiers.schedule.nameTI.Value()
+		sch.desc = q.modifiers.schedule.descTI.Value()
+		sch.cronfreq = q.modifiers.schedule.cronfreqTI.Value()
+	}
+
+	s, schID, err := tryQuery(qry, -duration, q.modifiers.nohistory, sch)
 	if err != nil {
 		q.editor.err = err.Error()
 		return nil
 	}
+	if schID != 0 { // if we scheduled a query, just exit
+		q.mode = quitting
+		return tea.Printf("Scheduled search (ID: %v)", schID)
+	}
+
 	// spin up a goroutine to wait on the search while we show a spinner
 	go func() {
 		err := connection.Client.WaitForSearch(s)
