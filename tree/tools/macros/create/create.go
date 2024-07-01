@@ -69,19 +69,19 @@ func run(cmd *cobra.Command, _ []string) {
 	// fetch data from flags
 	name, err := cmd.Flags().GetString("name")
 	if err != nil {
-		fmt.Println(err)
+		clilog.Tee(clilog.ERROR, cmd.ErrOrStderr(), err.Error())
 		return
 	}
 	name = strings.ToUpper(name) // name must be caps
 
 	desc, err := cmd.Flags().GetString("description")
 	if err != nil {
-		fmt.Println(err)
+		clilog.Tee(clilog.ERROR, cmd.ErrOrStderr(), err.Error())
 		return
 	}
 	value, err := cmd.Flags().GetString("expansion")
 	if err != nil {
-		fmt.Println(err)
+		clilog.Tee(clilog.ERROR, cmd.ErrOrStderr(), err.Error())
 		return
 	}
 
