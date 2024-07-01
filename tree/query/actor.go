@@ -343,7 +343,8 @@ func (q *query) submitQuery() tea.Cmd {
 		q.output = nil
 	}
 
-	s, err := tryQuery(qry, -duration, q.modifiers.nohistory)
+	// TODO incorporate scheduling into interactive mode
+	s, _, err := tryQuery(qry, -duration, q.modifiers.nohistory, schedule{})
 	if err != nil {
 		q.editor.err = err.Error()
 		return nil

@@ -69,9 +69,9 @@ func initialLocalFlagSet() pflag.FlagSet {
 	fs.Bool("no-history", false, "omit from query history")
 
 	// scheduled searches
-	/*fs.StringP("name", "n", "", "name for a scheduled search.")
-	fs.StringP("description", "d", "", "(flavour) description.")
-	fs.StringP("schedule", "s", "", "schedule this search to be run at a later date, over the given duration.")*/
+	fs.StringP("name", "n", "", "SCHEDULED. A title for the search")
+	fs.StringP("description", "d", "", "SCHEDULED. (flavour) description")
+	fs.StringP("schedule", "s", "", "SCHEDULED. The date and time for the search to begin")
 
 	return fs
 }
@@ -99,7 +99,6 @@ func run(cmd *cobra.Command, args []string) {
 		clilog.Tee(clilog.ERROR, cmd.ErrOrStderr(), err.Error())
 		return
 	}
-
 	if script, err = cmd.Flags().GetBool("script"); err != nil {
 		clilog.Tee(clilog.ERROR, cmd.ErrOrStderr(), err.Error())
 		return
@@ -113,6 +112,11 @@ func run(cmd *cobra.Command, args []string) {
 		return
 	}
 	if nohistory, err = cmd.Flags().GetBool("no-history"); err != nil {
+		clilog.Tee(clilog.ERROR, cmd.ErrOrStderr(), err.Error())
+		return
+	}
+	schedule, err := fetchSchedule(cmd.Flags())
+	if err != nil {
 		clilog.Tee(clilog.ERROR, cmd.ErrOrStderr(), err.Error())
 		return
 	}
@@ -145,12 +149,19 @@ func run(cmd *cobra.Command, args []string) {
 	}
 
 	// submit the query
-	s, err = tryQuery(qry, -duration, nohistory)
+	var schID int32
+	s, schID, err = tryQuery(qry, -duration, nohistory, schedule)
 	if err != nil {
 		clilog.Tee(clilog.ERROR, cmd.ErrOrStderr(), err.Error())
 		return
 	}
+	if schID != 0 { // if scheduled, do not wait for it
+		fmt.Fprintf(cmd.OutOrStdout(), "Scheduled search for %v (ID: %v)",
+			schedule.start, schID)
+		return
+	}
 
+	// immediate search, safe to wait for
 	if script {
 		// in script mode, wait syncronously
 		if err := connection.Client.WaitForSearch(s); err != nil {
@@ -230,17 +241,70 @@ func fetchQueryString(fs *pflag.FlagSet, args []string) (query string, err error
 	return strings.TrimSpace(strings.Join(args, " ")), nil
 }
 
+type schedule struct {
+	name  string
+	desc  string
+	start string
+}
+
+func (sch *schedule) empty() bool {
+	return sch == &schedule{}
+
+}
+
+// Given a *parsed* flagset, pulls name, description and start, erroring if required flags are not
+// set. Returns the empty schedule if this search is immediate.
+func fetchSchedule(fs *pflag.FlagSet) (sch schedule, err error) {
+	if sch.start, err = fs.GetString("schedule"); err != nil {
+		return schedule{}, err
+	} else if strings.TrimSpace(sch.start) == "" {
+		// check if user is even scheduling the search
+		return schedule{}, nil
+	}
+
+	// we now know the search is to be scheduled and can require name
+
+	sch.name, err = fs.GetString("name")
+	if err != nil {
+		return
+	} else if strings.TrimSpace(sch.name) == "" {
+		return schedule{}, errors.New("--name is required for schedule searches")
+	}
+	sch.desc, err = fs.GetString("description")
+	if err != nil {
+		return
+	}
+
+	return
+
+}
+
 // Validates and (if valid) submits the given query to the connected server instance.
 // Duration must be negative or zero. A positive duration will result in an error.
-func tryQuery(qry string, duration time.Duration, nohistory bool) (grav.Search, error) {
+// Returns a search if immediate and a scheduled search id if scheduled.
+func tryQuery(qry string, duration time.Duration, nohistory bool, sch schedule) (grav.Search, int32, error) {
 	var err error
 	if duration > 0 {
-		return grav.Search{}, fmt.Errorf("duration must be negative or zero (given %v)", duration)
+		return grav.Search{}, 0, fmt.Errorf("duration must be negative or zero (given %v)", duration)
 	}
 
 	// validate search query
 	if err = connection.Client.ParseSearch(qry); err != nil {
-		return grav.Search{}, fmt.Errorf("'%s' is not a valid query: %s", qry, err.Error())
+		return grav.Search{}, 0, fmt.Errorf("'%s' is not a valid query: %s", qry, err.Error())
+	}
+
+	// check for scheduling
+	if !sch.empty() {
+		// todo cache user's myinfo
+		myinfo, err := connection.Client.MyInfo()
+		if err != nil {
+			return grav.Search{}, 0, err
+		}
+		clilog.Writer.Debugf("Scheduling query %v (%v) for %v", sch.name, qry, sch.start)
+		id, err := connection.Client.CreateScheduledSearch(sch.name, sch.desc, sch.start,
+			uuid.UUID{}, qry, duration, []int32{myinfo.DefaultGID})
+		// TODO provide a dialogue for selecting groups/permissions
+		return grav.Search{}, id, err
 	}
 
 	end := time.Now()
@@ -252,11 +316,10 @@ func tryQuery(qry string, duration time.Duration, nohistory bool) (grav.Search, 
 		NoHistory:    nohistory,
 		Preview:      false,
 	}
-	go func() {
-		clilog.Writer.Infof("Executing foreground search '%v' from %v -> %v",
-			sreq.SearchString, sreq.SearchStart, sreq.SearchEnd)
-	}()
-	return connection.Client.StartSearchEx(sreq)
+	clilog.Writer.Infof("Executing foreground search '%v' from %v -> %v",
+		sreq.SearchString, sreq.SearchStart, sreq.SearchEnd)
+	s, err := connection.Client.StartSearchEx(sreq)
+	return s, 0, err
 }
 
 // Opens and returns a file handle, configured by the state of append.
