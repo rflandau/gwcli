@@ -85,7 +85,75 @@ func TestNonInteractive(t *testing.T) {
 		}
 	})
 
-	// TODO add a test for script-form query
+	connection.End()
+	connection.Client = nil
+
+	t.Run("query 'tags=gravwell'", func(t *testing.T) {
+		//prepare IO
+		stdoutData, stderrData, err := mockIO()
+		if err != nil {
+			restoreIO()
+			panic(err)
+		}
+
+		// run the test body
+		outfn := "testnoninteractive.query.json"
+		qry := "query tag=gravwell"
+		args := strings.Split("--insecure --script "+qry+
+			" -o "+outfn+" --json", " ")
+
+		errCode := tree.Execute(args)
+		restoreIO()
+		if errCode != 0 {
+			t.Errorf("non-zero error code: %v", errCode)
+		}
+
+		results := <-stdoutData
+		resultsErr := <-stderrData
+		if resultsErr != "" {
+			t.Errorf("non-empty stderr:\n(%v)", resultsErr)
+		}
+		// check that no data was output to stdout in script and -o mode
+		if results != "" {
+			t.Errorf("output mismatch\n expected no data output to stdout. got:\n(%v)\n", results)
+		}
+
+		// slurp the file, check for valid JSON
+		output, err := os.ReadFile(outfn)
+		t.Logf("slurping %v...", outfn)
+		if err != nil {
+			t.Fatal(err)
+		} else if strings.TrimSpace(string(output)) == "" {
+			t.Fatal("empty output file")
+		}
+		// we cannot check json validity because the grav client lib outputs individual JSON
+		// records, not a single blob
+		/*if !json.Valid(output) {
+			t.Errorf("json is not valid")
+		}*/
+		// fetch the search and check that record counts line up
+		searches, err := client.GetSearchHistoryRange(0, 5)
+		if err != nil {
+			t.Fatal(err)
+		} else if len(searches) < 1 {
+			t.Fatalf("found no previous searches")
+		}
+		//var search types.SearchLog
+		for _, s := range searches {
+			if s.UserQuery == qry {
+				//search = s
+				// get SearchHistory* does not pull back the searchID, meaning I
+				// cannnot pull more details about the search
+				// TODO
+				break
+			}
+		}
+
+		// clean up
+		if !t.Failed() {
+			os.Remove(outfn)
+		}
+	})
 
 }
 
