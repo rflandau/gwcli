@@ -20,25 +20,23 @@ import (
 	"github.com/spf13/pflag"
 )
 
-var localFlagset pflag.FlagSet
-
 func NewMacroCreateAction() action.Pair {
 	// create the action
 	cmd := treeutils.NewActionCommand("create", "create a new macro", "", []string{}, run)
 
 	// establish local flags
-	localFlagset = initialLocalFlagSet()
+	fs := flags()
 
-	cmd.Flags().AddFlagSet(&localFlagset)
+	cmd.Flags().AddFlagSet(&fs)
 
 	cmd.MarkFlagRequired("name")
 	cmd.MarkFlagRequired("description")
 	cmd.MarkFlagRequired("expansion")
 
-	return treeutils.GenerateAction(cmd, Create)
+	return treeutils.GenerateAction(cmd, NewCreate())
 }
 
-func initialLocalFlagSet() pflag.FlagSet {
+func flags() pflag.FlagSet {
 	fs := pflag.FlagSet{}
 
 	fs.StringP("name", "n", "", "the shorthand that will be expanded")
@@ -111,6 +109,8 @@ const (
 type create struct {
 	done bool
 
+	fs pflag.FlagSet
+
 	focusedInput input
 	help         struct {
 		model help.Model
@@ -119,10 +119,10 @@ type create struct {
 	ti []textinput.Model // name, desc, value
 }
 
-var Create action.Model = Initial()
-
-func Initial() *create {
+func NewCreate() *create {
 	c := &create{done: false}
+
+	c.fs = flags()
 
 	c.ti = make([]textinput.Model, 3)
 	for i := 0; i < 3; i++ {
@@ -244,7 +244,7 @@ func (c *create) Reset() error {
 
 	// pflag has no way to unset flag values,
 	// so we need to establish a new localFlagset
-	localFlagset = initialLocalFlagSet()
+	c.fs = flags()
 
 	c.ti[c.focusedInput].Blur()
 	c.focusedInput = name
@@ -292,28 +292,28 @@ func (c *create) focusPrevious() {
 // is invalid
 func (c *create) SetArgs(_ *pflag.FlagSet, tokens []string) (invalid string, onStart []tea.Cmd, err error) {
 	// parse the tokens agains the local flagset
-	err = localFlagset.Parse(tokens)
+	err = c.fs.Parse(tokens)
 	if err != nil {
 		return "", nil, err
 	}
 
 	// set action variable fields
 	var val string
-	if val, err = localFlagset.GetString("name"); err != nil {
+	if val, err = c.fs.GetString("name"); err != nil {
 		return "", nil, err
 	}
 	val = strings.ToUpper(strings.TrimSpace(val))
 	clilog.Writer.Debugf("Set name to %v", val)
 	c.ti[name].SetValue(val)
 
-	if val, err := localFlagset.GetString("description"); err != nil {
+	if val, err := c.fs.GetString("description"); err != nil {
 		return "", nil, err
 	} else if val != "" {
 		clilog.Writer.Debugf("Set description to %v", val)
 		c.ti[desc].SetValue(val)
 	}
 
-	if val, err := localFlagset.GetString("expansion"); err != nil {
+	if val, err := c.fs.GetString("expansion"); err != nil {
 		return "", nil, err
 	} else if val != "" {
 		clilog.Writer.Debugf("Set expansion to %v", val)
