@@ -23,6 +23,7 @@ func NewUserAdminAction() action.Pair {
 	p := scaffold.NewBasicAction(use, short, long, aliases,
 		func(*cobra.Command, *pflag.FlagSet) (string, tea.Cmd) {
 			var not string
+			// todo what is the difference re: MyAdminStatus?
 			if !connection.Client.AdminMode() {
 				not = " not"
 			}
