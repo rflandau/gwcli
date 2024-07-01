@@ -69,9 +69,9 @@ func initialLocalFlagSet() pflag.FlagSet {
 	fs.Bool("no-history", false, "omit from query history")
 
 	// scheduled searches
-	fs.StringP("name", "n", "", "SCHEDULED. A title for the search")
-	fs.StringP("description", "d", "", "SCHEDULED. (flavour) description")
-	fs.StringP("schedule", "s", "", "SCHEDULED. The date and time for the search to begin")
+	fs.StringP("name", "n", "", "SCHEDULED. a title for the scheduled search")
+	fs.StringP("description", "d", "", "SCHEDULED. a description of the search")
+	fs.StringP("schedule", "s", "", "SCHEDULED. 5-cron-time schedule for execution")
 
 	return fs
 }
@@ -157,7 +157,7 @@ func run(cmd *cobra.Command, args []string) {
 	}
 	if schID != 0 { // if scheduled, do not wait for it
 		fmt.Fprintf(cmd.OutOrStdout(), "Scheduled search for %v (ID: %v)",
-			schedule.start, schID)
+			schedule.cronfreq, schID)
 		return
 	}
 
@@ -242,9 +242,9 @@ func fetchQueryString(fs *pflag.FlagSet, args []string) (query string, err error
 }
 
 type schedule struct {
-	name  string
-	desc  string
-	start string
+	name     string
+	desc     string
+	cronfreq string // run frequency in cron format
 }
 
 func (sch *schedule) empty() bool {
@@ -255,9 +255,9 @@ func (sch *schedule) empty() bool {
 // Given a *parsed* flagset, pulls name, description and start, erroring if required flags are not
 // set. Returns the empty schedule if this search is immediate.
 func fetchSchedule(fs *pflag.FlagSet) (sch schedule, err error) {
-	if sch.start, err = fs.GetString("schedule"); err != nil {
+	if sch.cronfreq, err = fs.GetString("schedule"); err != nil {
 		return schedule{}, err
-	} else if strings.TrimSpace(sch.start) == "" {
+	} else if strings.TrimSpace(sch.cronfreq) == "" {
 		// check if user is even scheduling the search
 		return schedule{}, nil
 	}
@@ -300,8 +300,8 @@ func tryQuery(qry string, duration time.Duration, nohistory bool, sch schedule) 
 		if err != nil {
 			return grav.Search{}, 0, err
 		}
-		clilog.Writer.Debugf("Scheduling query %v (%v) for %v", sch.name, qry, sch.start)
-		id, err := connection.Client.CreateScheduledSearch(sch.name, sch.desc, sch.start,
+		clilog.Writer.Debugf("Scheduling query %v (%v) for %v", sch.name, qry, sch.cronfreq)
+		id, err := connection.Client.CreateScheduledSearch(sch.name, sch.desc, sch.cronfreq,
 			uuid.UUID{}, qry, duration, []int32{myinfo.DefaultGID})
 		// TODO provide a dialogue for selecting groups/permissions
 		return grav.Search{}, id, err
