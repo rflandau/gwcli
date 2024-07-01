@@ -70,3 +70,6 @@
     - currently, get artefacting above most recent draw
 
 - [ ] allow --schedule flag in query to pass in absolute datetimes (as it is now) AND now+ values (ex: +5h, +20m, ...)
+
+- query's modifView.go has a lot of repeated code for each bool and each textinput
+    - [ ] genericize and consoliate the repeated code
