@@ -237,33 +237,22 @@ func (mv *modifView) focusSelected() {
 func (mv *modifView) view() string {
 	// TODO need to rework the look of modifView to make dependent fields clearer
 	var bldr strings.Builder
-	tiSty := stylesheet.Header1Style
+	// set styles
 
-	bldr.WriteString(" " + tiSty.Render("Duration:") + "\n")
+	bldr.WriteString(" " + stylesheet.Header1Style.Render("Duration:") + "\n")
 	bldr.WriteString(
 		fmt.Sprintf("%c%s\n", pip(mv.selected, duration), mv.durationTI.View()),
 	)
 
-	//#region output to file
-	bldr.WriteString(" " + tiSty.Render("Output Path:") + "\n")
-	bldr.WriteString(
-		fmt.Sprintf("%c%s\n", pip(mv.selected, outFile), mv.outfileTI.View()),
-	)
-	bldr.WriteString(stylesheet.Indent + viewBool(pip(mv.selected, appendToFile),
-		mv.appendToFile, "Append?", mv.outfileTI))
-	bldr.WriteString(stylesheet.Indent + viewBool(pip(mv.selected, json),
-		mv.json, "JSON", mv.outfileTI))
-	bldr.WriteString(stylesheet.Indent + viewBool(pip(mv.selected, csv),
-		mv.csv, "CSV", mv.outfileTI))
-	//#endregion output to file
+	bldr.WriteString(drawOutpathSection(mv, !mv.schedule.enabled))
 
-	bldr.WriteString(viewBool(pip(mv.selected, nohistory),
-		mv.nohistory, "Exclude from History?", nil))
+	bldr.WriteString(viewBool(mv.selected, nohistory, mv.nohistory, "Exclude from History?",
+		stylesheet.Header1Style))
 
 	//#region schedule search
-	bldr.WriteString(viewBool(pip(mv.selected, scheduled),
-		mv.schedule.enabled, "Schedule?", nil))
-	schsty := tiSty
+	bldr.WriteString(viewBool(mv.selected, scheduled, mv.schedule.enabled, "Schedule?",
+		stylesheet.Header1Style))
+	schsty := stylesheet.Header1Style
 	schPromptSty := lipgloss.NewStyle()
 	if !mv.schedule.enabled { // if not scheduled, grey out 'scheduled' fields
 		schsty = stylesheet.GreyedOutStyle
@@ -287,6 +276,38 @@ func (mv *modifView) view() string {
 	//#endregion schedule search
 
 	return bldr.String()
+}
+
+// Generates a string representing all output path modifiers and fields.
+// This whole section is greyed out if !enabled
+func drawOutpathSection(mv *modifView, enabled bool) string {
+	var b strings.Builder
+	// if scheduled is decalred, outfile will not be used; grey out this whole section
+	var (
+		outpathTitleSty lipgloss.Style = stylesheet.Header1Style
+		outpathTISty    lipgloss.Style = lipgloss.NewStyle()
+	)
+	if !enabled {
+		outpathTitleSty = stylesheet.GreyedOutStyle
+		outpathTISty = stylesheet.GreyedOutStyle
+	}
+	b.WriteString(" " + outpathTitleSty.Render("Output Path:") + "\n")
+	b.WriteString(
+		fmt.Sprintf("%c%s\n", pip(mv.selected, outFile), outpathTISty.Render(mv.outfileTI.View())),
+	)
+
+	if strings.TrimSpace(mv.outfileTI.Value()) == "" {
+		outpathTitleSty = stylesheet.GreyedOutStyle
+	}
+
+	b.WriteString(stylesheet.Indent +
+		viewBool(mv.selected, appendToFile, mv.appendToFile, "Append?", outpathTitleSty))
+	b.WriteString(stylesheet.Indent +
+		viewBool(mv.selected, json, mv.json, "JSON", outpathTitleSty))
+	b.WriteString(stylesheet.Indent +
+		viewBool(mv.selected, csv, mv.csv, "CSV", outpathTitleSty))
+
+	return b.String()
 }
 
 func (mv *modifView) reset() {
@@ -320,16 +341,10 @@ type dependsOn interface {
 
 // Returns a string representing the current state of the given boolean value.
 // DependsOn is any struct with a .Value that can be checked for emptiness.
-func viewBool(pip rune, val bool, fieldName string, dependsOn dependsOn) string {
-	var sty lipgloss.Style = stylesheet.Header1Style
-	// if depended value is given and empty, grey out
-	if dependsOn != nil && dependsOn.Value() == "" {
-		sty = stylesheet.GreyedOutStyle
-	}
-
+func viewBool(selected uint, field uint, val bool, fieldName string, sty lipgloss.Style) string {
 	var checked rune = ' '
 	if val {
 		checked = '✓'
 	}
-	return fmt.Sprintf("%c[%s] %s\n", pip, sty.Render(string(checked)), sty.Render(fieldName))
+	return fmt.Sprintf("%c[%s] %s\n", pip(selected, field), sty.Render(string(checked)), sty.Render(fieldName))
 }
