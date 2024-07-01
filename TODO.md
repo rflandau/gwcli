@@ -11,7 +11,7 @@
 - [ ] Upgrade suggestions to dynamically map the entire tree
     - Currently only works on immediate children and builtins
 
-- [ ] Add support for home (~) or root (/) navigation
+- [x] Add support for home (~) or root (/) navigation
 
 - [ ] If an action that required arguments (ex: query) is called bare and --script is not supplied, invoke Mother
     - [ ] spin up standalone deletion picker if delete is called from cli and !script

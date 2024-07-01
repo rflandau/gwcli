@@ -7,7 +7,9 @@ gwcli is built to allow more functionality to be easily plugged in. As such, it 
 
     - If you do not have anything to tea.Println on completion, use a .Blink method
 
-- Remember that this is a prompt; anything not immediately interactive should be output via tea.Print* as history, rather than in the .View() that will be lost on redraw. 
+    - This is to prevent faux-hanging. Bubble Tea only triggers its cycle when a message comes in. Returning nil when few other messages are being sent can cause the application to appear unresponsive when it is instead waiting for another message, thus triggering the anticipated redraw.
+
+- This is a prompt; anything not immediately interactive should be output via tea.Print* as history, rather than in the .View() that will be lost on redraw. 
 
 - Do not include newlines in lipgloss renders. It produces weird results.
 
@@ -21,9 +23,9 @@ Our Bubble Tea model implementation, our controller, is *Mother*.
 
 Tree leaves (commands that can be invoked interactively or from a script), such as `search`, are *Actions*.
 
-Tree nodes (commands that require further input), such as `admin`, are *Navs*.
+Tree nodes (commands that require further input/are submenus), such as `user`, are *Navs*.
 
-# More on Design
+# Design and Philosophy
 
 ## "Global" Variables
 
@@ -103,7 +105,7 @@ Actions must satisfy the `action.Model` interface to be able to supplant Mother 
 
 `Done() bool` is called by mother *before handing off* each cycle. If it is true, Mother will *not* hand off and will instead reassert control and unseat the child. Generally tracked by a private variable in the child struct.
 
-`Reset() error` is called by Mother *after* a child runs, once `Done()` returns true. It resets the child to a clean state so it can be called again later.
+`Reset() error` is called by Mother *after* `Done()` returns true. It resets the child to a clean state so it can be called again later.
 
 `SetArgs([]string) (string, []tea.Cmd, error)` sets fields in the child that manipulate its next run. It is called when Mother *first enters handoff mode* for a child. It returns, respectively: the reason this argument set is invalid (or ""), tea.Cmds the child needs run on startup (eg: right now), errors outside of the users control. The startup Cmds somewhat take the place of tea.Model.Init().
 
@@ -119,4 +121,18 @@ flowchart
 
 ### Scaffolding
 
-Where possible, use the functionality in the scaffold to rapidly construct new actions that fit one of the scaffold archetypes.
+Where possible, use the functionality in the scaffold package to rapidly construct new actions that fit one of the scaffold archetypes.
+
+# Other Packages
+
+## Supporting Models
+
+[busywait](busywait/busywait.go) and [datascope](datascope/datascope.go) are chameleons: they can operate entirely independently (invoking their own tea.Programs) or be composed into Action structs to be used within Mother.
+
+Busywait is just the spinner bubble, wrapped for consistent appearance.
+
+Datascope is a hybridization of the paginator and viewport bubbles; it consumes arbitrary string data and dynamically paginates it in a scrolling viewport.
+
+## Stylesheet
+
+Stylesheet provides a shared repository for style constants. The intention is for this to eventually be supplantable for custom styling.
