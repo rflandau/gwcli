@@ -66,6 +66,7 @@ func initialLocalFlagSet() pflag.FlagSet {
 	fs.Bool("append", false, "append to the given output file instead of truncating.")
 	fs.Bool("json", false, "output results as JSON. Only effectual with --output. Mutually exclusive with CSV.")
 	fs.Bool("csv", false, "output results as CSV. Only effectual with --output. Mutually exclusive with JSON.")
+	fs.Bool("no-history", false, "omit from query history")
 
 	// scheduled searches
 	/*fs.StringP("name", "n", "", "name for a scheduled search.")
@@ -83,12 +84,13 @@ func run(cmd *cobra.Command, args []string) {
 	var err error
 
 	var (
-		duration time.Duration
-		qry      string
-		s        grav.Search // ongoing search
-		script   bool        // script mode
-		json     bool
-		csv      bool
+		duration  time.Duration
+		qry       string
+		s         grav.Search // ongoing search
+		script    bool        // script mode
+		json      bool
+		csv       bool
+		nohistory bool
 	)
 
 	// fetch flags
@@ -107,6 +109,10 @@ func run(cmd *cobra.Command, args []string) {
 		return
 	}
 	if csv, err = cmd.Flags().GetBool("csv"); err != nil {
+		clilog.TeeError(cmd.ErrOrStderr(), err.Error())
+		return
+	}
+	if nohistory, err = cmd.Flags().GetBool("no-history"); err != nil {
 		clilog.TeeError(cmd.ErrOrStderr(), err.Error())
 		return
 	}
@@ -139,7 +145,7 @@ func run(cmd *cobra.Command, args []string) {
 	}
 
 	// submit the query
-	s, err = tryQuery(qry, -duration)
+	s, err = tryQuery(qry, -duration, nohistory)
 	if err != nil {
 		clilog.TeeError(cmd.ErrOrStderr(), err.Error())
 		return
@@ -226,7 +232,7 @@ func FetchQueryString(fs *pflag.FlagSet, args []string) (query string, err error
 
 // Validates and (if valid) submits the given query to the connected server instance.
 // Duration must be negative or zero. A positive duration will result in an error.
-func tryQuery(qry string, duration time.Duration) (grav.Search, error) {
+func tryQuery(qry string, duration time.Duration, nohistory bool) (grav.Search, error) {
 	var err error
 	if duration > 0 {
 		return grav.Search{}, fmt.Errorf("duration must be negative or zero (given %v)", duration)
@@ -243,7 +249,7 @@ func tryQuery(qry string, duration time.Duration) (grav.Search, error) {
 		SearchEnd:    end.Format(timeFormat),
 		Background:   false,
 		SearchString: qry, // pull query from the commandline
-		NoHistory:    false,
+		NoHistory:    nohistory,
 		Preview:      false,
 	}
 	go func() {

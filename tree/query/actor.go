@@ -287,6 +287,11 @@ func (q *query) SetArgs(_ *pflag.FlagSet, tokens []string) (string, []tea.Cmd, e
 	} else if o != "" {
 		q.modifiers.outfileTI.SetValue(o)
 	}
+	if h, err := localFS.GetBool("no-history"); err != nil {
+		return "", []tea.Cmd{}, err
+	} else {
+		q.modifiers.nohistory = h
+	}
 
 	// fetch and set a query, if given
 	if tQry, err := FetchQueryString(&localFS, localFS.Args()); err != nil {
@@ -337,7 +342,7 @@ func (q *query) submitQuery() tea.Cmd {
 		q.output = nil
 	}
 
-	s, err := tryQuery(qry, -duration)
+	s, err := tryQuery(qry, -duration, q.modifiers.nohistory)
 	if err != nil {
 		q.editor.err = err.Error()
 		return nil

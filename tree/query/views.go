@@ -103,6 +103,7 @@ type modifView struct {
 	appendToFile bool
 	json         bool
 	csv          bool
+	nohistory    bool
 
 	keys []key.Binding
 }
