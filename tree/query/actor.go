@@ -295,7 +295,7 @@ func (q *query) SetArgs(_ *pflag.FlagSet, tokens []string) (string, []tea.Cmd, e
 	}
 
 	// fetch and set a query, if given
-	if tQry, err := FetchQueryString(&localFS, localFS.Args()); err != nil {
+	if tQry, err := fetchQueryString(&localFS, localFS.Args()); err != nil {
 		return "", []tea.Cmd{}, err
 	} else if tQry != "" {
 		q.editor.ta.SetValue(tQry)

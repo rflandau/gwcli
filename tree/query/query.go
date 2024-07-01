@@ -117,7 +117,7 @@ func run(cmd *cobra.Command, args []string) {
 		return
 	}
 
-	qry, err = FetchQueryString(cmd.Flags(), args)
+	qry, err = fetchQueryString(cmd.Flags(), args)
 	if err != nil {
 		clilog.TeeError(cmd.ErrOrStderr(), err.Error())
 		return
@@ -208,7 +208,7 @@ func run(cmd *cobra.Command, args []string) {
 
 // Pulls a query from args or a reference uuid, depending on if the latter is given.
 // Does not consider an empty query to be an error.
-func FetchQueryString(fs *pflag.FlagSet, args []string) (query string, err error) {
+func fetchQueryString(fs *pflag.FlagSet, args []string) (query string, err error) {
 	var ref string // query library uuid
 	if ref, err = fs.GetString("reference"); err != nil {
 		return "", err
@@ -287,7 +287,7 @@ func openFile(path string, append bool) (*os.File, error) {
 
 // Maps Render module and csv/json flag state to a string usable with DownloadSearch().
 // JSON, then CSV, take precidence over a direct render -> format map
-func RenderToDownload(r string, csv, json bool) (string, error) {
+func renderToDownload(r string, csv, json bool) (string, error) {
 	if json {
 		return types.DownloadJSON, nil
 	}
@@ -316,7 +316,7 @@ func outputSearchResults(file *os.File, s grav.Search, json, csv bool) ([]types.
 			format string
 			rc     io.ReadCloser
 		)
-		if format, err = RenderToDownload(s.RenderMod, csv, json); err != nil {
+		if format, err = renderToDownload(s.RenderMod, csv, json); err != nil {
 			return nil, err
 		}
 		clilog.Writer.Debugf("output file, renderer '%s' -> '%s'", s.RenderMod, format)
