@@ -1,6 +1,4 @@
 // Supporting code for the query actor
-// Defines and supports the two, composed views in interactive mode: editor and modifiers
-// Editor is as it sounds
 // Modifiers provides switches and buttons to tweak how the search will be run/displayed
 
 package query

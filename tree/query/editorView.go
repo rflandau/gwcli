@@ -1,3 +1,6 @@
+// Supporting code for the query actor
+// editor consumes the actual query text to be executed
+
 package query
 
 import (
