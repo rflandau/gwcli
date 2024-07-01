@@ -253,6 +253,7 @@ func (q *query) Reset() error {
 	q.modifiers.outfileTI.Reset()
 	q.modifiers.blur()
 	q.modifiers.appendToFile = false
+	q.modifiers.nohistory = false
 
 	// clear query fields
 	q.curSearch = nil

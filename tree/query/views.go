@@ -87,6 +87,7 @@ const (
 	appendToFile
 	json
 	csv
+	nohistory
 	highBound
 )
 
@@ -195,6 +196,8 @@ func (mv *modifView) update(msg tea.Msg) []tea.Cmd {
 				if mv.csv {
 					mv.json = false
 				}
+			case nohistory:
+				mv.nohistory = !mv.nohistory
 			}
 			return nil
 		}
@@ -222,7 +225,7 @@ func (mv *modifView) focusSelected() {
 	case outFile:
 		mv.durationTI.Blur()
 		mv.outfileTI.Focus()
-	case appendToFile, json, csv:
+	case appendToFile, json, csv, nohistory:
 		mv.durationTI.Blur()
 		mv.outfileTI.Blur()
 	default:
@@ -245,13 +248,16 @@ func (mv *modifView) view() string {
 	)
 
 	// view boolean switches
-	// currently, all three depend on outfile
+	// first three depend on outfile
 	bldr.WriteString(viewBool(pip(mv.selected, appendToFile),
 		mv.appendToFile, "Append?", mv.outfileTI))
 	bldr.WriteString(viewBool(pip(mv.selected, json),
 		mv.json, "JSON", mv.outfileTI))
 	bldr.WriteString(viewBool(pip(mv.selected, csv),
 		mv.csv, "CSV", mv.outfileTI))
+
+	bldr.WriteString(viewBool(pip(mv.selected, nohistory),
+		mv.nohistory, "No History", nil))
 	return bldr.String()
 }
 
