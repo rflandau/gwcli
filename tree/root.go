@@ -12,6 +12,7 @@ import (
 	"gwcli/action"
 	"gwcli/clilog"
 	"gwcli/connection"
+	"gwcli/group"
 	"gwcli/tree/kits"
 	"gwcli/tree/query"
 	"gwcli/tree/tools"
@@ -49,6 +50,11 @@ func ppre(cmd *cobra.Command, args []string) error {
 			return err
 		}
 		clilog.Init(path, lvl)
+	}
+
+	// if this is a 'complete' request, do not enforce login
+	if cmd.Name() == cobra.ShellCompRequestCmd || cmd.Name() == cobra.ShellCompNoDescRequestCmd {
+		return nil
 	}
 
 	return EnforceLogin(cmd, args)
@@ -282,6 +288,9 @@ func Execute(args []string) int {
 	if !rootCmd.AllChildCommandsHaveGroup() {
 		panic("some children missing a group")
 	}
+
+	// configuration the completion command as an action
+	rootCmd.SetCompletionCommandGroupID(group.ActionID)
 
 	// configure Windows mouse trap
 	cobra.MousetrapHelpText = mousetrapText
