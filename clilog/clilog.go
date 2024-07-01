@@ -14,6 +14,19 @@ import (
 	"github.com/gravwell/gravwell/v3/ingest/log"
 )
 
+// recreate log.Level so other packages do not have to import it
+type Level int
+
+const (
+	OFF      Level = 0
+	DEBUG    Level = 1
+	INFO     Level = 2
+	WARN     Level = 3
+	ERROR    Level = 4
+	CRITICAL Level = 5
+	FATAL    Level = 6
+)
+
 var Writer *log.Logger
 
 // Initializes Writer, the logging singleton.
@@ -35,7 +48,7 @@ func Init(path string, lvl string) error {
 		return err
 	}
 
-	Writer.Debugf("Logger initialized at %v level, hostname %v", Writer.GetLevel(), Writer.Hostname())
+	Writer.Infof("Logger initialized at %v level, hostname %v", Writer.GetLevel(), Writer.Hostname())
 
 	Writer.SetAppname(".")
 	Writer.SetHostname(".") // autopopulates if empty
@@ -44,7 +57,21 @@ func Init(path string, lvl string) error {
 }
 
 // Writes the error to clilog.Writer and a secondary output, usually stderr
-func TeeError(alt io.Writer, str string) {
-	Writer.Debugf(str)
+func Tee(lvl Level, alt io.Writer, str string) {
 	alt.Write([]byte(str))
+	switch lvl {
+	case OFF:
+	case DEBUG:
+		Writer.Debug(str)
+	case INFO:
+		Writer.Info(str)
+	case WARN:
+		Writer.Warn(str)
+	case ERROR:
+		Writer.Error(str)
+	case CRITICAL:
+		Writer.Critical(str)
+	case FATAL:
+		Writer.Fatal(str)
+	}
 }

@@ -114,7 +114,7 @@ func NewListAction[Any any](short, long string,
 
 		output, err := list(cmd.Flags(), columns, !noColor, dataFn)
 		if err != nil {
-			clilog.TeeError(cmd.ErrOrStderr(), err.Error())
+			clilog.Tee(clilog.ERROR, cmd.ErrOrStderr(), err.Error())
 		}
 		fmt.Println(output)
 	}

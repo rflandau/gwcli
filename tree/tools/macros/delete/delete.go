@@ -46,11 +46,11 @@ func NewMacroDeleteAction() action.Pair {
 func run(c *cobra.Command, _ []string) {
 	// if an ID was given, just issue a delete
 	if did, err := c.Flags().GetUint64("id"); err != nil {
-		clilog.TeeError(c.ErrOrStderr(), fmt.Sprintf(errorNoDeleteText, err))
+		clilog.Tee(clilog.ERROR, c.ErrOrStderr(), fmt.Sprintf(errorNoDeleteText, err))
 		return
 	} else if did != 0 {
 		if dr, err := deleteMacro(c.Flags(), did); err != nil {
-			clilog.TeeError(c.ErrOrStderr(),
+			clilog.Tee(clilog.ERROR, c.ErrOrStderr(),
 				fmt.Sprintf("failed to delete macro (UID: %v): %v", did, err))
 			return
 		} else if dr {
@@ -61,10 +61,10 @@ func run(c *cobra.Command, _ []string) {
 	}
 	// in script mode, fail out
 	if script, err := c.Flags().GetBool("script"); err != nil {
-		clilog.TeeError(c.ErrOrStderr(), fmt.Sprintf(errorNoDeleteText, err))
+		clilog.Tee(clilog.ERROR, c.ErrOrStderr(), fmt.Sprintf(errorNoDeleteText, err))
 		return
 	} else if script { // no id given, fail out
-		clilog.TeeError(c.OutOrStdout(), "--id is required in script mode")
+		clilog.Tee(clilog.ERROR, c.OutOrStdout(), "--id is required in script mode")
 		return
 	}
 }

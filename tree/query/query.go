@@ -96,49 +96,49 @@ func run(cmd *cobra.Command, args []string) {
 	// fetch flags
 	duration, err = cmd.Flags().GetDuration("duration")
 	if err != nil {
-		clilog.TeeError(cmd.ErrOrStderr(), err.Error())
+		clilog.Tee(clilog.ERROR, cmd.ErrOrStderr(), err.Error())
 		return
 	}
 
 	if script, err = cmd.Flags().GetBool("script"); err != nil {
-		clilog.TeeError(cmd.ErrOrStderr(), err.Error())
+		clilog.Tee(clilog.ERROR, cmd.ErrOrStderr(), err.Error())
 		return
 	}
 	if json, err = cmd.Flags().GetBool("json"); err != nil {
-		clilog.TeeError(cmd.ErrOrStderr(), err.Error())
+		clilog.Tee(clilog.ERROR, cmd.ErrOrStderr(), err.Error())
 		return
 	}
 	if csv, err = cmd.Flags().GetBool("csv"); err != nil {
-		clilog.TeeError(cmd.ErrOrStderr(), err.Error())
+		clilog.Tee(clilog.ERROR, cmd.ErrOrStderr(), err.Error())
 		return
 	}
 	if nohistory, err = cmd.Flags().GetBool("no-history"); err != nil {
-		clilog.TeeError(cmd.ErrOrStderr(), err.Error())
+		clilog.Tee(clilog.ERROR, cmd.ErrOrStderr(), err.Error())
 		return
 	}
 
 	qry, err = fetchQueryString(cmd.Flags(), args)
 	if err != nil {
-		clilog.TeeError(cmd.ErrOrStderr(), err.Error())
+		clilog.Tee(clilog.ERROR, cmd.ErrOrStderr(), err.Error())
 		return
 	} else if qry == "" { // superfluous query, don't bother
-		clilog.TeeError(cmd.ErrOrStderr(), ErrSuperfluousQuery)
+		clilog.Tee(clilog.INFO, cmd.ErrOrStderr(), ErrSuperfluousQuery)
 		return
 	}
 
 	// prepare output file
 	var of *os.File
 	if outfile, err := cmd.Flags().GetString("output"); err != nil {
-		clilog.TeeError(cmd.ErrOrStderr(), err.Error())
+		clilog.Tee(clilog.ERROR, cmd.ErrOrStderr(), err.Error())
 		return
 	} else if outfile = strings.TrimSpace(outfile); outfile != "" {
 		append, err := cmd.Flags().GetBool("append")
 		if err != nil {
-			clilog.TeeError(cmd.ErrOrStderr(), err.Error())
+			clilog.Tee(clilog.ERROR, cmd.ErrOrStderr(), err.Error())
 			return
 		}
 		if of, err = openFile(outfile, append); err != nil {
-			clilog.TeeError(cmd.ErrOrStderr(), err.Error())
+			clilog.Tee(clilog.ERROR, cmd.ErrOrStderr(), err.Error())
 			return
 		}
 		defer of.Close()
@@ -147,14 +147,14 @@ func run(cmd *cobra.Command, args []string) {
 	// submit the query
 	s, err = tryQuery(qry, -duration, nohistory)
 	if err != nil {
-		clilog.TeeError(cmd.ErrOrStderr(), err.Error())
+		clilog.Tee(clilog.ERROR, cmd.ErrOrStderr(), err.Error())
 		return
 	}
 
 	if script {
 		// in script mode, wait syncronously
 		if err := connection.Client.WaitForSearch(s); err != nil {
-			clilog.TeeError(cmd.ErrOrStderr(), err.Error())
+			clilog.Tee(clilog.ERROR, cmd.ErrOrStderr(), err.Error())
 			return
 		}
 	} else {
@@ -162,21 +162,21 @@ func run(cmd *cobra.Command, args []string) {
 		spnrP := busywait.CobraNew()
 		go func() {
 			if err := connection.Client.WaitForSearch(s); err != nil {
-				clilog.TeeError(cmd.ErrOrStderr(), err.Error())
+				clilog.Tee(clilog.ERROR, cmd.ErrOrStderr(), err.Error())
 				return
 			}
 			spnrP.Quit()
 		}()
 
 		if _, err := spnrP.Run(); err != nil {
-			clilog.TeeError(cmd.ErrOrStderr(), err.Error())
+			clilog.Tee(clilog.ERROR, cmd.ErrOrStderr(), err.Error())
 			return
 		}
 	}
 
 	var results []types.SearchEntry
 	if results, err = outputSearchResults(of, s, json, csv); err != nil {
-		clilog.TeeError(cmd.ErrOrStderr(), err.Error())
+		clilog.Tee(clilog.ERROR, cmd.ErrOrStderr(), err.Error())
 		return
 	}
 	if len(results) > 0 {
@@ -197,7 +197,7 @@ func run(cmd *cobra.Command, args []string) {
 		// spin up a scrolling pager to display
 		scrlPgrP := datascope.CobraNew(strs, "results")
 		if _, err := scrlPgrP.Run(); err != nil {
-			clilog.TeeError(cmd.ErrOrStderr(), err.Error())
+			clilog.Tee(clilog.ERROR, cmd.ErrOrStderr(), err.Error())
 			return
 		}
 	}
