@@ -57,6 +57,11 @@ func ppre(cmd *cobra.Command, args []string) error {
 		return nil
 	}
 
+	// do not require login on help action
+	if cmd.Name() == "help" {
+		return nil
+	}
+
 	return EnforceLogin(cmd, args)
 }
 
