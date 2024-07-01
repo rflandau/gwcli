@@ -247,18 +247,15 @@ type schedule struct {
 	cronfreq string // run frequency in cron format
 }
 
-func (sch *schedule) empty() bool {
-	return sch.name == "" || sch.desc == "" || sch.cronfreq == ""
-}
-
 // Given a *parsed* flagset, pulls name, description and start, erroring if required flags are not
 // set. Returns the empty schedule if this search is immediate.
-func fetchSchedule(fs *pflag.FlagSet) (sch schedule, err error) {
+func fetchSchedule(fs *pflag.FlagSet) (sch *schedule, err error) {
+	sch = &schedule{}
 	if sch.cronfreq, err = fs.GetString("schedule"); err != nil {
-		return schedule{}, err
+		return nil, err
 	} else if strings.TrimSpace(sch.cronfreq) == "" {
 		// check if user is even scheduling the search
-		return schedule{}, nil
+		return nil, nil
 	}
 
 	// we now know the search is to be scheduled and can require name
@@ -267,7 +264,7 @@ func fetchSchedule(fs *pflag.FlagSet) (sch schedule, err error) {
 	if err != nil {
 		return
 	} else if strings.TrimSpace(sch.name) == "" {
-		return schedule{}, errors.New("--name is required for schedule searches")
+		return nil, errors.New("--name is required for schedule searches")
 	}
 	sch.desc, err = fs.GetString("description")
 	if err != nil {
@@ -281,7 +278,7 @@ func fetchSchedule(fs *pflag.FlagSet) (sch schedule, err error) {
 // Validates and (if valid) submits the given query to the connected server instance.
 // Duration must be negative or zero. A positive duration will result in an error.
 // Returns a search if immediate and a scheduled search id if scheduled.
-func tryQuery(qry string, duration time.Duration, nohistory bool, sch schedule) (grav.Search, int32, error) {
+func tryQuery(qry string, duration time.Duration, nohistory bool, sch *schedule) (grav.Search, int32, error) {
 	var err error
 	if duration > 0 {
 		return grav.Search{}, 0, fmt.Errorf("duration must be negative or zero (given %v)", duration)
@@ -293,7 +290,7 @@ func tryQuery(qry string, duration time.Duration, nohistory bool, sch schedule) 
 	}
 
 	// check for scheduling
-	if sch.empty() {
+	if sch != nil {
 		clilog.Writer.Debugf("schedule request: %v", sch)
 		// todo cache user's myinfo
 		myinfo, err := connection.Client.MyInfo()

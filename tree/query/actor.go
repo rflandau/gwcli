@@ -357,8 +357,9 @@ func (q *query) submitQuery() tea.Cmd {
 	}
 
 	// fetch schedule
-	sch := schedule{}
+	var sch *schedule = nil
 	if q.modifiers.schedule.enabled {
+		sch = &schedule{}
 		sch.name = q.modifiers.schedule.nameTI.Value()
 		sch.desc = q.modifiers.schedule.descTI.Value()
 		sch.cronfreq = q.modifiers.schedule.cronfreqTI.Value()
