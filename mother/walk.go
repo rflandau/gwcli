@@ -76,6 +76,10 @@ func walk(dir *cobra.Command, tokens []string) walkResult {
 		return walk(dir, tokens[1:])
 	}
 
+	if curToken == "~" || curToken == "/" { // navigate to root
+		dir = dir.Root()
+		return walk(dir, tokens[1:])
+	}
 	// test for a local command
 	var invocation *cobra.Command = nil
 	for _, c := range dir.Commands() {
