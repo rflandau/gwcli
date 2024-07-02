@@ -5,6 +5,7 @@ import (
 	"gwcli/tree/user/admin"
 	"gwcli/tree/user/logout"
 	"gwcli/tree/user/myinfo"
+	"gwcli/tree/user/refreshmyinfo"
 	"gwcli/treeutils"
 
 	"github.com/spf13/cobra"
@@ -19,5 +20,8 @@ var (
 
 func NewUserNav() *cobra.Command {
 	return treeutils.GenerateNav(use, short, long, aliases, nil,
-		[]action.Pair{logout.NewUserLogoutAction(), admin.NewUserAdminAction(), myinfo.NewUserMyInfoAction()})
+		[]action.Pair{logout.NewUserLogoutAction(),
+			admin.NewUserAdminAction(),
+			myinfo.NewUserMyInfoAction(),
+			refreshmyinfo.NewUserRefreshMyInfoAction()})
 }
