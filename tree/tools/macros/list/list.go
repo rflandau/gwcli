@@ -35,10 +35,6 @@ func flags() pflag.FlagSet {
 }
 
 func listMacros(c *grav.Client, fs *pflag.FlagSet) ([]types.SearchMacro, error) {
-	myinfo, err := connection.Client.MyInfo()
-	if err != nil {
-		return nil, err
-	}
 	if all, err := fs.GetBool("all"); err != nil {
 		clilog.Writer.Errorf("failed to fetch '--all':%v\ndefaulting to false", err)
 	} else if all {
@@ -50,5 +46,5 @@ func listMacros(c *grav.Client, fs *pflag.FlagSet) ([]types.SearchMacro, error) 
 		return c.GetGroupMacros(gid)
 	}
 
-	return c.GetUserMacros(myinfo.UID)
+	return c.GetUserMacros(connection.MyInfo.UID)
 }

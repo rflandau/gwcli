@@ -247,11 +247,7 @@ func deleteMacro(fs *pflag.FlagSet, macroID uint64) (dryrun bool, err error) {
 // Returns all user macros as an item array ready for the list bubble
 func fetchMacroListAsItems() ([]list.Item, error) {
 	var items []list.Item
-	myinfo, err := connection.Client.MyInfo()
-	if err != nil {
-		return nil, err
-	}
-	if macros, err := connection.Client.GetUserMacros(myinfo.UID); err != nil {
+	if macros, err := connection.Client.GetUserMacros(connection.MyInfo.UID); err != nil {
 		return nil, err
 	} else {
 		items = make([]list.Item, len(macros))

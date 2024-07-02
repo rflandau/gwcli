@@ -43,8 +43,7 @@ func init() {
 
 var Client *grav.Client
 
-var myInfo types.UserDetails
-var myInfoCached bool
+var MyInfo types.UserDetails
 
 // Initializes Client using the given connection string of the form <host>:<port>.
 // Destroys a pre-existing connection (but does not log out), if there was one.
@@ -116,6 +115,11 @@ func Login(cred Credentials, scriptMode bool) (err error) {
 		}
 	} else {
 		clilog.Writer.Infof("Logged in via JWT")
+	}
+
+	// on successfuly login, fetch and cache MyInfo
+	if MyInfo, err = Client.MyInfo(); err != nil {
+		return errors.New("failed to cache user info: " + err.Error())
 	}
 
 	return nil
@@ -224,12 +228,4 @@ func End() error {
 
 	Client.Close()
 	return nil
-}
-
-func MyInfo() (types.UserDetails, error) {
-	if myInfoCached {
-		return myInfo, nil
-	}
-	return Client.MyInfo()
-
 }

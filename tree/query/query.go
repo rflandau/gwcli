@@ -291,15 +291,9 @@ func tryQuery(qry string, duration time.Duration, nohistory bool, sch *schedule)
 
 	// check for scheduling
 	if sch != nil {
-		clilog.Writer.Debugf("schedule request: %v", sch)
-		// todo cache user's myinfo
-		myinfo, err := connection.Client.MyInfo()
-		if err != nil {
-			return grav.Search{}, 0, err
-		}
 		clilog.Writer.Debugf("Scheduling query %v (%v) for %v", sch.name, qry, sch.cronfreq)
 		id, err := connection.Client.CreateScheduledSearch(sch.name, sch.desc, sch.cronfreq,
-			uuid.UUID{}, qry, duration, []int32{myinfo.DefaultGID})
+			uuid.UUID{}, qry, duration, []int32{connection.MyInfo.DefaultGID})
 		// TODO provide a dialogue for selecting groups/permissions
 		return grav.Search{}, id, err
 	}

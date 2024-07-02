@@ -26,19 +26,12 @@ func NewUserMyInfoAction() action.Pair {
 
 	return scaffold.NewBasicAction(use, short, long, aliases,
 		func(_ *cobra.Command, fs *pflag.FlagSet) (string, tea.Cmd) {
-			ud, err := connection.Client.MyInfo()
-			if err != nil {
-				s := fmt.Sprintf("Unable to determine user info: %v", err)
-				clilog.Writer.Error(s)
-				return s, nil
-			}
-
 			if asCSV, err := fs.GetBool("csv"); err != nil {
 				s := fmt.Sprintf("Failed to fetch csv flag: %v", err)
 				clilog.Writer.Error(s)
 				return s, nil
 			} else if asCSV {
-				return weave.ToCSV([]types.UserDetails{ud}, []string{
+				return weave.ToCSV([]types.UserDetails{connection.MyInfo}, []string{
 					"UID",
 					"User",
 					"Name",
@@ -54,10 +47,12 @@ func NewUserMyInfoAction() action.Pair {
 			}
 
 			sty := stylesheet.Header1Style.Bold(false)
-			out := fmt.Sprintf("%v, %v, %v\n%s: %v\n%s: %v\n%s: %v", ud.Name, ud.User, ud.Email,
-				sty.Render("Groups"), ud.Groups,
-				sty.Render("Capabilities"), ud.CapabilityList(),
-				sty.Render("Admin"), ud.Admin)
+			out := fmt.Sprintf("%v, %v, %v\n%s: %v\n%s: %v\n%s: %v",
+				connection.MyInfo.Name,
+				connection.MyInfo.User, connection.MyInfo.Email,
+				sty.Render("Groups"), connection.MyInfo.Groups,
+				sty.Render("Capabilities"), connection.MyInfo.CapabilityList(),
+				sty.Render("Admin"), connection.MyInfo.Admin)
 
 			return out, nil
 		}, flags)
