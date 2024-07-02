@@ -237,7 +237,6 @@ func (mv *modifView) focusSelected() {
 func (mv *modifView) view() string {
 	// TODO need to rework the look of modifView to make dependent fields clearer
 	var bldr strings.Builder
-	// set styles
 
 	bldr.WriteString(" " + stylesheet.Header1Style.Render("Duration:") + "\n")
 	bldr.WriteString(
@@ -281,9 +280,8 @@ func (mv *modifView) view() string {
 // Generates a string representing all output path modifiers and fields.
 // This whole section is greyed out if !enabled
 func drawOutpathSection(mv *modifView, enabled bool) string {
-	var b strings.Builder
-	// if scheduled is decalred, outfile will not be used; grey out this whole section
 	var (
+		b               strings.Builder
 		outpathTitleSty lipgloss.Style = stylesheet.Header1Style
 		outpathTISty    lipgloss.Style = lipgloss.NewStyle()
 	)
@@ -296,6 +294,7 @@ func drawOutpathSection(mv *modifView, enabled bool) string {
 		fmt.Sprintf("%c%s\n", pip(mv.selected, outFile), outpathTISty.Render(mv.outfileTI.View())),
 	)
 
+	// grey out outpath options if outpath is empty
 	if strings.TrimSpace(mv.outfileTI.Value()) == "" {
 		outpathTitleSty = stylesheet.GreyedOutStyle
 	}
@@ -335,12 +334,7 @@ func pip(selected, field uint) rune {
 	return ' '
 }
 
-type dependsOn interface {
-	Value() string
-}
-
 // Returns a string representing the current state of the given boolean value.
-// DependsOn is any struct with a .Value that can be checked for emptiness.
 func viewBool(selected uint, field uint, val bool, fieldName string, sty lipgloss.Style) string {
 	var checked rune = ' '
 	if val {
