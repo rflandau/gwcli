@@ -15,7 +15,7 @@ var (
 )
 
 func New[parentpkg][pkg]Action() action.Pair {
-	return scaffold.NewBasicAction(use, short, long, aliases, func(*pflag.FlagSet) (string, tea.Cmd) {
+	return scaffold.NewBasicAction(use, short, long, aliases, func(*cobra.Command, *pflag.FlagSet) (string, tea.Cmd) {
 
 	}, nil)
 }
