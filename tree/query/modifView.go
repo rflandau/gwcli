@@ -246,33 +246,9 @@ func (mv *modifView) view() string {
 	bldr.WriteString(drawOutpathSection(mv, !mv.schedule.enabled))
 
 	bldr.WriteString(viewBool(mv.selected, nohistory, mv.nohistory, "Exclude from History?",
-		stylesheet.Header1Style))
+		stylesheet.Header1Style, false))
 
-	//#region schedule search
-	bldr.WriteString(viewBool(mv.selected, scheduled, mv.schedule.enabled, "Schedule?",
-		stylesheet.Header1Style))
-	schsty := stylesheet.Header1Style
-	schPromptSty := lipgloss.NewStyle()
-	if !mv.schedule.enabled { // if not scheduled, grey out 'scheduled' fields
-		schsty = stylesheet.GreyedOutStyle
-		schPromptSty = stylesheet.GreyedOutStyle
-	}
-	bldr.WriteString(stylesheet.Indent + schsty.Render("Name:") + "\n")
-	bldr.WriteString(
-		fmt.Sprintf("%c"+stylesheet.Indent+"%s\n",
-			pip(mv.selected, name), schPromptSty.Render(mv.schedule.nameTI.View())),
-	)
-	bldr.WriteString(stylesheet.Indent + schsty.Render("Desc:") + "\n")
-	bldr.WriteString(
-		fmt.Sprintf("%c"+stylesheet.Indent+"%s\n",
-			pip(mv.selected, desc), schPromptSty.Render(mv.schedule.descTI.View())),
-	)
-	bldr.WriteString(stylesheet.Indent + schsty.Render("Schedule:") + "\n")
-	bldr.WriteString(
-		fmt.Sprintf("%c"+stylesheet.Indent+"%s\n",
-			pip(mv.selected, cronfreq), schPromptSty.Render(mv.schedule.cronfreqTI.View())),
-	)
-	//#endregion schedule search
+	bldr.WriteString(drawScheduleSection(mv))
 
 	return bldr.String()
 }
@@ -300,12 +276,45 @@ func drawOutpathSection(mv *modifView, enabled bool) string {
 	}
 
 	b.WriteString(stylesheet.Indent +
-		viewBool(mv.selected, appendToFile, mv.appendToFile, "Append?", outpathTitleSty))
+		viewBool(mv.selected, appendToFile, mv.appendToFile, "Append?", outpathTitleSty, true))
 	b.WriteString(stylesheet.Indent +
-		viewBool(mv.selected, json, mv.json, "JSON", outpathTitleSty))
+		viewBool(mv.selected, json, mv.json, "JSON", outpathTitleSty, true))
 	b.WriteString(stylesheet.Indent +
-		viewBool(mv.selected, csv, mv.csv, "CSV", outpathTitleSty))
+		viewBool(mv.selected, csv, mv.csv, "CSV", outpathTitleSty, true))
 
+	return b.String()
+}
+
+func drawScheduleSection(mv *modifView) string {
+	var (
+		b           strings.Builder
+		schTitleSty lipgloss.Style = stylesheet.Header1Style
+		schTISty    lipgloss.Style = lipgloss.NewStyle()
+	)
+	// bool to enable the rest of the section
+	b.WriteString(viewBool(mv.selected, scheduled, mv.schedule.enabled, "Schedule?",
+		schTitleSty, false))
+
+	if !mv.schedule.enabled { // only display rest of section if scheduled
+		schTitleSty = stylesheet.GreyedOutStyle
+		schTISty = stylesheet.GreyedOutStyle
+	}
+
+	b.WriteString(stylesheet.Indent + " | " + schTitleSty.Render("Name:") + "\n")
+	b.WriteString(
+		fmt.Sprintf(stylesheet.Indent+"%c| %s\n",
+			pip(mv.selected, name), schTISty.Render(mv.schedule.nameTI.View())),
+	)
+	b.WriteString(stylesheet.Indent + " | " + schTitleSty.Render("Desc:") + "\n")
+	b.WriteString(
+		fmt.Sprintf(stylesheet.Indent+"%c| %s\n",
+			pip(mv.selected, desc), schTISty.Render(mv.schedule.descTI.View())),
+	)
+	b.WriteString(stylesheet.Indent + " | " + schTitleSty.Render("Schedule:") + "\n")
+	b.WriteString(
+		fmt.Sprintf(stylesheet.Indent+"%c| %s\n",
+			pip(mv.selected, cronfreq), schTISty.Render(mv.schedule.cronfreqTI.View())),
+	)
 	return b.String()
 }
 
@@ -335,10 +344,16 @@ func pip(selected, field uint) rune {
 }
 
 // Returns a string representing the current state of the given boolean value.
-func viewBool(selected uint, field uint, val bool, fieldName string, sty lipgloss.Style) string {
+func viewBool(selected uint, field uint, val bool, fieldName string, sty lipgloss.Style, child bool) string {
 	var checked rune = ' '
 	if val {
 		checked = '✓'
 	}
-	return fmt.Sprintf("%c[%s] %s\n", pip(selected, field), sty.Render(string(checked)), sty.Render(fieldName))
+
+	var divisor = ""
+	if child {
+		divisor = "| "
+	}
+
+	return fmt.Sprintf("%c%v[%s] %s\n", pip(selected, field), divisor, sty.Render(string(checked)), sty.Render(fieldName))
 }
