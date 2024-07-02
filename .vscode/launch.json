@@ -7,7 +7,7 @@
         "request": "launch",
         "mode": "debug",
         "program": "${workspaceRoot}",
-        "args": ["-u=admin", "-p=changeme", "--insecure", "--no-interactive", "query","-h"]
+        "args": ["-u=admin", "-password=changeme", "--insecure", "--script", "query","-h"]
     },
     {
         "name": "Cobra `kits list --csv`",
@@ -15,7 +15,7 @@
         "request": "launch",
         "mode": "debug",
         "program": "${workspaceRoot}",
-        "args": ["-u=admin", "-p=changeme", "--insecure", "--no-interactive", "kits", "list", "--csv"]
+        "args": ["-u=admin", "-password=changeme", "--insecure", "--script", "kits", "list", "--csv"]
     },
     {
         "name": "Cobra `query \"tag=gravwell\"`",
@@ -23,7 +23,7 @@
         "request": "launch",
         "mode": "debug",
         "program": "${workspaceRoot}",
-        "args": ["-u=admin", "-p=changeme", "--insecure", "--no-interactive", "query","tag=gravwell"]
+        "args": ["-u=admin", "--password=changeme", "--insecure", "--script", "query","tag=gravwell"]
     },
     {
         "name": "ATTACH -> ./start_delve",
