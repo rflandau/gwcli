@@ -235,7 +235,6 @@ func (mv *modifView) focusSelected() {
 }
 
 func (mv *modifView) view() string {
-	// TODO need to rework the look of modifView to make dependent fields clearer
 	var bldr strings.Builder
 
 	bldr.WriteString(" " + stylesheet.Header1Style.Render("Duration:") + "\n")
