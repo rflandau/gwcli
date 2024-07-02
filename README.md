@@ -14,6 +14,8 @@ A redesigned Gravwell client for the terminal, supporting both TUI-served intera
 
 - shell-style navigation
 
+- `tree` command to view entire structure
+
 - command history
 
 - context-aware help for every command
