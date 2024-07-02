@@ -2,6 +2,31 @@
 
 A redesigned Gravwell client for the terminal, supporting both TUI-served interactivity and non-interactive script calls. 
 
+# Features
+
+- interactive *and* scriptable
+
+- full query editor (syntax highlighting NYI)
+
+- dynamic viewport for interacting with query results
+
+- mutliple query result download formats (CSV, JSON, raw)
+
+- shell-style navigation
+
+- command history
+
+- context-aware help for every command
+
+- automatic login via token (for subsequent logins)
+
+- completions for zsh, fish, bash, and powershell
+
+- limited tab completion in interactive mode
+
+- pluggable framework for easily adding new capabilities (complete with genericized boilerplate and generator functions)
+
+
 # Usage
 
 `./gwcli`
