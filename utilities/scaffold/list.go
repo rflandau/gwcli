@@ -49,8 +49,6 @@ func (f outputFormat) String() string {
 type dataFunction[Any any] func(*grav.Client, *pflag.FlagSet) ([]Any, error)
 type addtlFlagFunction func() pflag.FlagSet
 
-const use = "list"
-
 // NewListAction creates and returns a cobra.Command suitable for use as a list
 // action, complete with common flags and a generic run function operating off
 // the given dataFunction.
@@ -112,7 +110,7 @@ func NewListAction[Any any](short, long string,
 			panic(err)
 		}
 
-		output, err := list(cmd.Flags(), columns, !noColor, dataFn)
+		output, err := listOutput(cmd.Flags(), columns, !noColor, dataFn)
 		if err != nil {
 			clilog.Tee(clilog.ERROR, cmd.ErrOrStderr(), err.Error())
 		}
@@ -120,7 +118,7 @@ func NewListAction[Any any](short, long string,
 	}
 
 	// generate the command
-	cmd := treeutils.NewActionCommand(use, short, long, aliases, runFunc)
+	cmd := treeutils.NewActionCommand("list", short, long, aliases, runFunc)
 
 	// attach normal list flags and, if applicable, additional flags
 	startFS := listStarterFlags()
@@ -177,7 +175,7 @@ func determineFormat(fs *pflag.FlagSet) outputFormat {
 }
 
 // Driver function to call the provided data func and format its output via weave
-func list[Any any](fs *pflag.FlagSet, columns []string, color bool,
+func listOutput[Any any](fs *pflag.FlagSet, columns []string, color bool,
 	dataFn dataFunction[Any]) (string, error) {
 
 	data, err := dataFn(connection.Client, fs)
@@ -266,7 +264,7 @@ func (la *ListAction[T]) Update(msg tea.Msg) tea.Cmd {
 		return tea.Println(strings.Join(cols, " "))
 	}
 
-	s, err := list(&la.fs, la.columns, la.color, la.dataFunc)
+	s, err := listOutput(&la.fs, la.columns, la.color, la.dataFunc)
 	if err != nil {
 		panic(err)
 	}
