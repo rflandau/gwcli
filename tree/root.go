@@ -7,8 +7,6 @@
 package tree
 
 import (
-	"errors"
-	"fmt"
 	"gwcli/action"
 	"gwcli/clilog"
 	"gwcli/connection"
@@ -20,18 +18,9 @@ import (
 	"gwcli/tree/user"
 	"gwcli/treeutils"
 	"gwcli/utilities/usage"
-	"os"
-	"path"
-	"strings"
 	"time"
 
 	"github.com/spf13/cobra"
-)
-
-const (
-	tokenFileName = "token"
-	restLogName   = "rest.log"
-	cfgSubFolder  = "gwcli" // $config_folder + configSubFolder
 )
 
 // global PersistenPreRunE.
@@ -57,7 +46,7 @@ func ppre(cmd *cobra.Command, args []string) error {
 		return nil
 	}
 
-	// do not require login on help action
+	// if this is a 'help' action, do not enforce login
 	if cmd.Name() == "help" {
 		return nil
 	}
@@ -77,156 +66,38 @@ func EnforceLogin(cmd *cobra.Command, args []string) error {
 		if err != nil {
 			return err
 		}
-		cfgDir, err := os.UserConfigDir()
-		if err != nil {
-			return err
-		}
-		if err = connection.Initialize(server, path.Join(cfgDir, cfgSubFolder, restLogName),
-			!insecure, insecure); err != nil {
+		if err = connection.Initialize(server, !insecure, insecure, ""); err != nil {
 			return err
 		}
 	}
 
-	// if logged in, we are done
-	if connection.Client.LoggedIn() {
-		return nil
+	// generate credentials
+	var (
+		err    error
+		script bool
+		cred   connection.Credentials
+	)
+	if script, err = cmd.Flags().GetBool("script"); err != nil {
+		return err
+	}
+	if cred.Username, err = cmd.Flags().GetString("username"); err != nil {
+		return err
+	}
+	if cred.Password, err = cmd.Flags().GetString("password"); err != nil {
+		return err
+	}
+	if cred.PassfilePath, err = cmd.Flags().GetString("passfile"); err != nil {
+		return err
 	}
 
-	// login is attempted via JWT token first
-	// If any stage in the process fails, the error is logged and we fall back to checking -u and -p
-	// flags and then prompting for input
-	if err := LoginViaToken(); err != nil {
-		// jwt token failure; log and move on
-		clilog.Writer.Warnf("Failed to login via JWT token: %v", err)
-
-		// fetch credentials from flags
-		u, err := cmd.Flags().GetString("username")
-		if err != nil {
-			return err
-		}
-		p, err := cmd.Flags().GetString("password")
-		if err != nil {
-			return err
-		} else if p == "" {
-			// try the password file
-			pf, err := cmd.Flags().GetString("passfile")
-			if err != nil {
-				return err
-			}
-			if pf != "" {
-				b, err := os.ReadFile(pf)
-				if err != nil {
-					return fmt.Errorf("failed to read password from %v: %v", pf, err)
-				}
-				p = strings.TrimSpace(string(b))
-			}
-		}
-
-		// fetch additional data before attempting logon, if necessary
-		if u == "" || p == "" {
-			// if script mode, do not prompt
-			if script, err := cmd.Flags().GetBool("script"); err != nil {
-				clilog.Writer.Fatal("developer error: script flag is undefined")
-			} else if script {
-				return fmt.Errorf("no valid token found.\n" +
-					"Please login via username (-u) and password (-p)")
-			}
-
-			// prompt for credentials
-			creds, err := CredPrompt(u, p)
-			if err != nil {
-				return err
-			}
-			// pull input results
-			if creds, ok := creds.(cred); !ok {
-				return err
-			} else if creds.killed {
-				return errors.New("you must authenticate to use gwcli")
-			} else {
-				u = creds.UserTI.Value()
-				p = creds.PassTI.Value()
-			}
-		}
-
-		if err = connection.Login(u, p); err != nil {
-			return err
-		}
-
-		if err := CreateToken(); err != nil {
-			clilog.Writer.Warnf(err.Error())
-			// failing to create the token is not fatal
-		}
+	if err := connection.Login(cred, script); err != nil {
+		return err
 	}
 
 	clilog.Writer.Infof("Logged in successfully")
 
 	return nil
 
-}
-
-// Attempts to login via JWT token in the user's config directory.
-// Returns an error on failures. This error should be considered nonfatal and the user logged in via
-// an alternative method instead.
-func LoginViaToken() (err error) {
-	var (
-		cfgDir   string
-		tknbytes []byte
-	)
-	// NOTE the reversal of standard error checking (`err == nil`)
-	if cfgDir, err = os.UserConfigDir(); err == nil {
-		if tknbytes, err = os.ReadFile(path.Join(cfgDir, cfgSubFolder, tokenFileName)); err == nil {
-			if err = connection.Client.ImportLoginToken(string(tknbytes)); err == nil {
-				if err = connection.Client.TestLogin(); err == nil {
-					return nil
-				}
-			}
-		}
-	}
-	return
-}
-
-// Creates a login token for future use.
-// The token's path is saved to an environment variable to be looked up on future runs
-func CreateToken() error {
-	var (
-		err       error
-		token     string
-		tokenPath string
-	)
-	if token, err = connection.Client.ExportLoginToken(); err != nil {
-		return fmt.Errorf("failed to export login token: %v", err)
-	}
-	if cfgDir, err := os.UserConfigDir(); err != nil {
-		return fmt.Errorf("failed to determine pwd: %v\n not writing token", err)
-	} else {
-		if err = os.MkdirAll(path.Join(cfgDir, cfgSubFolder), 0700); err != nil {
-			// check for exists error
-			clilog.Writer.Debugf("mkdir error: %v", err)
-			pe := err.(*os.PathError)
-			if pe.Err != os.ErrExist {
-				return fmt.Errorf("failed to ensure existance of directory %v: %v",
-					path.Join(cfgDir, cfgSubFolder), err)
-			}
-
-		}
-		tokenPath = path.Join(cfgDir, cfgSubFolder, tokenFileName)
-	}
-
-	// write out the token
-	fd, err := os.OpenFile(tokenPath, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0600)
-	if err != nil {
-		return fmt.Errorf("failed to create token: %v", err)
-	}
-	if _, err := fd.WriteString(token); err != nil {
-		return fmt.Errorf("failed to write token: %v", err)
-	}
-
-	if err = fd.Close(); err != nil {
-		return fmt.Errorf("failed to close token file: %v", err)
-	}
-
-	clilog.Writer.Infof("Created token file @ %v", tokenPath)
-	return nil
 }
 
 func ppost(cmd *cobra.Command, args []string) error {

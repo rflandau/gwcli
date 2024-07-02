@@ -24,14 +24,12 @@ const (
 func TestGenerateQueryString(t *testing.T) {
 	const uuid1str = "" // ex: 52985695-ae81-4e82-ba1d-bce54f96def7
 
-	var (
-		restLogFile = path.Join(os.TempDir(), "gwcli.Test_GenerateQueryString.rest.log")
-	)
+	var restLogFile = path.Join(os.TempDir(), "gwcli.Test_GenerateQueryString.rest.log")
 
-	if err := connection.Initialize(server, restLogFile, false, true); err != nil {
+	if err := connection.Initialize(server, false, true, restLogFile); err != nil {
 		panic(err)
 	}
-	if err := connection.Login(user, pass); err != nil {
+	if err := connection.Login(connection.Credentials{Username: user, Password: pass}, true); err != nil {
 		panic(err)
 	}
 
@@ -97,10 +95,10 @@ func Test_tryQuery(t *testing.T) {
 	)
 
 	// establish connection
-	if err := connection.Initialize(server, restLogFile, false, true); err != nil {
+	if err := connection.Initialize(server, false, true, restLogFile); err != nil {
 		panic(err)
 	}
-	if err := connection.Login(user, pass); err != nil {
+	if err := connection.Login(connection.Credentials{Username: user, Password: pass}, true); err != nil {
 		panic(err)
 	}
 	// establish cli writer
@@ -166,10 +164,10 @@ func Test_run(t *testing.T) {
 	)
 
 	// establish connection
-	if err := connection.Initialize(server, restLogFile, false, true); err != nil {
+	if err := connection.Initialize(server, false, true, restLogFile); err != nil {
 		panic(err)
 	}
-	if err := connection.Login(user, pass); err != nil {
+	if err := connection.Login(connection.Credentials{Username: user, Password: pass}, true); err != nil {
 		panic(err)
 	}
 	// establish cli writer

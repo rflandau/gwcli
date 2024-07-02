@@ -35,16 +35,14 @@ func TestNewMacroCreateAndDestroy(t *testing.T) {
 	// set up the logger
 	clilog.Init(logFile, "DEBUG")
 
-	// connect to the server
-	if err := connection.Initialize(server,
-		restLogFile,
-		false,
-		true); err != nil {
+	// establish connection
+	if err := connection.Initialize(server, false, true, restLogFile); err != nil {
 		panic(err)
 	}
-	if err := connection.Login(user, pass); err != nil {
+	if err := connection.Login(connection.Credentials{Username: user, Password: pass}, true); err != nil {
 		panic(err)
 	}
+
 	t.Cleanup(
 		func() {
 			connection.Client.Logout()

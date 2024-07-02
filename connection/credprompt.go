@@ -1,5 +1,5 @@
 // a tiny tea.Model to prompt for login credentials in interactive mode
-package tree
+package connection
 
 import (
 	"fmt"
@@ -13,7 +13,7 @@ import (
 // Run a tiny tea.Model that collects username and password.
 // Not intended to be run while Mother is running.
 func CredPrompt(user, pass string) (tea.Model, error) {
-	c := cred{userSelected: true}
+	c := credModel{userSelected: true}
 	c.UserTI = textinput.New()
 	c.UserTI.Prompt = stylesheet.TIPromptPrefix
 	c.UserTI.SetValue(user)
@@ -26,18 +26,18 @@ func CredPrompt(user, pass string) (tea.Model, error) {
 	return tea.NewProgram(c).Run()
 }
 
-type cred struct {
+type credModel struct {
 	UserTI       textinput.Model
 	PassTI       textinput.Model
 	userSelected bool
 	killed       bool
 }
 
-func (c cred) Init() tea.Cmd {
+func (c credModel) Init() tea.Cmd {
 	return textinput.Blink
 }
 
-func (c cred) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+func (c credModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	if kill := killer.CheckKillKeys(msg); kill != killer.None {
 		c.killed = true
 		return c, tea.Quit
@@ -65,14 +65,14 @@ func (c cred) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	return c, tea.Batch(usercmd, passcmd)
 }
 
-func (c cred) View() string {
+func (c credModel) View() string {
 	return fmt.Sprintf("%v%v\n%v%v\n\n",
 		stylesheet.PromptStyle.Render("username"), c.UserTI.View(),
 		stylesheet.PromptStyle.Render("password"), c.PassTI.View())
 }
 
 // select the next TI
-func (c cred) swap() cred {
+func (c credModel) swap() credModel {
 	c.userSelected = !c.userSelected
 	if c.userSelected {
 		c.UserTI.Focus()
