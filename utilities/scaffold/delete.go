@@ -10,48 +10,47 @@ package scaffold
  *
 var aliases []string = []string{}
 
-	func NewMacroDeleteAction() action.Pair {
-		return scaffold.NewDeleteAction(aliases, "macro", "macros", del,
-			func() ([]scaffold.Item[uint64], error) {
-				ms, err := connection.Client.GetUserGroupsMacros()
-				if err != nil {
-					return nil, err
-				}
-				slices.SortFunc(ms, func(m1, m2 types.SearchMacro) int {
-					return strings.Compare(m1.Name, m2.Name)
-				})
-				var items = make([]scaffold.Item[uint64], len(ms))
-				for i := range ms {
-					items[i] = macroItem{id: ms[i].ID, name: ms[i].Name}
-				}
-				return items, nil
+func New[pkg]DeleteAction() action.Pair {
+	return scaffold.NewDeleteAction(aliases, [singular], [plural], del,
+		func() ([]scaffold.Item[[integer]], error) {
+			couldDelete, err := connection.Client.GetAll[X]()
+			if err != nil {
+				return nil, err
+			}
+			slices.SortFunc(couldDelete, func(m1, m2 types.[Y]) int {
+				return strings.Compare(m1.Name, m2.Name)
 			})
+			var items = make([]scaffold.Item[[integer]], len(couldDelete))
+			for i := range couldDelete {
+				items[i] = [pkg]Item{id: couldDelete[i].ID, name: couldDelete[i].Name}
+			}
+			return items, nil
+		})
+}
+
+func del(dryrun bool, id uint64) error {
+	if dryrun {
+		_, err := connection.Client.Get[X](id)
+		return err
 	}
+	return connection.Client.Delete[X](id)
+}
 
-	func del(dryrun bool, id uint64) error {
-		if dryrun {
-			_, err := connection.Client.GetMacro(id)
-			return err
-		}
-
-		return connection.Client.DeleteMacro(id)
-	}
-
-	type macroItem struct {
-		id   uint64
-		name string
-	}
-
-type macroItem struct {
-	id   uint64
+type [pkg]Item struct {
+	id   [integer]
 	name string
 }
 
-var _ scaffold.Item[uint64] = macroItem{}
+type [pkg]Item struct {
+	id   [integer]
+	name string
+}
 
-func (mi macroItem) ID() uint64          { return mi.id }
-func (mi macroItem) FilterValue() string { return mi.name }
-func (mi macroItem) String() string      { return mi.name }
+var _ scaffold.Item[[integer]] = [pkg]Item{}
+
+func (pi [pkg]Item) ID() [integer]       { return pi.id }
+func (pi [pkg]Item) FilterValue() string { return pi.name }
+func (pi [pkg]Item) String() string      { return pi.name }
  *
 */
 
