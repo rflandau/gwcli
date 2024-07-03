@@ -10,6 +10,14 @@
         "args": ["-u=admin", "-password=changeme", "--insecure", "--script", "query","-h"]
     },
     {
+        "name": "Cobra `tools macros delete --dryrun`",
+        "type": "go",
+        "request": "launch",
+        "mode": "debug",
+        "program": "${workspaceRoot}",
+        "args": ["-u=admin", "-password=changeme", "--insecure", "tools", "macros", "delete", "--dryrun"]
+    },
+    {
         "name": "Cobra `kits list --csv`",
         "type": "go",
         "request": "launch",
