@@ -58,6 +58,7 @@ import (
 	"fmt"
 	"gwcli/action"
 	"gwcli/clilog"
+	"gwcli/mother"
 	"gwcli/treeutils"
 	"strconv"
 
@@ -179,14 +180,20 @@ func NewDeleteAction[I id_t](aliases []string, singular, plural string,
 
 			var zero I
 			if id == zero {
-				if _, err := c.Flags().GetBool("script"); err != nil {
+				if script, err := c.Flags().GetBool("script"); err != nil {
 					clilog.Tee(clilog.ERROR, c.ErrOrStderr(), err.Error())
 					return
-				} else { //else if script
+				} else if script {
 					fmt.Fprintf(c.ErrOrStderr(), "--id is required in script mode")
 					return
 				}
-				// TODO spin up mother (or independent Delete Model) if !script
+				// spin up mother
+				if err := mother.Spawn(c.Root(), c, s); err != nil {
+					clilog.Tee(clilog.CRITICAL, c.ErrOrStderr(),
+						"failed to spawn a mother instance: "+err.Error())
+				}
+				return
+
 			}
 
 			if err := del(dryrun, id); err != nil {
@@ -201,7 +208,10 @@ func NewDeleteAction[I id_t](aliases []string, singular, plural string,
 		})
 	fs := flags()
 	cmd.Flags().AddFlagSet(&fs)
-	return treeutils.GenerateAction(cmd, newDeleteModel[I](del, fch))
+	d := newDeleteModel[I](del, fch)
+	d.itemSingular = singular
+	d.itemPlural = plural
+	return treeutils.GenerateAction(cmd, d)
 }
 
 // base flagset
@@ -400,5 +410,6 @@ func (d *deleteModel[I]) SetArgs(_ *pflag.FlagSet, tokens []string) (invalid str
 			nil
 
 	}
+	d.dryrun = dryrun
 	return "", nil, nil
 }
