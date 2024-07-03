@@ -1,6 +1,7 @@
 // A list action runs a given function that outputs an arbitrary data structure.
 // The results are sent to weave and packaged in a way that can be listed for the user.
 // This provides a consistent interface for actions that list arbitrary data.
+
 package scaffold
 
 import (
