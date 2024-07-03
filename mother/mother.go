@@ -34,10 +34,6 @@ import (
 type navCmd = cobra.Command
 type actionCmd = cobra.Command // actions have associated actors via the action map
 
-const (
-	indent string = "    "
-)
-
 func init() {
 	initBuiltins() // need init to avoid an initialization cycle
 }
@@ -76,16 +72,10 @@ func Spawn(root, cur *cobra.Command, trailingTokens []string) error {
 	return interactive.ReleaseTerminal() // should be redundant
 }
 
-// internal new command to allow tests to pass in a renderer
+// internal command to provide the heavy lifting to Spawn() and flexibility to tests
+// NOTE: trailingTokens is not currently used, but is included for flexibility, in case it needs to
+// be built into the startupCommand
 func new(root *navCmd, cur *cobra.Command, trailingTokens []string, _ *lipgloss.Renderer) Mother {
-	clilog.Writer.Debugf("Spawning mother rooted @ %v, located @ %v, with trailing tokens %v",
-		root.Name(), cur.Name(), trailingTokens)
-
-	m := Mother{
-		root: root,
-		pwd:  cur,
-		mode: prompting}
-
 	// disable completions command when mother is spun up
 	if c, _, err := root.Find([]string{"completion"}); err != nil {
 		clilog.Writer.Warnf("failed to disable 'completion' command: %v", err)
@@ -94,24 +84,29 @@ func new(root *navCmd, cur *cobra.Command, trailingTokens []string, _ *lipgloss.
 	}
 
 	// text input
-	m.ti = textinput.New()
-	m.ti.Placeholder = "help"
-	m.ti.Prompt = stylesheet.TIPromptPrefix
-	m.ti.Focus()
-	m.ti.Width = stylesheet.TIWidth
+	ti := textinput.New()
+	ti.Placeholder = "help"
+	ti.Prompt = stylesheet.TIPromptPrefix
+	ti.Focus()
+	ti.Width = stylesheet.TIWidth
 	// add ctrl+left/right to the word traversal keys
-	m.ti.KeyMap.WordForward.SetKeys("ctrl+right", "alt+right", "alt+f")
-	m.ti.KeyMap.WordBackward.SetKeys("ctrl+left", "alt+left", "alt+b")
+	ti.KeyMap.WordForward.SetKeys("ctrl+right", "alt+right", "alt+f")
+	ti.KeyMap.WordBackward.SetKeys("ctrl+left", "alt+left", "alt+b")
+	ti.ShowSuggestions = true
 
-	m.ti.ShowSuggestions = true
-	m.updateSuggestions()
+	m := Mother{
+		root:    root,
+		pwd:     cur,
+		mode:    prompting,
+		ti:      ti,
+		history: newHistory()}
+	// set mother's starting position
+	if cur == nil {
+		m.pwd = root // place mother at root
+	} else if cur.GroupID == group.ActionID { // special handling for action starts
+		m.pwd = cur.Parent() // place mother at the action's parent
 
-	m.history = newHistory()
-
-	// if current/start command is an action,
-	// rebuild the appropriate action on mother's prompt and "enter"
-	if cur.GroupID == group.ActionID {
-		// build mother's prompt
+		// rebuild the expected action and flags on mother's prompt
 		var p strings.Builder
 		p.WriteString(cur.Name())
 		cur.LocalFlags().VisitAll(func(f *pflag.Flag) {
@@ -119,15 +114,15 @@ func new(root *navCmd, cur *cobra.Command, trailingTokens []string, _ *lipgloss.
 				p.WriteString(fmt.Sprintf(" --%v=%v", f.Name, f.Value))
 			}
 		})
-
-		clilog.Writer.Debug(p.String())
-
 		m.ti.SetValue(p.String())
 
-		m.pwd = cur.Parent()
-		// have mother immediate consume the data we placed on her prompt
+		// have mother immediate act on the data we placed on her prompt
 		m.processOnStartup = true
 	}
+	m.updateSuggestions()
+
+	clilog.Writer.Debugf("Spawning mother rooted @ %v, located @ %v, with trailing tokens %v",
+		m.root.Name(), m.pwd.Name(), trailingTokens)
 
 	return m
 }
@@ -476,9 +471,9 @@ func TeaCmdContextHelp(c *cobra.Command) tea.Cmd {
 			}
 			// generate the output
 			trimmedSubChildren := strings.TrimSpace(subchildren.String())
-			s.WriteString(fmt.Sprintf("%s%s - %s\n", indent, name, child.Short))
+			s.WriteString(fmt.Sprintf("%s%s - %s\n", stylesheet.Indent, name, child.Short))
 			if trimmedSubChildren != "" {
-				s.WriteString(indent + indent + trimmedSubChildren + "\n")
+				s.WriteString(stylesheet.Indent + stylesheet.Indent + trimmedSubChildren + "\n")
 			}
 		}
 	}
