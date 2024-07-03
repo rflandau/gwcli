@@ -72,3 +72,6 @@
 
 - query's modifView.go has a lot of repeated code for each bool and each textinput
     - [ ] genericize and consoliate the repeated code
+
+- [ ] require name, desc, and schedule in query, if scheduled is checked
+    - should error if any are unset
