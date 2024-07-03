@@ -5,18 +5,72 @@ import (
 	"gwcli/action"
 	"gwcli/clilog"
 	"gwcli/treeutils"
+	"strconv"
 
 	"github.com/charmbracelet/bubbles/list"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
-	"github.com/google/uuid"
+	"github.com/gravwell/gravwell/v3/client"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 	"golang.org/x/exp/constraints"
 )
 
 type id_t interface {
-	constraints.Integer | uuid.UUID
+	constraints.Integer
+}
+
+// Returns str converted to an id of type I.
+// All hail the modern Library of Alexandira (https://stackoverflow.com/a/71048872).
+func FromString[I id_t](str string) (I, error) {
+	var (
+		err error
+		ret I
+	)
+
+	switch p := any(&ret).(type) {
+	case *uint:
+		var i uint64
+		i, err = strconv.ParseUint(str, 10, 64)
+		*p = uint(i)
+	case *uint8:
+		var i uint64
+		i, err = strconv.ParseUint(str, 10, 8)
+		*p = uint8(i)
+	case *uint16:
+		var i uint64
+		i, err = strconv.ParseUint(str, 10, 8)
+		*p = uint16(i)
+	case *uint32:
+		var i uint64
+		i, err = strconv.ParseUint(str, 10, 8)
+		*p = uint32(i)
+	case *uint64:
+		var i uint64
+		i, err = strconv.ParseUint(str, 10, 8)
+		*p = uint64(i)
+	case *int:
+		*p, err = strconv.Atoi(str)
+	case *int8:
+		var i int64
+		i, err = strconv.ParseInt(str, 10, 8)
+		*p = int8(i)
+	case *int16:
+		var i int64
+		i, err = strconv.ParseInt(str, 10, 32)
+		*p = int16(i)
+	case *int32:
+		var i int64
+		i, err = strconv.ParseInt(str, 10, 32)
+		*p = int32(i)
+	case *int64:
+		var i int64
+		i, err = strconv.ParseInt(str, 10, 32)
+		*p = int64(i)
+	default:
+		return ret, fmt.Errorf("unknown id type %#v", p)
+	}
+	return ret, err
 }
 
 // A function that performs the (faux-, on dryrun) deletion once an item is picked
@@ -28,7 +82,11 @@ type deleteFunc[I id_t] func(dryrun bool, id I) error
 type fetchFunc[I id_t] func() ([]Item[I], error)
 
 // text to display when deletion is skipped due to error
-const errorNoDeleteText = "An error occured: %v.\nAbstained from deletion."
+const (
+	errorNoDeleteText = "An error occured: %v.\nAbstained from deletion."
+	dryrunSuccessText = "DRYRUN: %v (ID %v) would have been deleted"
+	deleteSuccessText = "%v (ID %v) deleted"
+)
 
 // NewDeleteAction creates and returns a cobra.Command suitable for use as a delete action.
 // Base flags:
@@ -47,12 +105,40 @@ const errorNoDeleteText = "An error occured: %v.\nAbstained from deletion."
 // It returns a user-defined struct fitting the Item interface.
 func NewDeleteAction[I id_t](short, long string, aliases []string, singular, plural string,
 	del deleteFunc[I], fch fetchFunc[I]) action.Pair {
-	cmd := treeutils.NewActionCommand("delete", short, long, aliases, run)
-	return treeutils.GenerateAction(cmd, newDeleteModel[I](del, fch))
-}
+	cmd := treeutils.NewActionCommand("delete", short, long, aliases,
+		func(c *cobra.Command, s []string) {
+			// fetch values from flags
+			id, dryrun, err := fetchFlagValues[I](c.Flags())
+			if err != nil {
+				clilog.Tee(clilog.ERROR, c.ErrOrStderr(), err.Error())
+				return
+			}
 
-func run(*cobra.Command, []string) {
-	// TODO
+			var zero I
+			if id == zero {
+				if _, err := c.Flags().GetBool("script"); err != nil {
+					clilog.Tee(clilog.ERROR, c.ErrOrStderr(), err.Error())
+					return
+				} else { //else if script
+					fmt.Fprintf(c.ErrOrStderr(), "--id is required in script mode")
+					return
+				}
+				// TODO spin up mother (or independent Delete Model) if !script
+			}
+
+			if err := del(dryrun, id); err != nil {
+				clilog.Tee(clilog.ERROR, c.ErrOrStderr(), err.Error())
+				return
+			} else if dryrun {
+				fmt.Fprintf(c.OutOrStdout(), dryrunSuccessText+"\n", singular, id)
+			} else {
+				fmt.Fprintf(c.OutOrStdout(), deleteSuccessText+"\n",
+					singular, id)
+			}
+		})
+	fs := flags()
+	cmd.Flags().AddFlagSet(&fs)
+	return treeutils.GenerateAction(cmd, newDeleteModel[I](del, fch))
 }
 
 // base flagset
@@ -60,8 +146,27 @@ func flags() pflag.FlagSet {
 	fs := pflag.FlagSet{}
 	fs.Bool("dryrun", false, "feigns deletions, descibing actions that "+
 		lipgloss.NewStyle().Italic(true).Render("would")+" have been taken")
-	// TODO implement --id
+	fs.String("id", "", "ID of the item to be deleted")
 	return fs
+}
+
+// helper function for getting and casting flag values
+func fetchFlagValues[I id_t](fs *pflag.FlagSet) (id I, dryrun bool, _ error) {
+	if strid, err := fs.GetString("id"); err != nil {
+		return id, false, err
+	} else if strid != "" {
+		id, err = FromString[I](strid)
+		if err != nil {
+			return id, dryrun, err
+		}
+	}
+	if dr, err := fs.GetBool("dryrun"); err != nil {
+		return id, dryrun, err
+	} else {
+		dryrun = dr
+	}
+
+	return
 }
 
 //#region interactive mode (model) implementation
@@ -128,10 +233,10 @@ func (d *deleteModel[I]) Update(msg tea.Msg) tea.Cmd {
 			}
 			go d.list.RemoveItem(d.list.Index())
 			if d.flags.dryrun {
-				return tea.Printf("DRYRUN: %v (ID %v) would have been deleted",
+				return tea.Printf(dryrunSuccessText,
 					d.classificationSingular, itm.ID())
 			} else {
-				return tea.Printf("%v (ID %v) deleted",
+				return tea.Printf(deleteSuccessText,
 					d.classificationSingular, itm.ID())
 			}
 		}
@@ -178,6 +283,7 @@ func (d *deleteModel[I]) Reset() error {
 }
 
 func (d *deleteModel[I]) SetArgs(_ *pflag.FlagSet, tokens []string) (invalid string, onStart []tea.Cmd, err error) {
+	var zero I
 	// initialize the list
 	itms, err := d.ff()
 	if err != nil {
@@ -205,31 +311,30 @@ func (d *deleteModel[I]) SetArgs(_ *pflag.FlagSet, tokens []string) (invalid str
 	if err := d.flags.set.Parse(tokens); err != nil {
 		return "", nil, err
 	}
-	if d.flags.dryrun, err = d.flags.set.GetBool("dryrun"); err != nil {
+	id, dryrun, err := fetchFlagValues[I](&d.flags.set)
+	if err != nil {
 		return "", nil, err
-	}
-
-	// if --id was given attempt to act and quit immediately
-	/*if id, err := d.fs.GetUint64("id"); err != nil {
-		return "", nil, err
-	} else if id != 0 {
+	} else if id != zero { // if id was set, attempt to skip directly to deletion
 		d.mode = quitting
-		//dr, err := deleteMacro(&d.fs, id)
-		if err != nil {
+		if err := d.df(dryrun, id); err != nil {
 			// check for sentinel errors
+			// NOTE: this relies on the client log consistently returning 404s as ClientErrors,
+			// which I cannot guarentee
 			if err, ok := err.(*client.ClientError); ok && err.StatusCode == 404 {
-				return "", []tea.Cmd{tea.Printf("Did not find a valid macro with ID %v", id)}, nil
+				return "", []tea.Cmd{
+					tea.Printf("Did not find a valid %v with ID %v", d.classificationSingular, id),
+				}, nil
 			}
-
 			return "", nil, err
-		} else if dr {
+		} else if dryrun {
 			return "",
-				[]tea.Cmd{tea.Printf("DRYRUN: Macro (UID: %v) would have been deleted\n", id)},
+				[]tea.Cmd{tea.Printf(dryrunSuccessText, d.classificationSingular, id)},
 				nil
 		}
 		return "",
-			[]tea.Cmd{tea.Printf("Deleted macro (UID: %v)\n", id)},
+			[]tea.Cmd{tea.Printf(deleteSuccessText, d.classificationSingular, id)},
 			nil
-	} */
+
+	}
 	return "", nil, nil
 }
