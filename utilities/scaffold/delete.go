@@ -99,15 +99,15 @@ func FromString[I id_t](str string) (I, error) {
 		*p = uint8(i)
 	case *uint16:
 		var i uint64
-		i, err = strconv.ParseUint(str, 10, 8)
+		i, err = strconv.ParseUint(str, 10, 16)
 		*p = uint16(i)
 	case *uint32:
 		var i uint64
-		i, err = strconv.ParseUint(str, 10, 8)
+		i, err = strconv.ParseUint(str, 10, 32)
 		*p = uint32(i)
 	case *uint64:
 		var i uint64
-		i, err = strconv.ParseUint(str, 10, 8)
+		i, err = strconv.ParseUint(str, 10, 64)
 		*p = uint64(i)
 	case *int:
 		*p, err = strconv.Atoi(str)
@@ -117,7 +117,7 @@ func FromString[I id_t](str string) (I, error) {
 		*p = int8(i)
 	case *int16:
 		var i int64
-		i, err = strconv.ParseInt(str, 10, 32)
+		i, err = strconv.ParseInt(str, 10, 16)
 		*p = int16(i)
 	case *int32:
 		var i int64
@@ -125,7 +125,7 @@ func FromString[I id_t](str string) (I, error) {
 		*p = int32(i)
 	case *int64:
 		var i int64
-		i, err = strconv.ParseInt(str, 10, 32)
+		i, err = strconv.ParseInt(str, 10, 64)
 		*p = int64(i)
 	default:
 		return ret, fmt.Errorf("unknown id type %#v", p)
