@@ -247,17 +247,18 @@ type deleteModel[I id_t] struct {
 	itemPlural   string // "macros", "kits", "queries"
 	mode         mode   // current mode
 	list         list.Model
-	flags        struct { // parsed flag values (set in SetArgs)
-		set    pflag.FlagSet
-		dryrun bool
-	}
+
+	flagset pflag.FlagSet // parsed flag values (set in SetArgs)
+	dryrun  bool
+
 	df deleteFunc[I] // function to delete an item
 	ff fetchFunc[I]  // function to get all delete-able items
 }
 
 func newDeleteModel[I id_t](del deleteFunc[I], fch fetchFunc[I]) *deleteModel[I] {
 	d := &deleteModel[I]{mode: selecting}
-	d.flags.set = flags()
+	d.flagset = flags()
+
 	d.df = del
 	d.ff = fch
 
@@ -292,11 +293,11 @@ func (d *deleteModel[I]) Update(msg tea.Msg) tea.Cmd {
 			d.mode = quitting
 
 			// attempt to delete the item
-			if err := d.df(d.flags.dryrun, itm.ID()); err != nil {
+			if err := d.df(d.dryrun, itm.ID()); err != nil {
 				return tea.Printf(errorNoDeleteText+"\n", err)
 			}
 			go d.list.RemoveItem(d.list.Index())
-			if d.flags.dryrun {
+			if d.dryrun {
 				return tea.Printf(dryrunSuccessText,
 					d.itemSingular, itm.ID())
 			} else {
@@ -341,7 +342,7 @@ func (d *deleteModel[I]) Done() bool {
 
 func (d *deleteModel[I]) Reset() error {
 	d.mode = selecting
-	d.flags.set = flags()
+	d.flagset = flags()
 	// the current state of the list is retained
 	return nil
 }
@@ -372,10 +373,10 @@ func (d *deleteModel[I]) SetArgs(_ *pflag.FlagSet, tokens []string) (invalid str
 	d.list.KeyMap.Quit.SetEnabled(false)
 
 	// flags and flagset
-	if err := d.flags.set.Parse(tokens); err != nil {
+	if err := d.flagset.Parse(tokens); err != nil {
 		return "", nil, err
 	}
-	id, dryrun, err := fetchFlagValues[I](&d.flags.set)
+	id, dryrun, err := fetchFlagValues[I](&d.flagset)
 	if err != nil {
 		return "", nil, err
 	} else if id != zero { // if id was set, attempt to skip directly to deletion
