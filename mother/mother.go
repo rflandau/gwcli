@@ -16,6 +16,7 @@ import (
 	"gwcli/action"
 	"gwcli/clilog"
 	"gwcli/connection"
+	"gwcli/group"
 	"gwcli/stylesheet"
 	"gwcli/stylesheet/colorizer"
 	"gwcli/utilities/killer"
@@ -58,15 +59,32 @@ type Mother struct {
 		model   action.Model // Elm Arch associated to command
 	}
 
+	processOnStartup bool // mother should immediately consume and process her prompt on spawn
+
 	history *history
 }
 
-// internal new command to allow tests to pass in a renderer
-func new(root *navCmd, pwd *navCmd, _ *lipgloss.Renderer) Mother {
-	m := Mother{root: root, pwd: root, mode: prompting}
-	if pwd != nil {
-		m.pwd = pwd
+// Spawn spins up a new instance of Mother in a fresh tea program, runs the
+// program, and returns on Mother's exit.
+// The caller is expected to exit on Spawn's return.
+func Spawn(root, cur *cobra.Command, trailingTokens []string) error {
+	// spin up mother
+	interactive := tea.NewProgram(new(root, cur, trailingTokens, nil))
+	if _, err := interactive.Run(); err != nil {
+		panic(err)
 	}
+	return interactive.ReleaseTerminal() // should be redundant
+}
+
+// internal new command to allow tests to pass in a renderer
+func new(root *navCmd, cur *cobra.Command, trailingTokens []string, _ *lipgloss.Renderer) Mother {
+	clilog.Writer.Debugf("Spawning mother rooted @ %v, located @ %v, with trailing tokens %v",
+		root.Name(), cur.Name(), trailingTokens)
+
+	m := Mother{
+		root: root,
+		pwd:  cur,
+		mode: prompting}
 
 	// disable completions command when mother is spun up
 	if c, _, err := root.Find([]string{"completion"}); err != nil {
@@ -90,13 +108,28 @@ func new(root *navCmd, pwd *navCmd, _ *lipgloss.Renderer) Mother {
 
 	m.history = newHistory()
 
-	return m
-}
+	// if current/start command is an action,
+	// rebuild the appropriate action on mother's prompt and "enter"
+	if cur.GroupID == group.ActionID {
+		// build mother's prompt
+		var p strings.Builder
+		p.WriteString(cur.Name())
+		cur.LocalFlags().VisitAll(func(f *pflag.Flag) {
+			if f.Changed {
+				p.WriteString(fmt.Sprintf(" --%v=%v", f.Name, f.Value))
+			}
+		})
 
-// Generate a Mother instance to operate on the Cobra command tree.
-// If pwd is nil, Mother will start at root.
-func New(root *navCmd, pwd *navCmd) Mother {
-	return new(root, pwd, nil)
+		clilog.Writer.Debug(p.String())
+
+		m.ti.SetValue(p.String())
+
+		m.pwd = cur.Parent()
+		// have mother immediate consume the data we placed on her prompt
+		m.processOnStartup = true
+	}
+
+	return m
 }
 
 //#region tea.Model implementation
@@ -111,10 +144,15 @@ func (m Mother) Init() tea.Cmd {
 // It checks for kill keys (to disallow a runaway/ill-designed child), then either passes off
 // control (if in handoff mode) or handles the input itself (if in prompt mode).
 func (m Mother) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+	if m.processOnStartup {
+		m.processOnStartup = false
+		return m, processInput(&m)
+	}
 	switch killer.CheckKillKeys(msg) { // handle kill keys above all else
 	case killer.Global:
 		// if in handoff mode, just kill the child
 		if m.mode == handoff {
+			clilog.Writer.Infof("Global killing %v. Reasserting...", m.active.command.Name())
 			m.unsetAction()
 			// if we are killing from mother, we must manually exit alt screen
 			// (harmless if not in use)
@@ -123,6 +161,7 @@ func (m Mother) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		connection.End()
 		return m, tea.Batch(tea.Println("Bye"), tea.Quit)
 	case killer.Child: // ineffectual if not in handoff mode
+		clilog.Writer.Infof("Child killing %v. Reasserting...", m.active.command.Name())
 		m.unsetAction()
 		return m, tea.Batch(tea.ExitAltScreen, textinput.Blink)
 	}
@@ -134,6 +173,7 @@ func (m Mother) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, m.active.model.Update(msg)
 		} else {
 			// child has finished processing, regain control and return to normal processing
+			clilog.Writer.Infof("%v done. Reasserting...", m.active.command.Name())
 			m.unsetAction()
 			return m, textinput.Blink
 		}
@@ -286,6 +326,7 @@ func (m *Mother) promptString() string {
 }
 
 // helper subroutine for processInput
+//
 // Prepares mother and the named action for handoff, undoing itself if an error occurs.
 //
 // Returns commands to run after the push-to-history command.

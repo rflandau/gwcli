@@ -6,10 +6,10 @@ package treeutils
 
 import (
 	"gwcli/action"
+	"gwcli/clilog"
 	"gwcli/group"
 	"gwcli/mother"
 
-	tea "github.com/charmbracelet/bubbletea"
 	"github.com/spf13/cobra"
 )
 
@@ -82,11 +82,10 @@ var NavRun = func(cmd *cobra.Command, args []string) {
 		return
 	}
 	// invoke mother
-	interactive := tea.NewProgram(mother.New(cmd.Root(), cmd))
-	if _, err := interactive.Run(); err != nil {
-		panic(err)
+	if err := mother.Spawn(cmd.Root(), cmd.Parent(), []string{}); err != nil {
+		clilog.Tee(clilog.CRITICAL, cmd.ErrOrStderr(),
+			"failed to spawn a mother instance: "+err.Error())
 	}
-	interactive.ReleaseTerminal() // should be redundant
 }
 
 //#endregion
