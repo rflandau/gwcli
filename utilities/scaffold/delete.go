@@ -19,17 +19,32 @@ type id_t interface {
 	constraints.Integer | uuid.UUID
 }
 
-// a given function that performs the (faux-, on dryrun) deletion once an item is picked
+// A function that performs the (faux-, on dryrun) deletion once an item is picked
 // only returns a value if the delete (or select, on dry run) failed
 type deleteFunc[I id_t] func(dryrun bool, id I) error
 
-// a given function that fetches and formats the list of delete-able items
-// TODO how do we allow this to return specifically []Item
+// A function that fetches and formats the list of delete-able items.
+// It must return an array of a struct that implements the Item interface.
 type fetchFunc[I id_t] func() ([]Item[I], error)
 
 // text to display when deletion is skipped due to error
 const errorNoDeleteText = "An error occured: %v.\nAbstained from deletion."
 
+// NewDeleteAction creates and returns a cobra.Command suitable for use as a delete action.
+// Base flags:
+//
+//	--dryrun (SELECT, as a mock deletion),
+//
+//	--id (immediately attempt deletion on the given id)
+//
+// You must provide two functions to instantiate a generic delete:
+//
+// Del is a function that performs the actual (mock) deletion.
+// It is given the dryrun boolean and an ID value and returns an error only if the delete or select
+// failed.
+//
+// Fch is a function that fetches all, delete-able records for the user to pick from.
+// It returns a user-defined struct fitting the Item interface.
 func NewDeleteAction[I id_t](short, long string, aliases []string, singular, plural string,
 	del deleteFunc[I], fch fetchFunc[I]) action.Pair {
 	cmd := treeutils.NewActionCommand("delete", short, long, aliases, run)
@@ -37,14 +52,15 @@ func NewDeleteAction[I id_t](short, long string, aliases []string, singular, plu
 }
 
 func run(*cobra.Command, []string) {
-
+	// TODO
 }
 
+// base flagset
 func flags() pflag.FlagSet {
 	fs := pflag.FlagSet{}
 	fs.Bool("dryrun", false, "feigns deletions, descibing actions that "+
 		lipgloss.NewStyle().Italic(true).Render("would")+" have been taken")
-
+	// TODO implement --id
 	return fs
 }
 
@@ -62,8 +78,7 @@ type deleteModel[I id_t] struct {
 	classificationPlural   string // "macros", "kits", "queries"
 	mode                   mode   // current mode
 	list                   list.Model
-	err                    error
-	flags                  struct {
+	flags                  struct { // parsed flag values (set in SetArgs)
 		set    pflag.FlagSet
 		dryrun bool
 	}
@@ -71,11 +86,11 @@ type deleteModel[I id_t] struct {
 	ff fetchFunc[I]  // function to get all delete-able items
 }
 
-func newDeleteModel[I id_t](df deleteFunc[I], ff fetchFunc[I]) *deleteModel[I] {
+func newDeleteModel[I id_t](del deleteFunc[I], fch fetchFunc[I]) *deleteModel[I] {
 	d := &deleteModel[I]{mode: selecting}
 	d.flags.set = flags()
-	d.df = df
-	d.ff = ff
+	d.df = del
+	d.ff = fch
 
 	return d
 }
@@ -157,7 +172,6 @@ func (d *deleteModel[I]) Done() bool {
 
 func (d *deleteModel[I]) Reset() error {
 	d.mode = selecting
-	d.err = nil
 	d.flags.set = flags()
 	// the current state of the list is retained
 	return nil

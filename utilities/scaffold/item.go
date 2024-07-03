@@ -13,8 +13,8 @@ import (
 
 // the base functions a delete action must provide on the type it wants deleted
 type Item[I id_t] interface {
-	ID() I
-	FilterValue() string // value to compare against
+	ID() I               // value passed to the delete function
+	FilterValue() string // value to compare against for filtration
 	String() string      // how the record should be displayed in the list
 }
 
@@ -33,7 +33,6 @@ func (id itemDelegate[I]) Render(w io.Writer, m list.Model, index int, listItem 
 		return
 	}
 
-	//str := fmt.Sprintf("%d. $%s --> %s\n  %s", index+1, i.Name, i.Expansion, i.Description)
 	str := fmt.Sprintf("%d. %s", index+1, i.String())
 
 	fn := itemStyle.Render
