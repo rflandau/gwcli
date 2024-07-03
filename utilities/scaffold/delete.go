@@ -243,11 +243,11 @@ const (
 )
 
 type deleteModel[I id_t] struct {
-	classificationSingular string // "macro", "kit", "query"
-	classificationPlural   string // "macros", "kits", "queries"
-	mode                   mode   // current mode
-	list                   list.Model
-	flags                  struct { // parsed flag values (set in SetArgs)
+	itemSingular string // "macro", "kit", "query"
+	itemPlural   string // "macros", "kits", "queries"
+	mode         mode   // current mode
+	list         list.Model
+	flags        struct { // parsed flag values (set in SetArgs)
 		set    pflag.FlagSet
 		dryrun bool
 	}
@@ -270,7 +270,7 @@ func (d *deleteModel[I]) Update(msg tea.Msg) tea.Cmd {
 	}
 	if len(d.list.Items()) == 0 {
 		d.mode = quitting
-		return tea.Printf("You have no %v that can be deleted", d.classificationPlural)
+		return tea.Printf("You have no %v that can be deleted", d.itemPlural)
 	}
 
 	switch msg := msg.(type) {
@@ -298,10 +298,10 @@ func (d *deleteModel[I]) Update(msg tea.Msg) tea.Cmd {
 			go d.list.RemoveItem(d.list.Index())
 			if d.flags.dryrun {
 				return tea.Printf(dryrunSuccessText,
-					d.classificationSingular, itm.ID())
+					d.itemSingular, itm.ID())
 			} else {
 				return tea.Printf(deleteSuccessText,
-					d.classificationSingular, itm.ID())
+					d.itemSingular, itm.ID())
 			}
 		}
 	}
@@ -319,7 +319,7 @@ func (d *deleteModel[I]) View() string {
 		// This is unlikely to ever be shown before Mother reasserts control and wipes it
 		itm := d.list.SelectedItem()
 		if itm == nil {
-			return "Not deleting any " + d.classificationPlural + "..."
+			return "Not deleting any " + d.itemPlural + "..."
 		}
 		if searchitm, ok := itm.(Item[I]); !ok {
 			clilog.Writer.Warnf("Failed to type assert selected %v", itm)
@@ -363,7 +363,7 @@ func (d *deleteModel[I]) SetArgs(_ *pflag.FlagSet, tokens []string) (invalid str
 	}
 
 	d.list = list.New(simpleitems, itemDelegate[I]{}, 80, 20)
-	d.list.Title = "Select a " + d.classificationSingular + " to delete"
+	d.list.Title = "Select a " + d.itemSingular + " to delete"
 
 	d.list.SetFilteringEnabled(true)
 
@@ -386,17 +386,17 @@ func (d *deleteModel[I]) SetArgs(_ *pflag.FlagSet, tokens []string) (invalid str
 			// which I cannot guarentee
 			if err, ok := err.(*client.ClientError); ok && err.StatusCode == 404 {
 				return "", []tea.Cmd{
-					tea.Printf("Did not find a valid %v with ID %v", d.classificationSingular, id),
+					tea.Printf("Did not find a valid %v with ID %v", d.itemSingular, id),
 				}, nil
 			}
 			return "", nil, err
 		} else if dryrun {
 			return "",
-				[]tea.Cmd{tea.Printf(dryrunSuccessText, d.classificationSingular, id)},
+				[]tea.Cmd{tea.Printf(dryrunSuccessText, d.itemSingular, id)},
 				nil
 		}
 		return "",
-			[]tea.Cmd{tea.Printf(deleteSuccessText, d.classificationSingular, id)},
+			[]tea.Cmd{tea.Printf(deleteSuccessText, d.itemSingular, id)},
 			nil
 
 	}
