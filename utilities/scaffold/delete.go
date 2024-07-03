@@ -1,3 +1,5 @@
+package scaffold
+
 /**
  * A delete action consumes a list of delete-able items, allowing the user to select them
  * interactively or by passing a (numeric or UUID) ID.
@@ -52,8 +54,6 @@ func (mi macroItem) FilterValue() string { return mi.name }
 func (mi macroItem) String() string      { return mi.name }
  *
 */
-
-package scaffold
 
 import (
 	"fmt"
