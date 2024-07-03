@@ -20,7 +20,23 @@ var (
 
 func NewQueriesScheduledDeleteAction() action.Pair {
 	return scaffold.NewDeleteAction(short, long, aliases,
-		"query", "queries", del, fetch2)
+		"query", "queries", del, func() ([]scaffold.Item[int32], error) {
+			//var items []list.Item
+			ss, err := connection.Client.GetScheduledSearchList()
+			if err != nil {
+				return nil, err
+			}
+			// sort the results on name
+			slices.SortFunc(ss, func(m1, m2 types.ScheduledSearch) int {
+				return strings.Compare(m1.Name, m2.Name)
+			})
+			var items = make([]scaffold.Item[int32], len(ss))
+			for i := range ss {
+				items[i] = scheduledSearchItem{id: 3, name: ""}
+			}
+
+			return items, nil
+		})
 }
 
 func del(dryrun bool, id int32) error {
