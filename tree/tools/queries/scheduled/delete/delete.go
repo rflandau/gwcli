@@ -11,13 +11,11 @@ import (
 )
 
 var (
-	short   string   = "Delete a macro"
-	long    string   = "Delete a macro by id or selection"
 	aliases []string = []string{}
 )
 
 func NewQueriesScheduledDeleteAction() action.Pair {
-	return scaffold.NewDeleteAction(short, long, aliases,
+	return scaffold.NewDeleteAction(aliases,
 		"query", "queries", del, func() ([]scaffold.Item[int32], error) {
 			//var items []list.Item
 			ss, err := connection.Client.GetScheduledSearchList()

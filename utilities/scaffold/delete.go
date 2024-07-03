@@ -1,3 +1,58 @@
+/**
+ * A delete action consumes a list of delete-able items, allowing the user to select them
+ * interactively or by passing a (numeric or UUID) ID.
+ *
+ * Delete actions have the --dryrun and --id default flags.
+ *
+ * Implementations will probably look a lot like:
+ *
+var aliases []string = []string{}
+
+	func NewMacroDeleteAction() action.Pair {
+		return scaffold.NewDeleteAction(aliases, "macro", "macros", del,
+			func() ([]scaffold.Item[uint64], error) {
+				ms, err := connection.Client.GetUserGroupsMacros()
+				if err != nil {
+					return nil, err
+				}
+				slices.SortFunc(ms, func(m1, m2 types.SearchMacro) int {
+					return strings.Compare(m1.Name, m2.Name)
+				})
+				var items = make([]scaffold.Item[uint64], len(ms))
+				for i := range ms {
+					items[i] = macroItem{id: ms[i].ID, name: ms[i].Name}
+				}
+				return items, nil
+			})
+	}
+
+	func del(dryrun bool, id uint64) error {
+		if dryrun {
+			_, err := connection.Client.GetMacro(id)
+			return err
+		}
+
+		return connection.Client.DeleteMacro(id)
+	}
+
+	type macroItem struct {
+		id   uint64
+		name string
+	}
+
+type macroItem struct {
+	id   uint64
+	name string
+}
+
+var _ scaffold.Item[uint64] = macroItem{}
+
+func (mi macroItem) ID() uint64          { return mi.id }
+func (mi macroItem) FilterValue() string { return mi.name }
+func (mi macroItem) String() string      { return mi.name }
+ *
+*/
+
 package scaffold
 
 import (
@@ -108,9 +163,13 @@ const (
 //
 // Fch is a function that fetches all, delete-able records for the user to pick from.
 // It returns a user-defined struct fitting the Item interface.
-func NewDeleteAction[I id_t](short, long string, aliases []string, singular, plural string,
+func NewDeleteAction[I id_t](aliases []string, singular, plural string,
 	del deleteFunc[I], fch fetchFunc[I]) action.Pair {
-	cmd := treeutils.NewActionCommand("delete", short, long, aliases,
+	cmd := treeutils.NewActionCommand(
+		"delete",
+		"delete a "+singular,
+		"delete a "+singular+" by id or selection",
+		aliases,
 		func(c *cobra.Command, s []string) {
 			// fetch values from flags
 			id, dryrun, err := fetchFlagValues[I](c.Flags())
