@@ -10,6 +10,7 @@ import (
 	"github.com/charmbracelet/bubbles/list"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
+	"github.com/google/uuid"
 	"github.com/gravwell/gravwell/v3/client"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
@@ -17,7 +18,7 @@ import (
 )
 
 type id_t interface {
-	constraints.Integer
+	constraints.Integer | uuid.UUID
 }
 
 // Returns str converted to an id of type I.
@@ -29,6 +30,10 @@ func FromString[I id_t](str string) (I, error) {
 	)
 
 	switch p := any(&ret).(type) {
+	case *uuid.UUID:
+		var u uuid.UUID
+		u, err = uuid.Parse(str)
+		*p = u
 	case *uint:
 		var i uint64
 		i, err = strconv.ParseUint(str, 10, 64)
