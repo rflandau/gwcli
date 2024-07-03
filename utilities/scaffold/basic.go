@@ -1,3 +1,5 @@
+package scaffold
+
 /**
  * A basic action is the simplest action: it does its thing and returns a string to be printed to the
  * terminal. Give it the function you want performed when the action is invoked and have it return
@@ -21,8 +23,6 @@ func New[parentpkg][pkg]Action() action.Pair {
 }
  *
 */
-
-package scaffold
 
 import (
 	"fmt"
