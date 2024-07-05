@@ -1,8 +1,47 @@
 package scaffold
 
-// A list action runs a given function that outputs an arbitrary data structure.
-// The results are sent to weave and packaged in a way that can be listed for the user.
-// This provides a consistent interface for actions that list arbitrary data.
+/**
+ * A list action runs a given function that outputs an arbitrary data structure.
+ * The results are sent to weave and packaged in a way that can be listed for the user.
+ * This provides a consistent interface for actions that list arbitrary data.
+ *
+ * List actions have the --output, --append, --json, --table, --CSV,
+ * and --show-columns default flags.
+var (
+	short string = ""
+	long  string = ""
+	aliases        []string = []string{}
+	defaultColumns []string = []string{"ID", "UID", "Name", "Description"}
+)
+
+func New[parentpkg]ListAction() action.Pair {
+	return scaffold.NewListAction(short, long, aliases, defaultColumns,
+		types.[X]{}, list, flags)
+}
+
+func flags() pflag.FlagSet {
+	addtlFlags := pflag.FlagSet{}
+	addtlFlags.Bool("all", false, "(admin-only) Fetch all [Y] on the system."+
+		" Supercedes --group. Ignored if you are not an admin.")
+	addtlFlags.Int32("group", 0, "Fetches all [Y] shared with the given group id.")
+	return addtlFlags
+}
+
+func list(c *grav.Client, fs *pflag.FlagSet) ([]types.[X], error) {
+	if all, err := fs.GetBool("all"); err != nil {
+		clilog.Writer.Errorf("failed to fetch '--all':%v\ndefaulting to false", err)
+	} else if all {
+		return c.GetAll[Y]()
+	}
+	if gid, err := fs.GetInt32("group"); err != nil {
+		clilog.Writer.Errorf("failed to fetch '--group':%v\nignoring", err)
+	} else if gid != 0 {
+		return c.GetGroup[Y](gid)
+	}
+
+	return c.GetUser[Y]()
+}
+*/
 
 import (
 	"fmt"
