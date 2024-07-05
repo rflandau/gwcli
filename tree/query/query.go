@@ -67,7 +67,6 @@ func initialLocalFlagSet() pflag.FlagSet {
 	fs.Bool("append", false, stylesheet.FlagAppendDesc)
 	fs.Bool("json", false, stylesheet.FlagJSONDesc)
 	fs.Bool("csv", false, stylesheet.FlagCSVDesc)
-	fs.Bool("no-history", false, "omit from query history")
 
 	// scheduled searches
 	fs.StringP("name", "n", "", "SCHEDULED. a title for the scheduled search")
@@ -85,13 +84,12 @@ func run(cmd *cobra.Command, args []string) {
 	var err error
 
 	var (
-		duration  time.Duration
-		qry       string
-		s         grav.Search // ongoing search
-		script    bool        // script mode
-		json      bool
-		csv       bool
-		nohistory bool
+		duration time.Duration
+		qry      string
+		s        grav.Search // ongoing search
+		script   bool        // script mode
+		json     bool
+		csv      bool
 	)
 
 	// fetch flags
@@ -109,10 +107,6 @@ func run(cmd *cobra.Command, args []string) {
 		return
 	}
 	if csv, err = cmd.Flags().GetBool("csv"); err != nil {
-		clilog.Tee(clilog.ERROR, cmd.ErrOrStderr(), err.Error())
-		return
-	}
-	if nohistory, err = cmd.Flags().GetBool("no-history"); err != nil {
 		clilog.Tee(clilog.ERROR, cmd.ErrOrStderr(), err.Error())
 		return
 	}
@@ -151,7 +145,7 @@ func run(cmd *cobra.Command, args []string) {
 
 	// submit the query
 	var schID int32
-	s, schID, err = tryQuery(qry, -duration, nohistory, schedule)
+	s, schID, err = tryQuery(qry, -duration, schedule)
 	if err != nil {
 		clilog.Tee(clilog.ERROR, cmd.ErrOrStderr(), err.Error())
 		return
@@ -279,7 +273,7 @@ func fetchSchedule(fs *pflag.FlagSet) (sch *schedule, err error) {
 // Validates and (if valid) submits the given query to the connected server instance.
 // Duration must be negative or zero. A positive duration will result in an error.
 // Returns a search if immediate and a scheduled search id if scheduled.
-func tryQuery(qry string, duration time.Duration, nohistory bool, sch *schedule) (grav.Search, int32, error) {
+func tryQuery(qry string, duration time.Duration, sch *schedule) (grav.Search, int32, error) {
 	var err error
 	if duration > 0 {
 		return grav.Search{}, 0, fmt.Errorf("duration must be negative or zero (given %v)", duration)
@@ -305,7 +299,7 @@ func tryQuery(qry string, duration time.Duration, nohistory bool, sch *schedule)
 		SearchEnd:    end.Format(timeFormat),
 		Background:   false,
 		SearchString: qry, // pull query from the commandline
-		NoHistory:    nohistory,
+		NoHistory:    false,
 		Preview:      false,
 	}
 	clilog.Writer.Infof("Executing foreground search '%v' from %v -> %v",

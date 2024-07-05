@@ -36,7 +36,6 @@ const (
 	appendToFile
 	json
 	csv
-	nohistory
 	scheduled
 	name
 	desc
@@ -57,7 +56,6 @@ type modifView struct {
 	appendToFile bool
 	json         bool
 	csv          bool
-	nohistory    bool
 	schedule     struct {
 		enabled    bool
 		nameTI     textinput.Model
@@ -181,9 +179,6 @@ func (mv *modifView) update(msg tea.Msg) []tea.Cmd {
 					mv.json = false
 				}
 				return nil
-			case nohistory:
-				mv.nohistory = !mv.nohistory
-				return nil
 			case scheduled:
 				mv.schedule.enabled = !mv.schedule.enabled
 				return nil
@@ -243,9 +238,6 @@ func (mv *modifView) view() string {
 	)
 
 	bldr.WriteString(drawOutpathSection(mv, !mv.schedule.enabled))
-
-	bldr.WriteString(viewBool(mv.selected, nohistory, mv.nohistory, "Exclude from History?",
-		stylesheet.Header1Style, false))
 
 	bldr.WriteString(drawScheduleSection(mv))
 
@@ -325,7 +317,6 @@ func (mv *modifView) reset() {
 	mv.appendToFile = false
 	mv.json = false
 	mv.csv = false
-	mv.nohistory = false
 	mv.schedule.enabled = false
 	mv.schedule.nameTI.Reset()
 	mv.schedule.descTI.Reset()

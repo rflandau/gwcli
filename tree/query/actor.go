@@ -283,11 +283,6 @@ func (q *query) SetArgs(_ *pflag.FlagSet, tokens []string) (string, []tea.Cmd, e
 	} else if x != "" {
 		q.modifiers.outfileTI.SetValue(x)
 	}
-	if x, err := localFS.GetBool("no-history"); err != nil {
-		return "", []tea.Cmd{}, err
-	} else {
-		q.modifiers.nohistory = x
-	}
 	if x, err := localFS.GetString("name"); err != nil {
 		return "", []tea.Cmd{}, err
 	} else if x != "" {
@@ -365,7 +360,7 @@ func (q *query) submitQuery() tea.Cmd {
 		sch.cronfreq = q.modifiers.schedule.cronfreqTI.Value()
 	}
 
-	s, schID, err := tryQuery(qry, -duration, q.modifiers.nohistory, sch)
+	s, schID, err := tryQuery(qry, -duration, sch)
 	if err != nil {
 		q.editor.err = err.Error()
 		return nil
