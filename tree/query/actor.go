@@ -159,7 +159,7 @@ func (q *query) Update(msg tea.Msg) tea.Cmd {
 			var data []string = make([]string, len(results))
 
 			for i, r := range results {
-				data[i] = fmt.Sprintf("%s\n", r.Data)
+				data[i] = string(r.Data)
 			}
 
 			s, cmd := datascope.NewDataScope(data, true, "query results")
