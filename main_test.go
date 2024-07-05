@@ -173,6 +173,75 @@ func TestNonInteractive(t *testing.T) {
 	connection.End()
 	connection.Client = nil
 
+	t.Run("tools macros delete [failure: missing id]", func(t *testing.T) {
+		//prepare IO
+		stdoutData, stderrData, err := mockIO()
+		if err != nil {
+			restoreIO()
+			panic(err)
+		}
+
+		// fetch the macros prior to deletion
+		myInfo, err := testclient.MyInfo()
+		if err != nil {
+			panic(err)
+		}
+		priorMacros, err := testclient.GetUserMacros(myInfo.UID)
+		if err != nil {
+			panic(err)
+		}
+		if len(priorMacros) < 1 {
+			t.Skip("no macros to delete")
+		}
+		// pick a macro for deletion
+		toDeleteID := priorMacros[0].ID
+		t.Logf("Selecting macro %v (ID: %v) for faux-deletion", priorMacros[0].Name, priorMacros[0].ID)
+
+		// create a new macro from the cli, in script mode
+		args := strings.Split(
+			"-u admin --password changeme --insecure --script tools macros delete",
+			" ")
+		errCode := tree.Execute(args)
+		restoreIO()
+		if errCode != 0 {
+			t.Errorf("expected 0 exit code, got: %v", errCode)
+		}
+
+		results := <-stdoutData
+		resultsErr := <-stderrData
+		if resultsErr == "" {
+			t.Error("empty stderr. Expected error message")
+		}
+		// check that no data was output to stdout in script and -o mode
+		if results != "" {
+			t.Errorf("non-empty stdout. Expected none. Got:\n(%v)\n", results)
+		}
+
+		// refetch macros to check that count hasn't changed
+		postMacros, err := testclient.GetUserMacros(myInfo.UID)
+		if err != nil {
+			panic(err)
+		}
+		if len(postMacros) != len(priorMacros) {
+			t.Fatalf("expected macro count to not change. post count: %v, pre count: %v",
+				len(postMacros), len(priorMacros))
+		}
+		// ensure the selected macro still exists
+		var found bool = false
+		for _, m := range postMacros {
+			if m.ID == toDeleteID {
+				found = true
+				break
+			}
+		}
+		if !found {
+			t.Fatalf("Did not find ID %v in the post-faux-deletion list", toDeleteID)
+		}
+	})
+
+	connection.End()
+	connection.Client = nil
+
 	t.Run("tools macros delete", func(t *testing.T) {
 		// fetch the macros prior to deletion
 		myInfo, err := testclient.MyInfo()
