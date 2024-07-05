@@ -5,6 +5,7 @@ import (
 	"gwcli/action"
 	"gwcli/clilog"
 	"gwcli/connection"
+	"gwcli/mother"
 	"gwcli/stylesheet"
 	"gwcli/treeutils"
 	"strings"
@@ -20,6 +21,12 @@ import (
 	"github.com/spf13/pflag"
 )
 
+const ( // flag names
+	flagName = "name"
+	flagDesc = "description"
+	flagExp  = "expansion"
+)
+
 func NewMacroCreateAction() action.Pair {
 	// create the action
 	cmd := treeutils.NewActionCommand("create", "create a new macro", "", []string{}, run)
@@ -29,19 +36,15 @@ func NewMacroCreateAction() action.Pair {
 
 	cmd.Flags().AddFlagSet(&fs)
 
-	cmd.MarkFlagRequired("name")
-	cmd.MarkFlagRequired("description")
-	cmd.MarkFlagRequired("expansion")
-
 	return treeutils.GenerateAction(cmd, NewCreate())
 }
 
 func flags() pflag.FlagSet {
 	fs := pflag.FlagSet{}
 
-	fs.StringP("name", "n", "", "the shorthand that will be expanded")
-	fs.StringP("description", "d", "", "(flavour) description")
-	fs.StringP("expansion", "e", "", "value for the macro to expand to")
+	fs.StringP(flagName, "n", "", "the shorthand that will be expanded")
+	fs.StringP(flagDesc, "d", "", "(flavour) description")
+	fs.StringP(flagExp, "e", "", "value for the macro to expand to")
 
 	return fs
 }
@@ -62,24 +65,47 @@ func createMacro(name, desc, value string) (uint64, error) {
 
 //#region cobra command
 
-func run(cmd *cobra.Command, _ []string) {
+func run(cmd *cobra.Command, s []string) {
+	// check script mode
+	script, err := cmd.Flags().GetBool("script")
+	if err != nil {
+		clilog.Tee(clilog.ERROR, cmd.ErrOrStderr(), err.Error())
+		return
+	}
 
 	// fetch data from flags
-	name, err := cmd.Flags().GetString("name")
+	name, err := cmd.Flags().GetString(flagName)
 	if err != nil {
 		clilog.Tee(clilog.ERROR, cmd.ErrOrStderr(), err.Error())
 		return
 	}
 	name = strings.ToUpper(name) // name must be caps
 
-	desc, err := cmd.Flags().GetString("description")
+	desc, err := cmd.Flags().GetString(flagDesc)
 	if err != nil {
 		clilog.Tee(clilog.ERROR, cmd.ErrOrStderr(), err.Error())
 		return
 	}
-	value, err := cmd.Flags().GetString("expansion")
+	value, err := cmd.Flags().GetString(flagExp)
 	if err != nil {
 		clilog.Tee(clilog.ERROR, cmd.ErrOrStderr(), err.Error())
+		return
+	}
+
+	// check required flags
+	if name == "" || desc == "" || value == "" {
+		if script { // fail out
+			fmt.Fprintf(
+				cmd.ErrOrStderr(), "--%v, --%v, --%v are required in script mode",
+				flagName, flagDesc, flagExp,
+			)
+			return
+		}
+		// spin up mother
+		if err := mother.Spawn(cmd.Root(), cmd, s); err != nil {
+			clilog.Tee(clilog.CRITICAL, cmd.ErrOrStderr(),
+				"failed to spawn a mother instance: "+err.Error())
+		}
 		return
 	}
 
