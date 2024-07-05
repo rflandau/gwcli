@@ -22,6 +22,10 @@ const (
 // UUIDs are not seeded, so make sure the uuid1str const actually exists on the gravwell server.
 // Unsetting the constant skips tests that require it
 func TestGenerateQueryString(t *testing.T) {
+	// initialize clilogger
+	var logFile = path.Join(os.TempDir(), "gwcli.Test_GenerateQueryString.log")
+	clilog.Init(logFile, "DEBUG")
+
 	const uuid1str = "" // ex: 52985695-ae81-4e82-ba1d-bce54f96def7
 
 	var restLogFile = path.Join(os.TempDir(), "gwcli.Test_GenerateQueryString.rest.log")
