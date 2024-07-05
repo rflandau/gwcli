@@ -18,7 +18,7 @@ var (
 	short          string   = "List scheduled queries"
 	long           string   = "Prints out all scheduled queries.\n"
 	aliases        []string = []string{}
-	defaultColumns []string = []string{"ID", "Name", "Description", "Expansion"}
+	defaultColumns []string = []string{"ID", "Name", "Description", "Duration", "Schedule"}
 )
 
 func NewScheduledQueriesListAction() action.Pair {
