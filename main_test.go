@@ -5,6 +5,7 @@ package main
 
 import (
 	"bytes"
+	"fmt"
 	"gwcli/connection"
 	"gwcli/tree"
 	"io"
@@ -33,11 +34,11 @@ func TestNonInteractive(t *testing.T) {
 	realStderr = os.Stderr
 
 	// connect to the server for manually calls
-	client, err := grav.NewOpts(grav.Opts{Server: server, UseHttps: false, InsecureNoEnforceCerts: true})
+	testclient, err := grav.NewOpts(grav.Opts{Server: server, UseHttps: false, InsecureNoEnforceCerts: true})
 	if err != nil {
 		panic(err)
 	}
-	if err = client.Login(user, password); err != nil {
+	if err = testclient.Login(user, password); err != nil {
 		panic(err)
 	}
 
@@ -47,11 +48,11 @@ func TestNonInteractive(t *testing.T) {
 
 	t.Run("tools macros list --csv", func(t *testing.T) {
 		// generate results manually, for comparison
-		myInfo, err := client.MyInfo()
+		myInfo, err := testclient.MyInfo()
 		if err != nil {
 			panic(err)
 		}
-		macros, err := client.GetUserMacros(myInfo.UID)
+		macros, err := testclient.GetUserMacros(myInfo.UID)
 		if err != nil {
 			panic(err)
 		}
@@ -82,6 +83,90 @@ func TestNonInteractive(t *testing.T) {
 		// compare against expected
 		if strings.TrimSpace(results) != strings.TrimSpace(want) {
 			t.Errorf("output mismatch\nwant:\n(%v)\ngot:\n(%v)\n", want, results)
+		}
+	})
+
+	// need to reset the client used by gwcli between runs
+	connection.End()
+	connection.Client = nil
+
+	t.Run("tools macros create", func(t *testing.T) {
+		// fetch the number of macros prior to creation
+		myInfo, err := testclient.MyInfo()
+		if err != nil {
+			panic(err)
+		}
+		priorMacros, err := testclient.GetUserMacros(myInfo.UID)
+		if err != nil {
+			panic(err)
+		}
+
+		// create a new macro from the cli, in script mode
+		args := strings.Split("-u admin --password changeme --insecure --script tools macros create -n testname -d testdesc -e testexpand", " ")
+		errCode := tree.Execute(args)
+		if errCode != 0 {
+			t.Errorf("expected 0 exit code, got: %v", errCode)
+		}
+
+		// refetch macros to check the count has increased by one
+		postMacros, err := testclient.GetUserMacros(myInfo.UID)
+		if err != nil {
+			panic(err)
+		}
+		if len(postMacros) != len(priorMacros)+1 {
+			t.Fatalf("expected post-create macros len (%v) == pre-create macros len+1 (%v)", len(postMacros), len(priorMacros))
+		}
+	})
+
+	connection.End()
+	connection.Client = nil
+
+	t.Run("tools macros delete", func(t *testing.T) {
+		// fetch the macros prior to deletion
+		myInfo, err := testclient.MyInfo()
+		if err != nil {
+			panic(err)
+		}
+		priorMacros, err := testclient.GetUserMacros(myInfo.UID)
+		if err != nil {
+			panic(err)
+		}
+		if len(priorMacros) < 1 {
+			t.Skip("no macros to delete")
+		}
+		// pick a macro for deletion
+		toDeleteID := priorMacros[0].ID
+		t.Logf("Selecting macro %v (ID: %v) for deletion", priorMacros[0].Name, priorMacros[0].ID)
+
+		// create a new macro from the cli, in script mode
+		args := strings.Split(fmt.Sprintf("-u admin --password changeme --insecure --script tools macros delete --id %v", toDeleteID), " ")
+		errCode := tree.Execute(args)
+		if errCode != 0 {
+			t.Errorf("expected 0 exit code, got: %v", errCode)
+		}
+
+		// refetch macros to check the count has increased by one
+		postMacros, err := testclient.GetUserMacros(myInfo.UID)
+		if err != nil {
+			panic(err)
+		}
+		if len(postMacros) != len(priorMacros)-1 {
+			t.Fatalf("expected post-create macros len (%v) == pre-create macros len+1 (%v)", len(postMacros), len(priorMacros))
+		}
+		// ensure the correct macro was deleted
+		for _, m := range postMacros {
+			if m.ID == toDeleteID {
+				t.Log("ID of deletion attempt found still alive.")
+				t.Log("priorMacros:\n")
+				for _, prior := range priorMacros {
+					t.Logf("%v (ID: %v)\n", prior.Name, prior.ID)
+				}
+				t.Log("postMacros:\n")
+				for _, post := range postMacros {
+					t.Logf("%v (ID: %v)\n", post.Name, post.ID)
+				}
+				t.FailNow()
+			}
 		}
 	})
 
@@ -132,7 +217,7 @@ func TestNonInteractive(t *testing.T) {
 			t.Errorf("json is not valid")
 		}*/
 		// fetch the search and check that record counts line up
-		searches, err := client.GetSearchHistoryRange(0, 5)
+		searches, err := testclient.GetSearchHistoryRange(0, 5)
 		if err != nil {
 			t.Fatal(err)
 		} else if len(searches) < 1 {
