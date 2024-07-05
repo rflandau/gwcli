@@ -3,13 +3,6 @@
     - [ ] blocked by Gabs
 - [ ] create Table exclude variant
 
-- [ ] Upgrade suggestions to dynamically map the entire tree
-    - Currently only works on immediate children and builtins
-    
-- [ ] If an action that required arguments (ex: query) is called bare and --script is not supplied, invoke Mother
-    - [ ] spin up standalone deletion picker if delete is called from cli and !script
-- [ ] Provide debouncer utility for children to use while loading
-
 - [ ] query editor syntax highlighting
 
 - [ ] Add datascope support and keys for downloading all data or just the current page of data
@@ -43,7 +36,6 @@
 
 - [ ] search around for a BubbleTea rendering fix for window size messages in non-altmode.
     - currently, get artefacting above most recent draw
-
 
 - query's modifView.go has a lot of repeated code for each bool and each textinput
     - [ ] genericize and consoliate the repeated code
