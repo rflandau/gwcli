@@ -185,6 +185,8 @@ func initOutFile(fs *pflag.FlagSet) (*os.File, error) {
 		return nil, err
 	} else if append {
 		flags |= os.O_APPEND
+	} else {
+		flags |= os.O_TRUNC
 	}
 	return os.OpenFile(outPath, flags, outFilePerm)
 }
