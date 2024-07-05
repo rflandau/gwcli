@@ -121,6 +121,58 @@ func TestNonInteractive(t *testing.T) {
 	connection.End()
 	connection.Client = nil
 
+	t.Run("tools macros delete (dryrun)", func(t *testing.T) {
+		// fetch the macros prior to deletion
+		myInfo, err := testclient.MyInfo()
+		if err != nil {
+			panic(err)
+		}
+		priorMacros, err := testclient.GetUserMacros(myInfo.UID)
+		if err != nil {
+			panic(err)
+		}
+		if len(priorMacros) < 1 {
+			t.Skip("no macros to delete")
+		}
+		// pick a macro for deletion
+		toDeleteID := priorMacros[0].ID
+		t.Logf("Selecting macro %v (ID: %v) for faux-deletion", priorMacros[0].Name, priorMacros[0].ID)
+
+		// create a new macro from the cli, in script mode
+		args := strings.Split(
+			fmt.Sprintf("-u admin --password changeme --insecure --script tools macros delete --dryrun --id %v",
+				toDeleteID),
+			" ")
+		errCode := tree.Execute(args)
+		if errCode != 0 {
+			t.Errorf("expected 0 exit code, got: %v", errCode)
+		}
+
+		// refetch macros to check that count hasn't changed
+		postMacros, err := testclient.GetUserMacros(myInfo.UID)
+		if err != nil {
+			panic(err)
+		}
+		if len(postMacros) != len(priorMacros) {
+			t.Fatalf("expected macro count to not change. post count: %v, pre count: %v",
+				len(postMacros), len(priorMacros))
+		}
+		// ensure the selected macro still exists
+		var found bool = false
+		for _, m := range postMacros {
+			if m.ID == toDeleteID {
+				found = true
+				break
+			}
+		}
+		if !found {
+			t.Fatalf("Did not find ID %v in the post-faux-deletion list", toDeleteID)
+		}
+	})
+
+	connection.End()
+	connection.Client = nil
+
 	t.Run("tools macros delete", func(t *testing.T) {
 		// fetch the macros prior to deletion
 		myInfo, err := testclient.MyInfo()
@@ -151,7 +203,7 @@ func TestNonInteractive(t *testing.T) {
 			panic(err)
 		}
 		if len(postMacros) != len(priorMacros)-1 {
-			t.Fatalf("expected post-delete macros len (%v) == pre-delete macros len+1 (%v)", len(postMacros), len(priorMacros))
+			t.Fatalf("expected post-delete macros len (%v) == pre-delete macros len-1 (%v)", len(postMacros), len(priorMacros))
 		}
 		// ensure the correct macro was deleted
 		for _, m := range postMacros {
