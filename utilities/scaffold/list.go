@@ -11,9 +11,11 @@ import (
 	"gwcli/connection"
 	"gwcli/stylesheet"
 	"gwcli/treeutils"
+	"os"
 	"reflect"
 	"strings"
 
+	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
 	grav "github.com/gravwell/gravwell/v3/client"
 	"github.com/gravwell/gravwell/v3/utils/weave"
@@ -45,6 +47,8 @@ func (f outputFormat) String() string {
 }
 
 //#endregion enumeration
+
+const outFilePerm = 0644
 
 // Function that retrieves an array of structs of type dataStruct
 type dataFunction[Any any] func(*grav.Client, *pflag.FlagSet) ([]Any, error)
@@ -111,11 +115,24 @@ func NewListAction[Any any](short, long string,
 			panic(err)
 		}
 
+		// check for output file
+		f, err := initOutFile(cmd.Flags())
+		if err != nil {
+			clilog.Tee(clilog.ERROR, cmd.ErrOrStderr(), err.Error())
+			return
+		}
+
 		output, err := listOutput(cmd.Flags(), columns, !noColor, dataFn)
 		if err != nil {
 			clilog.Tee(clilog.ERROR, cmd.ErrOrStderr(), err.Error())
 		}
-		fmt.Println(output)
+
+		if f != nil {
+			fmt.Fprintln(f, output)
+		} else {
+			fmt.Fprintln(cmd.OutOrStdout(), output)
+		}
+
 	}
 
 	// generate the command
@@ -142,14 +159,34 @@ func NewListAction[Any any](short, long string,
 // define the basic flags shared by all list actions
 func listStarterFlags() pflag.FlagSet {
 	fs := pflag.FlagSet{}
-	fs.Bool("csv", false, "output results as csv")
-	fs.Bool("json", false, "output results as json")
-	fs.Bool("table", true, "output results in a human-readable table") // default
+	fs.Bool("csv", false, stylesheet.FlagCSVDesc)
+	fs.Bool("json", false, stylesheet.FlagJSONDesc)
+	fs.Bool("table", true, "display results in a human-readable table") // default
 	fs.StringSlice("columns", []string{},
-		"comma-seperated list of columns to include in the output."+
+		"comma-seperated list of columns to include in the results."+
 			"Use --show-columns to see the full list of columns.")
 	fs.Bool("show-columns", false, "display the list of fully qualified column names and die.")
+	fs.StringP("output", "o", "", stylesheet.FlagOutputDesc)
+	fs.Bool("append", false, stylesheet.FlagAppendDesc)
 	return fs
+}
+
+// Opens a file, per the given --output and --append flags in the flagset, and returns its handle.
+// Returns nil if the flags do not call for a file.
+func initOutFile(fs *pflag.FlagSet) (*os.File, error) {
+	outPath, err := fs.GetString("output")
+	if err != nil {
+		return nil, err
+	} else if strings.TrimSpace(outPath) == "" {
+		return nil, nil
+	}
+	var flags int = os.O_CREATE | os.O_WRONLY
+	if append, err := fs.GetBool("append"); err != nil {
+		return nil, err
+	} else if append {
+		flags |= os.O_APPEND
+	}
+	return os.OpenFile(outPath, flags, outFilePerm)
 }
 
 // Given a **parsed** flagset, determines and returns output format
@@ -216,6 +253,7 @@ type ListAction[Any any] struct {
 	columns     []string
 	showColumns bool          // print columns and exit
 	fs          pflag.FlagSet // current flagset, parsed or unparsed
+	outFile     *os.File      // file to output results to (or nil)
 
 	// data shielded from .Reset()
 	DefaultFormat  outputFormat
@@ -272,6 +310,11 @@ func (la *ListAction[T]) Update(msg tea.Msg) tea.Cmd {
 
 	la.done = true
 
+	if la.outFile != nil {
+		fmt.Fprint(la.outFile, s)
+		return textinput.Blink
+	}
+
 	return tea.Println(s)
 }
 
@@ -296,6 +339,8 @@ func (la *ListAction[T]) Reset() error {
 		afs := la.afsFunc()
 		la.fs.AddFlagSet(&afs)
 	}
+
+	la.outFile = nil
 	return nil
 }
 
@@ -331,6 +376,12 @@ func (la *ListAction[T]) SetArgs(
 		clilog.Writer.Warnf("Failed to fetch no-color from inherited: %v", err)
 	}
 	la.color = !nc
+
+	if f, err := initOutFile(&fs); err != nil {
+		return "", nil, err
+	} else {
+		la.outFile = f
+	}
 
 	return "", nil, nil
 }
