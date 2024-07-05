@@ -184,7 +184,7 @@ func NewDeleteAction[I id_t](aliases []string, singular, plural string,
 					clilog.Tee(clilog.ERROR, c.ErrOrStderr(), err.Error())
 					return
 				} else if script {
-					fmt.Fprintf(c.ErrOrStderr(), "--id is required in script mode")
+					fmt.Fprintln(c.ErrOrStderr(), "--id is required in script mode")
 					return
 				}
 				// spin up mother
