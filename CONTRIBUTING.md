@@ -123,6 +123,14 @@ flowchart
 
 Where possible, use the functionality in the scaffold package to rapidly construct new actions that fit one of the scaffold archetypes.
 
+## Local Versus Persistent Flags
+
+There are a number of flags that are useful and functionally identically across a number of actions (output, append, CSV/JSON, ...). Therefore, we could make them persistent. However, they do not make sense for some actions, particularly basic actions.
+
+As such, I am not including these common flags as persistent's at root level, lest it require every action to support tangential flags. Instead, common elements of these flags are stored in the stylesheet, to at least provide some degree of consistency across flags that are technically unrelated.
+
+Other flags, such as --script, must be supported by all actions anyways, so they are persistent at a root level. 
+
 # Other Packages
 
 ## Supporting Models
