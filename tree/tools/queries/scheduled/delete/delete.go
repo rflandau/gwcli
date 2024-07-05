@@ -1,9 +1,11 @@
 package delete
 
 import (
+	"fmt"
 	"gwcli/action"
 	"gwcli/connection"
 	"gwcli/utilities/scaffold"
+	"math"
 	"slices"
 	"strings"
 
@@ -28,9 +30,13 @@ func NewQueriesScheduledDeleteAction() action.Pair {
 			})
 			var items = make([]scaffold.Item[int32], len(ss))
 			for i := range ss {
-				items[i] = scheduledSearchItem{id: ss[i].ID, name: ss[i].Name}
+				items[i] = scheduledSearchItem{
+					id:       ss[i].ID,
+					name:     ss[i].Name,
+					query:    ss[i].SearchString,
+					duration: ss[i].Duration,
+				}
 			}
-
 			return items, nil
 		})
 }
@@ -47,8 +53,10 @@ func del(dryrun bool, id int32) error {
 }
 
 type scheduledSearchItem struct {
-	id   int32 // the id used to delete an ss
-	name string
+	id       int32 // the id used to delete an ss
+	name     string
+	query    string
+	duration int64
 }
 
 var _ scaffold.Item[int32] = scheduledSearchItem{}
@@ -62,5 +70,6 @@ func (ssi scheduledSearchItem) FilterValue() string {
 }
 
 func (ssi scheduledSearchItem) String() string {
-	return ssi.name
+	return fmt.Sprintf("%v (looks %v seconds into the past)\n%v",
+		ssi.name, math.Abs(float64(ssi.duration)), ssi.query)
 }

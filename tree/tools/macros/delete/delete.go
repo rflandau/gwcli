@@ -1,6 +1,7 @@
 package delete
 
 import (
+	"fmt"
 	"gwcli/action"
 	"gwcli/connection"
 	"gwcli/utilities/scaffold"
@@ -26,7 +27,12 @@ func NewMacroDeleteAction() action.Pair {
 			})
 			var items = make([]scaffold.Item[uint64], len(ms))
 			for i := range ms {
-				items[i] = macroItem{id: ms[i].ID, name: ms[i].Name}
+				items[i] = macroItem{
+					id:          ms[i].ID,
+					name:        ms[i].Name,
+					description: ms[i].Description,
+					expansion:   ms[i].Expansion,
+				}
 			}
 			return items, nil
 		})
@@ -41,12 +47,17 @@ func del(dryrun bool, id uint64) error {
 }
 
 type macroItem struct {
-	id   uint64
-	name string
+	id          uint64
+	name        string
+	description string
+	expansion   string
 }
 
 var _ scaffold.Item[uint64] = macroItem{}
 
 func (mi macroItem) ID() uint64          { return mi.id }
 func (mi macroItem) FilterValue() string { return mi.name }
-func (mi macroItem) String() string      { return mi.name }
+func (mi macroItem) String() string {
+	return fmt.Sprintf("%v (expands to '%v')\n%v",
+		mi.name, mi.expansion, mi.description)
+}
