@@ -405,8 +405,9 @@ func outputSearchResults(file *os.File, s grav.Search, json, csv bool) ([]types.
 		if !r.AdditionalEntries { // all records obtained
 			break
 		}
-		low = high + 1 // ! this assumes Get*Results is inclusive
-		high = high + pageSize + 1
+		// ! Get*Results is half-open [)
+		low = high
+		high = high + pageSize
 	}
 
 	clilog.Writer.Infof("%d results obtained", len(results))
