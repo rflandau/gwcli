@@ -151,7 +151,7 @@ func TestNonInteractive(t *testing.T) {
 			panic(err)
 		}
 		if len(postMacros) != len(priorMacros)-1 {
-			t.Fatalf("expected post-create macros len (%v) == pre-create macros len+1 (%v)", len(postMacros), len(priorMacros))
+			t.Fatalf("expected post-delete macros len (%v) == pre-delete macros len+1 (%v)", len(postMacros), len(priorMacros))
 		}
 		// ensure the correct macro was deleted
 		for _, m := range postMacros {
