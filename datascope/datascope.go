@@ -124,7 +124,20 @@ func NewDataScope(data []string, motherRunning bool, title string) (DataScope, t
 // displays the current page
 func (s *DataScope) displayPage() string {
 	start, end := s.pager.GetSliceBounds(len(s.data))
-	return strings.Join(s.data[start:end], "\n")
+	data := s.data[start:end]
+	// apply alterating color scheme
+	var bldr strings.Builder
+	var trueIndex int = start // index of full results, between start and end
+	for _, d := range data {
+		if trueIndex%2 == 0 {
+			bldr.WriteString(evenEntryStyle.Render(d))
+		} else {
+			bldr.WriteString(oddEntryStyle.Render(d))
+		}
+		bldr.WriteRune('\n')
+		trueIndex += 1
+	}
+	return bldr.String()
 }
 
 // generates a header with the box+line and page pips
@@ -166,5 +179,8 @@ var infoStyle = func() lipgloss.Style {
 	b.Left = "┤"
 	return viewportHeaderBoxStyle.BorderStyle(b)
 }()
+
+var evenEntryStyle = lipgloss.NewStyle()
+var oddEntryStyle = lipgloss.NewStyle().Foreground(stylesheet.SecondaryColor)
 
 //#endregion
