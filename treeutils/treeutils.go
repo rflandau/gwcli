@@ -82,7 +82,7 @@ var NavRun = func(cmd *cobra.Command, args []string) {
 		return
 	}
 	// invoke mother
-	if err := mother.Spawn(cmd.Root(), cmd.Parent(), []string{}); err != nil {
+	if err := mother.Spawn(cmd.Root(), cmd, []string{}); err != nil {
 		clilog.Tee(clilog.CRITICAL, cmd.ErrOrStderr(),
 			"failed to spawn a mother instance: "+err.Error())
 	}
