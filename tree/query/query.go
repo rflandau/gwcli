@@ -11,6 +11,7 @@ import (
 	"gwcli/clilog"
 	"gwcli/connection"
 	"gwcli/datascope"
+	"gwcli/mother"
 	"gwcli/stylesheet"
 	"gwcli/treeutils"
 	"io"
@@ -120,8 +121,16 @@ func run(cmd *cobra.Command, args []string) {
 	if err != nil {
 		clilog.Tee(clilog.ERROR, cmd.ErrOrStderr(), err.Error())
 		return
-	} else if qry == "" { // superfluous query, don't bother
-		clilog.Tee(clilog.INFO, cmd.ErrOrStderr(), ErrSuperfluousQuery)
+	} else if qry == "" { // superfluous query, fail or spawn mother
+		if script { // fail out
+			clilog.Tee(clilog.INFO, cmd.OutOrStdout(), "query is empty. Exitting...")
+			return
+		}
+
+		if err := mother.Spawn(cmd.Root(), cmd, args); err != nil {
+			clilog.Tee(clilog.CRITICAL, cmd.ErrOrStderr(),
+				"failed to spawn a mother instance: "+err.Error())
+		}
 		return
 	}
 
