@@ -11,6 +11,7 @@ import (
 	"gwcli/clilog"
 	"gwcli/connection"
 	"gwcli/datascope"
+	"gwcli/stylesheet"
 	"gwcli/treeutils"
 	"io"
 	"os"
@@ -62,10 +63,10 @@ func initialLocalFlagSet() pflag.FlagSet {
 
 	fs.DurationP("duration", "t", time.Hour*1, "the historical timeframe (now minus duration) the query should pour over.\nEx: the past hour")
 	fs.StringP("reference", "r", "", "a reference to a query library item to execute instead of a provided query.")
-	fs.StringP("output", "o", "", "file to write results to. Truncates file unless --append is also given.")
-	fs.Bool("append", false, "append to the given output file instead of truncating.")
-	fs.Bool("json", false, "output results as JSON. Only effectual with --output. Mutually exclusive with CSV.")
-	fs.Bool("csv", false, "output results as CSV. Only effectual with --output. Mutually exclusive with JSON.")
+	fs.StringP("output", "o", "", stylesheet.FlagOutputDesc)
+	fs.Bool("append", false, stylesheet.FlagAppendDesc)
+	fs.Bool("json", false, stylesheet.FlagJSONDesc)
+	fs.Bool("csv", false, stylesheet.FlagCSVDesc)
 	fs.Bool("no-history", false, "omit from query history")
 
 	// scheduled searches
