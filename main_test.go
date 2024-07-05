@@ -9,6 +9,7 @@ import (
 	"gwcli/connection"
 	"gwcli/tree"
 	"io"
+	"math/rand"
 	"os"
 	"strings"
 	"testing"
@@ -353,6 +354,72 @@ func TestNonInteractive(t *testing.T) {
 				// TODO
 				break
 			}
+		}
+
+		// clean up
+		if !t.Failed() {
+			os.Remove(outfn)
+		}
+	})
+
+	connection.End()
+	connection.Client = nil
+
+	t.Run("query reference ID", func(t *testing.T) {
+		// fetch a scheduled query to run
+		ssl, err := testclient.GetScheduledSearchList()
+		if err != nil {
+			panic(err)
+		} else if len(ssl) < 1 {
+			t.Skip("no existing scheduled searches to test against")
+		}
+		ssid := ssl[rand.Intn(len(ssl))].ID
+		ssqry := ssl[rand.Intn(len(ssl))].SearchString
+
+		// prepare IO
+		stdoutData, stderrData, err := mockIO()
+		if err != nil {
+			restoreIO()
+			panic(err)
+		}
+
+		// run the test body
+		outfn := "testnoninteractive.query_reference_ID.json"
+		args := strings.Split(
+			fmt.Sprintf("--insecure --script query -r %v -o %v --json", ssid, outfn),
+			" ")
+
+		errCode := tree.Execute(args)
+		restoreIO()
+		if errCode != 0 {
+			t.Errorf("non-zero error code: %v", errCode)
+		}
+
+		// fetch outputs
+		_ = <-stdoutData
+		resultsErr := <-stderrData
+		if resultsErr != "" {
+			t.Errorf("non-empty stderr:\n(%v)", resultsErr)
+		}
+
+		// check in search history for our expected search
+		prevSearchNumToCheck := 7
+		searches, err := testclient.GetSearchHistoryRange(0, prevSearchNumToCheck)
+		if err != nil {
+			panic(err)
+		} else if len(searches) < 1 {
+			t.Fatalf("found no previous searches")
+		}
+		var found bool
+		for _, s := range searches {
+			if s.UserQuery == ssqry {
+				found = true
+				break
+			}
+		}
+		if !found {
+			t.Fatalf("Failed to find executed query (%v) in past %v searches",
+				ssqry, prevSearchNumToCheck)
 		}
 
 		// clean up
