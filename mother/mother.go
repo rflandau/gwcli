@@ -381,9 +381,7 @@ func processActionHandoff(m *Mother, actionCmd *cobra.Command, remTokens []strin
 
 // Call *after* moving to update the current command suggestions
 func (m *Mother) updateSuggestions() {
-	var suggest []string
-	children := m.pwd.Commands()
-	suggest = make([]string, len(children)+len(builtins))
+	var suggest []string = make([]string, len(builtins))
 	// add builtins
 	var i int = 0
 	for k := range builtins {
@@ -391,17 +389,44 @@ func (m *Mother) updateSuggestions() {
 		i++
 	}
 
-	// add current sub commands
+	// recursively add children of current command
+	children := m.pwd.Commands()
 	for _, c := range children {
-		// disable cobra-special commands
-		if c.Name() == "help" || c.Name() == "completions" {
-			continue
+		// dive into navs
+		if c.GroupID == group.NavID {
+			suggest = append(suggest, plumbCommand(c)...)
+		} else {
+			suggest = append(suggest, c.Name())
 		}
-		suggest[i] = c.Name()
-		i++
 	}
 
+	clilog.Writer.Debugf("%v: generated suggestions: %v", m.pwd.Name(), suggest)
+
 	m.ti.SetSuggestions(suggest)
+}
+
+// helper subroutine for updateSuggestions().
+// Recursively searches down the given nav, returning all actions (at any depth), rooted at the
+// given nav.
+//
+// Drives the suggestions of mother's prompt.
+//
+// Very similar to the tree action at root.
+func plumbCommand(nav *navCmd) []string {
+	self := nav.Name()
+	var suggests []string = []string{self}
+	for _, child := range nav.Commands() {
+		switch child.GroupID {
+		case group.NavID:
+			subchildren := plumbCommand(child)
+			for _, sc := range subchildren {
+				suggests = append(suggests, self+" "+sc)
+			}
+		default: // actions end here
+			suggests = append(suggests, self+" "+child.Name())
+		}
+	}
+	return suggests
 }
 
 // unsetAction resets the current active command/action, clears actives, and returns control to
