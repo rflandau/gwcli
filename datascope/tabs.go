@@ -131,7 +131,12 @@ func (s *DataScope) renderTabs(width int) string {
 			border.BottomRight = "┘"
 		}
 		style = style.Border(border)
-		rendered[i] = style.Render(t.name)
+		if i == int(results) {
+			rendered[i] = style.Foreground(stylesheet.AccentColor1).Render(t.name)
+		} else {
+			rendered[i] = style.Render(t.name)
+		}
+
 	}
 
 	row := lipgloss.JoinHorizontal(lipgloss.Top, rendered...)
