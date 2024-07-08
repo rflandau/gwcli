@@ -162,7 +162,7 @@ func (q *query) Update(msg tea.Msg) tea.Cmd {
 				data[i] = string(r.Data)
 			}
 
-			s, cmd := datascope.NewDataScope(data, true, "query results")
+			s, cmd := datascope.NewDataScope(data, true)
 			q.scope = s
 
 			return cmd

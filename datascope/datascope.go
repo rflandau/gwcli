@@ -1,6 +1,7 @@
-// Datascope is a combination of the scrolling viewport and paginator.
+// Datascope is tabbed, scrolling viewport with a paginator built into the results view.
 // It displays arbitrary data, one page at a time, in the alt buffer.
 // As the user pages through, the viewport automatically updates with the contents of the new page.
+// The first tab contains the actual results, while
 //
 // Like busywait, this can be invoked for Cobra or for Mother.
 package datascope
@@ -13,6 +14,7 @@ import (
 	"os"
 	"strings"
 
+	"github.com/charmbracelet/bubbles/key"
 	"github.com/charmbracelet/bubbles/paginator"
 	"github.com/charmbracelet/bubbles/viewport"
 	tea "github.com/charmbracelet/bubbletea"
@@ -25,69 +27,16 @@ type DataScope struct {
 	pager         paginator.Model
 	ready         bool
 	data          []string // complete set of data to be paged
-	Title         string   // displayed in the header box
 	motherRunning bool     // without Mother's support, we need to handle killkeys and death alone
-	hdrHeight     int
 	ftrHeight     int
 	marginHeight  int
+
+	tabs      []tab
+	showTabs  bool
+	activeTab uint
 }
 
-func (s DataScope) Init() tea.Cmd {
-	return nil
-}
-
-func (s DataScope) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
-	// mother takes care of kill keys if she is running
-	if !s.motherRunning {
-		if kill := killer.CheckKillKeys(msg); kill != killer.None {
-			clilog.Writer.Infof("Self-handled kill key, with kill type %v", kill)
-			return s, tea.Batch(tea.Quit, tea.ExitAltScreen)
-		}
-	}
-	var (
-		cmd  tea.Cmd
-		cmds []tea.Cmd
-	)
-	switch msg := msg.(type) {
-	case tea.WindowSizeMsg:
-
-		if !s.ready { // if we are not ready, use these dimensions to become ready
-			s.vp = viewport.New(msg.Width, msg.Height-s.marginHeight)
-			s.vp.YPosition = s.hdrHeight
-			s.vp.HighPerformanceRendering = false
-			s.vp.SetContent(s.displayPage())
-			s.ready = true
-		} else { // just an update
-			s.vp.Width = msg.Width
-			s.vp.Height = msg.Height - s.marginHeight
-		}
-	}
-	prevPage := s.pager.Page
-	s.pager, cmd = s.pager.Update(msg)
-	cmds = append(cmds, cmd)
-	// pass the new content to the view
-	s.vp.SetContent(s.displayPage())
-	s.vp, cmd = s.vp.Update(msg)
-	cmds = append(cmds, cmd)
-	if prevPage != s.pager.Page { // if page changed, reset to top of view
-		s.vp.GotoTop()
-	}
-	return s, tea.Sequence(cmds...)
-}
-
-func (s DataScope) View() string {
-	if !s.ready {
-		return "\nInitializing..."
-	}
-	return fmt.Sprintf("%s\n%s\n%s", s.header(), s.vp.View(), s.footer())
-}
-
-func CobraNew(data []string, title string) (p *tea.Program) {
-	ds, _ := NewDataScope(data, false, title)
-	return tea.NewProgram(ds, tea.WithAltScreen())
-}
-
-func NewDataScope(data []string, motherRunning bool, title string) (DataScope, tea.Cmd) {
+func NewDataScope(data []string, motherRunning bool) (DataScope, tea.Cmd) {
 	// set up backend paginator
 	p := paginator.New()
 	p.Type = paginator.Dots
@@ -100,13 +49,17 @@ func NewDataScope(data []string, motherRunning bool, title string) (DataScope, t
 		pager:         p,
 		ready:         false,
 		data:          data,
-		Title:         title,
 		motherRunning: motherRunning,
 	}
+
+	// set up tabs
+	s.tabs = s.generateTabs()
+	s.activeTab = results
+
 	// pre-set heights
-	s.hdrHeight = lipgloss.Height(s.header())
 	s.ftrHeight = lipgloss.Height(s.footer())
-	s.marginHeight = s.hdrHeight + s.ftrHeight // extra space not showing content
+	s.marginHeight = s.ftrHeight // extra space not showing content // TODO include tab height
+
 	// mother does not start in alt screen, and thus requires manual measurements
 	if motherRunning {
 		return s, tea.Sequence(tea.EnterAltScreen, func() tea.Msg {
@@ -119,6 +72,51 @@ func NewDataScope(data []string, motherRunning bool, title string) (DataScope, t
 	}
 	return s, nil
 
+}
+
+func (s DataScope) Init() tea.Cmd {
+	return nil
+}
+
+func (s DataScope) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+	//clilog.Writer.Debugf("msg: %v\ntab: %v", msg, s.tabs[s.activeTab].name)
+
+	// mother takes care of kill keys if she is running
+	if !s.motherRunning {
+		if kill := killer.CheckKillKeys(msg); kill != killer.None {
+			clilog.Writer.Infof("Self-handled kill key, with kill type %v", kill)
+			return s, tea.Batch(tea.Quit, tea.ExitAltScreen)
+		}
+	}
+
+	switch msg := msg.(type) {
+	case tea.KeyMsg: // tab-agnostic keys
+		if key.Matches(msg, showTabsKey) {
+			s.showTabs = true
+			return s, nil
+		}
+	case tea.WindowSizeMsg:
+		if !s.ready { // if we are not ready, use these dimensions to become ready
+			s.vp = viewport.New(msg.Width, msg.Height-s.marginHeight)
+			s.vp.HighPerformanceRendering = false
+			s.vp.SetContent(s.displayPage())
+			s.ready = true
+		} else { // just an update
+			s.vp.Width = msg.Width
+			s.vp.Height = msg.Height - s.marginHeight
+		}
+	}
+
+	return s, s.tabs[s.activeTab].updateFunc(&s, msg)
+}
+
+func (s DataScope) View() string {
+	return s.tabs[s.activeTab].viewFunc(&s)
+}
+
+func CobraNew(data []string, title string) (p *tea.Program) {
+	ds, _ := NewDataScope(data, false)
+	return tea.NewProgram(ds, tea.WithAltScreen())
 }
 
 // displays the current page
@@ -140,16 +138,6 @@ func (s *DataScope) displayPage() string {
 	return bldr.String()
 }
 
-// generates a header with the box+line and page pips
-func (s *DataScope) header() string {
-	title := viewportHeaderBoxStyle.Render(s.Title)
-	line := lipgloss.NewStyle().Foreground(stylesheet.PrimaryColor).Render(
-		strings.Repeat("─", max(0, s.vp.Width-lipgloss.Width(title))),
-	) + "\n"
-	dotsLine := lipgloss.JoinVertical(lipgloss.Center, s.pager.View(), line)
-	return lipgloss.JoinHorizontal(lipgloss.Center, title, dotsLine)
-}
-
 // generates a footer with the box+line and help keys
 func (s *DataScope) footer() string {
 	percent := infoStyle.Render(fmt.Sprintf("%3.f%%", s.vp.ScrollPercent()*100))
@@ -157,12 +145,15 @@ func (s *DataScope) footer() string {
 		strings.Repeat("─", max(0, s.vp.Width-lipgloss.Width(percent))),
 	)
 	help := stylesheet.GreyedOutStyle.Render(
-		fmt.Sprintf("%v page • %v scroll • esc: quit", stylesheet.LeftRight, stylesheet.UpDown),
+		fmt.Sprintf("%v page • %v scroll • tab: cycle • esc: quit",
+			stylesheet.LeftRight, stylesheet.UpDown),
 	)
 
 	lineHelp := lipgloss.JoinVertical(lipgloss.Center, line, help)
 
-	return lipgloss.JoinHorizontal(lipgloss.Center, lineHelp, percent)
+	return lipgloss.JoinHorizontal(lipgloss.Center, lineHelp, percent) +
+		"\n" +
+		lipgloss.JoinVertical(lipgloss.Center, s.pager.View(), line)
 }
 
 // #region styling
