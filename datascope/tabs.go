@@ -5,6 +5,7 @@ import (
 	"gwcli/stylesheet"
 
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/charmbracelet/lipgloss"
 )
 
 type tab struct {
@@ -78,5 +79,63 @@ func viewResults(s *DataScope) string {
 	if !s.ready {
 		return "\nInitializing..."
 	}
-	return fmt.Sprintf("%s\n%s", s.vp.View(), s.footer())
+	return fmt.Sprintf("%s\n%s", s.vp.View(), s.renderFooter())
 }
+
+// #region tab drawing
+func tabBorderWithBottom(left, middle, right string) lipgloss.Border {
+	border := lipgloss.RoundedBorder()
+	border.BottomLeft = left
+	border.Bottom = middle
+	border.BottomRight = right
+	return border
+}
+
+var (
+	inactiveTabBorder = tabBorderWithBottom("┴", "─", "┴")
+	activeTabBorder   = tabBorderWithBottom("┘", " ", "└")
+	highlightColor    = lipgloss.AdaptiveColor{Light: "#874BFD", Dark: "#7D56F4"}
+	inactiveTabStyle  = lipgloss.NewStyle().Border(inactiveTabBorder, true).
+				BorderForeground(highlightColor).
+				Padding(0, 1).AlignHorizontal(lipgloss.Center)
+	activeTabStyle = inactiveTabStyle.Border(activeTabBorder, true)
+)
+
+func (s *DataScope) renderTabs(width int) string {
+
+	var rendered []string = make([]string, len(s.tabs))
+
+	margin, tabCount := 2, len(s.tabs)
+
+	// width = (tab_width * tab_count) + (margin * tab_count-1)
+	// tab_width = (width - margin*(tab_count-1))/tab_count
+	tabWidth := (width - (margin*tabCount - 1)) / tabCount
+	// iterate and draw each tab, with special styling on the active tab
+	for i, t := range s.tabs {
+		var style lipgloss.Style
+		isFirst, isLast, isActive := i == 0, i == len(s.tabs)-1, i == int(s.activeTab)
+		if isActive {
+			style = activeTabStyle
+		} else {
+			style = inactiveTabStyle
+		}
+		style = style.Width(tabWidth)
+		border, _, _, _, _ := style.GetBorder()
+		if isFirst && isActive {
+			border.BottomLeft = "╵"
+		} else if isFirst && !isActive {
+			border.BottomLeft = "└"
+		} else if isLast && isActive {
+			border.BottomRight = "╵"
+		} else if isLast && !isActive {
+			border.BottomRight = "┘"
+		}
+		style = style.Border(border)
+		rendered[i] = style.Render(t.name)
+	}
+
+	row := lipgloss.JoinHorizontal(lipgloss.Top, rendered...)
+	return lipgloss.NewStyle().AlignHorizontal(lipgloss.Left).Render(row)
+}
+
+//#endregion
