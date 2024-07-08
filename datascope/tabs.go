@@ -5,6 +5,7 @@ import (
 	"gwcli/stylesheet"
 	"strings"
 
+	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/charmbracelet/lipgloss/table"
@@ -40,7 +41,7 @@ func (s *DataScope) generateTabs() []tab {
 		updateFunc: func(*DataScope, tea.Msg) tea.Cmd {
 			return nil
 		},
-		viewFunc: func(*DataScope) string { return "" }}
+		viewFunc: viewDownload}
 	t[schedule] = tab{
 		name:       "schedule",
 		updateFunc: func(*DataScope, tea.Msg) tea.Cmd { return nil },
@@ -48,6 +49,27 @@ func (s *DataScope) generateTabs() []tab {
 
 	return t
 }
+
+// if this field is the selected field, returns the selection rune.
+// otherwise, returns a space
+func pip(selected, field uint) rune {
+	if selected == field {
+		return stylesheet.SelectionPrefix
+	}
+	return ' '
+}
+
+// Returns a string representing the current state of the given boolean value.
+func viewBool(selected uint, fieldNum uint, field bool, fieldName string, sty lipgloss.Style) string {
+	var checked rune = ' '
+	if field {
+		checked = '✓'
+	}
+
+	return fmt.Sprintf("%c[%s] %s\n", pip(selected, fieldNum), sty.Render(string(checked)), sty.Render(fieldName))
+}
+
+//#region results tab
 
 func updateResults(s *DataScope, msg tea.Msg) tea.Cmd {
 	var (
@@ -75,7 +97,9 @@ func viewResults(s *DataScope) string {
 	return fmt.Sprintf("%s\n%s", s.vp.View(), s.renderFooter(s.vp.Width))
 }
 
-//#region help
+//#endregion
+
+//#region help tab
 
 const cellWidth int = 25
 
@@ -126,6 +150,81 @@ func recompileHelp(s *DataScope) {
 	// 'place' the table in the center of the *viewport*, horizontally and vertically
 	compiledHelpString = lipgloss.Place(s.vp.Width, s.vp.Height,
 		lipgloss.Center, lipgloss.Center, tbl.String())
+}
+
+//#endregion
+
+//#region download tab
+
+type downloadCursor = uint // current active item
+
+const (
+	dllowBound downloadCursor = iota
+	dloutfile
+	dlfmtjson
+	dlfmtcsv
+	dlfmtraw
+	dlappend
+	dlhighBound
+)
+
+type downloadTab struct {
+	outfileTI textinput.Model // user input file to write to
+	format    struct {
+		json bool
+		csv  bool
+		raw  bool
+	}
+	append   bool // append to the outfile instead of truncating?
+	selected uint
+}
+
+func initDownloadTab() downloadTab {
+	d := downloadTab{
+		format: struct {
+			json bool
+			csv  bool
+			raw  bool
+		}{json: false, csv: false, raw: true},
+		outfileTI: textinput.New(),
+		append:    false,
+	}
+
+	d.outfileTI.Prompt = ""
+	d.outfileTI.Width = 20
+	d.outfileTI.Placeholder = "(optional)"
+	d.outfileTI.Blur()
+
+	// start pointing to the outfile TI
+	d.selected = dloutfile
+	return d
+}
+
+func viewDownload(s *DataScope) string {
+	var sb strings.Builder
+
+	// styles
+	var (
+		sty lipgloss.Style = stylesheet.Header1Style
+	)
+	sb.WriteString(sty.Render("Output Path:") + "\n")
+	sb.WriteString(
+		fmt.Sprintf("%c%s\n", pip(s.download.selected, dloutfile), s.download.outfileTI.View()),
+	)
+	sb.WriteString(viewBool(s.download.selected, dlappend, s.download.append, "Append?", sty))
+	sb.WriteRune('\n')
+	sb.WriteString(sty.Render("Format:") + "\n")
+	sb.WriteString(viewBool(s.download.selected, dlfmtjson, s.download.format.json, "JSON", sty))
+	sb.WriteString(viewBool(s.download.selected, dlfmtcsv, s.download.format.csv, "CSV", sty))
+	sb.WriteString(viewBool(s.download.selected, dlfmtraw, s.download.format.raw, "RAW", sty))
+	sb.WriteRune('\n')
+	sb.WriteString("Press alt+enter to confirm download.")
+
+	// 'place' the options centered in the white space
+	return lipgloss.Place(s.vp.Width, s.vp.Height,
+		lipgloss.Center, lipgloss.Center,
+		lipgloss.NewStyle().AlignHorizontal(lipgloss.Left).Render(sb.String()))
+
 }
 
 //#endregion

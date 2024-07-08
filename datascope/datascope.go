@@ -36,6 +36,8 @@ type DataScope struct {
 	tabs      []tab
 	showTabs  bool
 	activeTab uint
+
+	download downloadTab
 }
 
 func NewDataScope(data []string, motherRunning bool) (DataScope, tea.Cmd) {
@@ -52,6 +54,7 @@ func NewDataScope(data []string, motherRunning bool) (DataScope, tea.Cmd) {
 		ready:         false,
 		data:          data,
 		motherRunning: motherRunning,
+		download:      initDownloadTab(),
 	}
 
 	// set up tabs
