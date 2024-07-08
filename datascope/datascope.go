@@ -57,6 +57,7 @@ func NewDataScope(data []string, motherRunning bool) (DataScope, tea.Cmd) {
 	// set up tabs
 	s.tabs = s.generateTabs()
 	s.activeTab = results
+	s.showTabs = true
 
 	// mother does not start in alt screen, and thus requires manual measurements
 	if motherRunning {
@@ -88,12 +89,24 @@ func (s DataScope) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	switch msg := msg.(type) {
 	case tea.KeyMsg: // tab-agnostic keys
-		if key.Matches(msg, showTabsKey) {
+		switch {
+		case key.Matches(msg, keys.showTabs):
 			s.showTabs = !s.showTabs
 			// recalculate height and update display
 			s.setViewportHeight(s.rawWidth)
 			s.vp.SetContent(s.displayPage())
 			return s, nil
+		case key.Matches(msg, keys.cycleTabs):
+			s.activeTab += 1
+			if s.activeTab >= uint(len(s.tabs)) {
+				s.activeTab = 0
+			}
+		case key.Matches(msg, keys.reverseCycleTabs):
+			if s.activeTab == 0 {
+				s.activeTab = uint(len(s.tabs)) - 1
+			} else {
+				s.activeTab -= 1
+			}
 		}
 	case tea.WindowSizeMsg:
 		s.rawHeight = msg.Height
