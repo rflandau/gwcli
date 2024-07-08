@@ -30,6 +30,9 @@ type DataScope struct {
 	data          []string // complete set of data to be paged
 	motherRunning bool     // without Mother's support, we need to handle killkeys and death alone
 
+	rawHeight int // usable height, as reported by the tty
+	rawWidth  int // usabe width, as reported by the tty
+
 	tabs      []tab
 	showTabs  bool
 	activeTab uint
@@ -86,18 +89,29 @@ func (s DataScope) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.KeyMsg: // tab-agnostic keys
 		if key.Matches(msg, showTabsKey) {
-			s.showTabs = true
+			s.showTabs = !s.showTabs
+			// recalculate height and update display
+			s.setViewportHeight(s.rawWidth)
+			s.vp.SetContent(s.displayPage())
 			return s, nil
 		}
 	case tea.WindowSizeMsg:
+		s.rawHeight = msg.Height
+		s.rawWidth = msg.Width
 		if !s.ready { // if we are not ready, use these dimensions to become ready
-			s.vp = viewport.New(msg.Width-2, msg.Height-s.marginHeight(msg.Width))
+			s.vp = viewport.New(s.rawWidth, msg.Height)
+			s.vp = viewport.Model{
+				Width: s.rawWidth,
+			}
+			s.setViewportHeight(s.rawWidth)
+			s.vp.MouseWheelDelta = 1
 			s.vp.HighPerformanceRendering = false
 			s.vp.SetContent(s.displayPage())
 			s.ready = true
 		} else { // just an update
-			s.vp.Width = msg.Width
-			s.vp.Height = msg.Height - s.marginHeight(msg.Width)
+			s.vp.Width = s.rawWidth
+			s.setViewportHeight(msg.Width)
+			s.vp.SetContent(s.displayPage())
 		}
 	}
 
@@ -105,7 +119,10 @@ func (s DataScope) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 func (s DataScope) View() string {
-	return s.renderTabs(s.vp.Width) + "\n" + s.tabs[s.activeTab].viewFunc(&s)
+	if s.showTabs {
+		return s.renderTabs(s.vp.Width) + "\n" + s.tabs[s.activeTab].viewFunc(&s)
+	}
+	return s.tabs[s.activeTab].viewFunc(&s)
 }
 
 func CobraNew(data []string, title string) (p *tea.Program) {
@@ -165,15 +182,16 @@ func (s *DataScope) renderFooter(width int) string {
 	//return s.pager.View()
 }
 
-// Return number of lines (height) lost to displaying auxillary information (tabs and footer)
-func (s *DataScope) marginHeight(width int) int {
-	tabHeight := lipgloss.Height(s.renderTabs(width))
+// Sets the height of the viewport, using s.rawHeight minus the height of non-data segments
+// (ex: the footer and tabs).
+// Should be called after any changes to rawHeight, the tab header, or the footer.
+func (s *DataScope) setViewportHeight(width int) {
+	var tabHeight int
+	if s.showTabs {
+		tabHeight = lipgloss.Height(s.renderTabs(width))
+	}
 	footerHeight := lipgloss.Height(s.renderFooter(width))
-	clilog.Writer.Debugf("height lost = %v (tab: %v, footer: %v)",
-		tabHeight+footerHeight,
-		tabHeight,
-		footerHeight)
-	return tabHeight + footerHeight
+	s.vp.Height = s.rawHeight - (tabHeight + footerHeight)
 
 }
 
