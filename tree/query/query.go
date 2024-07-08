@@ -33,6 +33,8 @@ const (
 	defaultDuration = 1 * time.Hour
 
 	pageSize = 500 // fetch results page by page
+
+	NoResultsText = "No results found for given query"
 )
 
 var (
@@ -214,6 +216,8 @@ func run(cmd *cobra.Command, args []string) {
 			clilog.Tee(clilog.ERROR, cmd.ErrOrStderr(), err.Error())
 			return
 		}
+	} else {
+		fmt.Fprintln(cmd.OutOrStdout(), NoResultsText)
 	}
 
 }
