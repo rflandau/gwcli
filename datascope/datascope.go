@@ -111,6 +111,7 @@ func (s DataScope) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.WindowSizeMsg:
 		s.rawHeight = msg.Height
 		s.rawWidth = msg.Width
+
 		if !s.ready { // if we are not ready, use these dimensions to become ready
 			s.vp = viewport.New(s.rawWidth, msg.Height)
 			s.vp = viewport.Model{
@@ -126,6 +127,8 @@ func (s DataScope) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			s.setViewportHeight(msg.Width)
 			s.vp.SetContent(s.displayPage())
 		}
+
+		recompileHelp(&s)
 	}
 
 	return s, s.tabs[s.activeTab].updateFunc(&s, msg)

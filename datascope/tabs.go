@@ -3,9 +3,11 @@ package datascope
 import (
 	"fmt"
 	"gwcli/stylesheet"
+	"strings"
 
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
+	"github.com/charmbracelet/lipgloss/table"
 )
 
 type tab struct {
@@ -32,16 +34,7 @@ func (s *DataScope) generateTabs() []tab {
 	t[help] = tab{
 		name:       "help",
 		updateFunc: func(*DataScope, tea.Msg) tea.Cmd { return nil },
-		viewFunc: func(*DataScope) string {
-			return fmt.Sprintf("q: return to results view\n"+
-				"tab: cycle tabs\n"+
-				"shift+tab: reverse cycle tab\n"+
-				"%v page\n"+
-				"%v scroll\n"+
-				"t: toggle tabs\n"+
-				"esc: quit",
-				stylesheet.LeftRight, stylesheet.UpDown)
-		}}
+		viewFunc:   func(*DataScope) string { return compiledHelpString }}
 	t[download] = tab{
 		name: "download",
 		updateFunc: func(*DataScope, tea.Msg) tea.Cmd {
@@ -81,6 +74,61 @@ func viewResults(s *DataScope) string {
 	}
 	return fmt.Sprintf("%s\n%s", s.vp.View(), s.renderFooter(s.vp.Width))
 }
+
+//#region help
+
+const cellWidth int = 25
+
+var compiledHelpString string
+
+// displays the available keys and useful information in a borderless table.
+// This function rebuilds the help string, allowing it to only be regenerated when necessary
+// (ex: a window size message) rather than every visible cycle.
+func recompileHelp(s *DataScope) {
+	// TODO split into 'all-tabs' keys and results-specific keys
+
+	// we are hiding all border save for inter-row borders, so drop edge characters
+	brdr := lipgloss.NormalBorder()
+	brdr.MiddleLeft = ""
+	brdr.MiddleRight = ""
+
+	// Note the usage of width within these styles rather than the table's width.
+	// Doing the reverse would cause long cells to truncate instead of wrap.
+	// This method does *not* prevent truncation if the terminal is too small
+	keyColumnStyle := lipgloss.NewStyle().Foreground(stylesheet.AccentColor1).
+		MaxWidth(s.vp.Width / 2).Width(cellWidth)
+	valueColumnStyle := lipgloss.NewStyle().MaxWidth(s.vp.Width / 2).Width(cellWidth)
+
+	joinChar := ","
+
+	tbl := table.New().
+		Border(brdr).
+		BorderRow(true).BorderColumn(false).
+		BorderLeft(false).BorderRight(false).
+		BorderTop(false).BorderBottom(false).
+		BorderStyle(lipgloss.NewStyle().Foreground(stylesheet.TertiaryColor)).
+		StyleFunc(func(row, col int) lipgloss.Style {
+			if col == 0 {
+				return keyColumnStyle
+			}
+			return valueColumnStyle
+		})
+	tbl.Rows(
+		[][]string{
+			{strings.Join(keys.cycleTabs.Keys(), joinChar), "cycle tables"},
+			{strings.Join(keys.reverseCycleTabs.Keys(), joinChar), "reverse cycle tables"},
+			{stylesheet.UpDown, "scroll page"},
+			{stylesheet.LeftRight, "change page"},
+			{strings.Join(keys.showTabs.Keys(), joinChar), "toggle tab visibility"},
+			{"esc", "quit"},
+		}...)
+
+	// 'place' the table in the center of the *viewport*, horizontally and vertically
+	compiledHelpString = lipgloss.Place(s.vp.Width, s.vp.Height,
+		lipgloss.Center, lipgloss.Center, tbl.String())
+}
+
+//#endregion
 
 // #region tab drawing
 func tabBorderWithBottom(left, middle, right string) lipgloss.Border {
