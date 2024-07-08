@@ -79,7 +79,7 @@ func viewResults(s *DataScope) string {
 	if !s.ready {
 		return "\nInitializing..."
 	}
-	return fmt.Sprintf("%s\n%s", s.vp.View(), s.renderFooter())
+	return fmt.Sprintf("%s\n%s", s.vp.View(), s.renderFooter(s.vp.Width))
 }
 
 // #region tab drawing

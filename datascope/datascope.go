@@ -7,11 +7,11 @@
 package datascope
 
 import (
-	"fmt"
 	"gwcli/clilog"
 	"gwcli/stylesheet"
 	"gwcli/utilities/killer"
 	"os"
+	"strconv"
 	"strings"
 
 	"github.com/charmbracelet/bubbles/key"
@@ -28,8 +28,6 @@ type DataScope struct {
 	ready         bool
 	data          []string // complete set of data to be paged
 	motherRunning bool     // without Mother's support, we need to handle killkeys and death alone
-	ftrHeight     int
-	marginHeight  int
 
 	tabs      []tab
 	showTabs  bool
@@ -40,7 +38,7 @@ func NewDataScope(data []string, motherRunning bool) (DataScope, tea.Cmd) {
 	// set up backend paginator
 	p := paginator.New()
 	p.Type = paginator.Dots
-	p.PerPage = 30
+	p.PerPage = 25
 	p.ActiveDot = lipgloss.NewStyle().Foreground(stylesheet.FocusedColor).Render("•")
 	p.InactiveDot = lipgloss.NewStyle().Foreground(stylesheet.UnfocusedColor).Render("•")
 	p.SetTotalPages(len(data))
@@ -56,10 +54,6 @@ func NewDataScope(data []string, motherRunning bool) (DataScope, tea.Cmd) {
 	s.tabs = s.generateTabs()
 	s.activeTab = results
 
-	// pre-set heights
-	s.ftrHeight = lipgloss.Height(s.footer())
-	s.marginHeight = s.ftrHeight // extra space not showing content // TODO include tab height
-
 	// mother does not start in alt screen, and thus requires manual measurements
 	if motherRunning {
 		return s, tea.Sequence(tea.EnterAltScreen, func() tea.Msg {
@@ -71,7 +65,6 @@ func NewDataScope(data []string, motherRunning bool) (DataScope, tea.Cmd) {
 		})
 	}
 	return s, nil
-
 }
 
 func (s DataScope) Init() tea.Cmd {
@@ -97,13 +90,13 @@ func (s DataScope) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 	case tea.WindowSizeMsg:
 		if !s.ready { // if we are not ready, use these dimensions to become ready
-			s.vp = viewport.New(msg.Width, msg.Height-s.marginHeight)
+			s.vp = viewport.New(msg.Width, msg.Height-s.marginHeight(msg.Width))
 			s.vp.HighPerformanceRendering = false
 			s.vp.SetContent(s.displayPage())
 			s.ready = true
 		} else { // just an update
 			s.vp.Width = msg.Width
-			s.vp.Height = msg.Height - s.marginHeight
+			s.vp.Height = msg.Height - s.marginHeight(msg.Width)
 		}
 	}
 
@@ -111,7 +104,7 @@ func (s DataScope) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 func (s DataScope) View() string {
-	return s.tabs[s.activeTab].viewFunc(&s)
+	return s.renderTabs(s.vp.Width) + "\n" + s.tabs[s.activeTab].viewFunc(&s)
 }
 
 func CobraNew(data []string, title string) (p *tea.Program) {
@@ -123,10 +116,12 @@ func CobraNew(data []string, title string) (p *tea.Program) {
 func (s *DataScope) displayPage() string {
 	start, end := s.pager.GetSliceBounds(len(s.data))
 	data := s.data[start:end]
+
 	// apply alterating color scheme
 	var bldr strings.Builder
 	var trueIndex int = start // index of full results, between start and end
 	for _, d := range data {
+		bldr.WriteString(indexStyle.Render(strconv.Itoa(trueIndex) + ":"))
 		if trueIndex%2 == 0 {
 			bldr.WriteString(evenEntryStyle.Render(d))
 		} else {
@@ -138,22 +133,36 @@ func (s *DataScope) displayPage() string {
 	return bldr.String()
 }
 
-// generates a footer with the box+line and help keys
-func (s *DataScope) footer() string {
-	percent := infoStyle.Render(fmt.Sprintf("%3.f%%", s.vp.ScrollPercent()*100))
+// generates a renderFooter with the box+line and help keys
+func (s *DataScope) renderFooter(width int) string {
+	/*percent := fmt.Sprintf("%3.f%%", s.vp.ScrollPercent()*100) //infoStyle.Render(fmt.Sprintf("%3.f%%", s.vp.ScrollPercent()*100))
 	line := "\n" + lipgloss.NewStyle().Foreground(stylesheet.PrimaryColor).Render(
-		strings.Repeat("─", max(0, s.vp.Width-lipgloss.Width(percent))),
+		strings.Repeat("─", max(0, width-lipgloss.Width(percent))),
 	)
 	help := stylesheet.GreyedOutStyle.Render(
-		fmt.Sprintf("%v page • %v scroll • tab: cycle • esc: quit",
+		fmt.Sprintf("%v page • %v scroll • tab: cycle • 1-9: jump to tab • esc: quit",
 			stylesheet.LeftRight, stylesheet.UpDown),
 	)
 
 	lineHelp := lipgloss.JoinVertical(lipgloss.Center, line, help)
 
-	return lipgloss.JoinHorizontal(lipgloss.Center, lineHelp, percent) +
-		"\n" +
-		lipgloss.JoinVertical(lipgloss.Center, s.pager.View(), line)
+	return lipgloss.JoinVertical(lipgloss.Center,
+		lipgloss.JoinHorizontal(lipgloss.Center, lineHelp, percent),
+		"\n"+s.pager.View(),
+	)*/
+	return s.pager.View()
+}
+
+// Return number of lines (height) lost to displaying auxillary information (tabs and footer)
+func (s *DataScope) marginHeight(width int) int {
+	tabHeight := lipgloss.Height(s.renderTabs(width))
+	footerHeight := lipgloss.Height(s.renderFooter(width))
+	clilog.Writer.Debugf("height lost = %v (tab: %v, footer: %v)",
+		tabHeight+footerHeight,
+		tabHeight,
+		footerHeight)
+	return tabHeight + footerHeight
+
 }
 
 // #region styling
@@ -173,5 +182,6 @@ var infoStyle = func() lipgloss.Style {
 
 var evenEntryStyle = lipgloss.NewStyle()
 var oddEntryStyle = lipgloss.NewStyle().Foreground(stylesheet.SecondaryColor)
+var indexStyle = lipgloss.NewStyle().Foreground(stylesheet.AccentColor1)
 
 //#endregion
