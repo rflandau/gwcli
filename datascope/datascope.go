@@ -7,6 +7,7 @@
 package datascope
 
 import (
+	"fmt"
 	"gwcli/clilog"
 	"gwcli/stylesheet"
 	"gwcli/utilities/killer"
@@ -90,7 +91,7 @@ func (s DataScope) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 	case tea.WindowSizeMsg:
 		if !s.ready { // if we are not ready, use these dimensions to become ready
-			s.vp = viewport.New(msg.Width, msg.Height-s.marginHeight(msg.Width))
+			s.vp = viewport.New(msg.Width-2, msg.Height-s.marginHeight(msg.Width))
 			s.vp.HighPerformanceRendering = false
 			s.vp.SetContent(s.displayPage())
 			s.ready = true
@@ -130,12 +131,23 @@ func (s *DataScope) displayPage() string {
 		bldr.WriteRune('\n')
 		trueIndex += 1
 	}
-	return bldr.String()
+	return wrap(s.vp.Width, bldr.String())
+}
+
+// applies text wrapping to the given content. This is mandatory prior to SetContent, lest the text
+// be clipped. It is a *possible* bug of the viewport bubble.
+//
+// (see:
+// https://github.com/charmbracelet/bubbles/issues/479
+// https://github.com/charmbracelet/bubbles/issues/56
+// )
+func wrap(width int, s string) string {
+	return lipgloss.NewStyle().Width(width).Render(s)
 }
 
 // generates a renderFooter with the box+line and help keys
 func (s *DataScope) renderFooter(width int) string {
-	/*percent := fmt.Sprintf("%3.f%%", s.vp.ScrollPercent()*100) //infoStyle.Render(fmt.Sprintf("%3.f%%", s.vp.ScrollPercent()*100))
+	percent := fmt.Sprintf("%3.f%%", s.vp.ScrollPercent()*100) //infoStyle.Render(fmt.Sprintf("%3.f%%", s.vp.ScrollPercent()*100))
 	line := "\n" + lipgloss.NewStyle().Foreground(stylesheet.PrimaryColor).Render(
 		strings.Repeat("─", max(0, width-lipgloss.Width(percent))),
 	)
@@ -149,8 +161,8 @@ func (s *DataScope) renderFooter(width int) string {
 	return lipgloss.JoinVertical(lipgloss.Center,
 		lipgloss.JoinHorizontal(lipgloss.Center, lineHelp, percent),
 		"\n"+s.pager.View(),
-	)*/
-	return s.pager.View()
+	)
+	//return s.pager.View()
 }
 
 // Return number of lines (height) lost to displaying auxillary information (tabs and footer)
