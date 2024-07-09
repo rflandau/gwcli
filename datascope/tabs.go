@@ -172,9 +172,6 @@ const (
 	dllowBound downloadCursor = iota
 	dloutfile
 	dlappend
-	dlfmtjson
-	dlfmtcsv
-	dlfmtraw
 	dlpages
 	dlhighBound
 )
@@ -239,8 +236,8 @@ func initDownloadTab() downloadTab {
 func updateDownload(s *DataScope, msg tea.Msg) tea.Cmd {
 	if msg, ok := msg.(tea.KeyMsg); ok {
 		s.download.err = nil // clear empty on newest key message
-		switch {
-		case msg.Type == tea.KeyUp:
+		switch msg.Type {
+		case tea.KeyUp:
 			s.download.outfileTI.Blur()
 			s.download.pagesTI.Blur()
 			s.download.selected -= 1
@@ -253,7 +250,7 @@ func updateDownload(s *DataScope, msg tea.Msg) tea.Cmd {
 				s.download.pagesTI.Focus()
 			}
 			return nil
-		case msg.Type == tea.KeyDown:
+		case tea.KeyDown:
 			s.download.outfileTI.Blur()
 			s.download.pagesTI.Blur()
 			s.download.selected += 1
@@ -266,35 +263,19 @@ func updateDownload(s *DataScope, msg tea.Msg) tea.Cmd {
 				s.download.pagesTI.Focus()
 			}
 			return nil
-		case msg.Alt && (msg.Type == tea.KeyEnter): // alt+enter
-			if err := s.dl(); err != nil {
-				s.download.err = err
-				return nil
-			}
-		case msg.Type == tea.KeySpace || msg.Type == tea.KeyEnter:
+		case tea.KeySpace, tea.KeyEnter:
 			switch s.download.selected {
+			case dloutfile:
+				if msg.Alt && msg.Type == tea.KeyEnter { // only accept alt+enter
+					if err := s.dl(); err != nil {
+						s.download.err = err
+						return nil
+					}
+				}
 			case dlappend:
 				s.download.append = !s.download.append
-			case dlfmtjson:
-				s.download.format.json = true
-				if s.download.format.json {
-					s.download.format.csv = false
-					s.download.format.raw = false
-				}
-			case dlfmtcsv:
-				s.download.format.csv = true
-				if s.download.format.csv {
-					s.download.format.json = false
-					s.download.format.raw = false
-				}
-			case dlfmtraw:
-				s.download.format.raw = true
-				if s.download.format.raw {
-					s.download.format.json = false
-					s.download.format.csv = false
-				}
+				return nil
 			}
-			return nil
 		}
 	}
 
@@ -375,8 +356,6 @@ func (s *DataScope) dl() error {
 		}
 	}
 
-	// TODO check JSON/CSV and invoke weave
-
 	// write the data into the given file
 	for _, d := range data {
 		if _, err := f.WriteString(d + "\n"); err != nil {
@@ -401,10 +380,6 @@ func viewDownload(s *DataScope) string {
 		sty.Render(" Output Path:"),
 		fmt.Sprintf("%c%s", pip(s.download.selected, dloutfile), s.download.outfileTI.View()),
 		viewBool(s.download.selected, dlappend, s.download.append, "Append?", sty, '[', ']'),
-		sty.Render(" Format:"),
-		viewBool(s.download.selected, dlfmtjson, s.download.format.json, "JSON", sty, '(', ')'),
-		viewBool(s.download.selected, dlfmtcsv, s.download.format.csv, "CSV", sty, '(', ')'),
-		viewBool(s.download.selected, dlfmtraw, s.download.format.raw, "RAW", sty, '(', ')'),
 		sty.Render(" Pages:"),
 		fmt.Sprintf("%c%s", pip(s.download.selected, dlpages), s.download.pagesTI.View()),
 	)
