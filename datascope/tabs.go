@@ -60,13 +60,20 @@ func pip(selected, field uint) rune {
 }
 
 // Returns a string representing the current state of the given boolean value.
-func viewBool(selected uint, fieldNum uint, field bool, fieldName string, sty lipgloss.Style) string {
+// selected is the current index.
+// fieldNum is the index of the field we are drawing
+// (evaluated against selected for whether or not to draw the pip).
+// field is the current value of the field that corresponds to fieldNum.
+// fieldName is as it says on the tin.
+// sty is the style to apply to fieldName.
+// l/r Brack are the open/close brackets this boolean should use.
+func viewBool(selected uint, fieldNum uint, field bool, fieldName string, sty lipgloss.Style, lBrack, rBrack rune) string {
 	var checked rune = ' '
 	if field {
 		checked = '✓'
 	}
 
-	return fmt.Sprintf("%c[%s] %s\n", pip(selected, fieldNum), sty.Render(string(checked)), sty.Render(fieldName))
+	return fmt.Sprintf("%c%c%s%c %s", pip(selected, fieldNum), lBrack, sty.Render(string(checked)), rBrack, sty.Render(fieldName))
 }
 
 //#region results tab
@@ -254,31 +261,31 @@ func updateDownload(s *DataScope, msg tea.Msg) tea.Cmd {
 			}
 			return nil
 		case msg.Alt && (msg.Type == tea.KeyEnter): // alt+enter
-			// check requirements
+			// gather selections
 			fn := strings.TrimSpace(s.download.outfileTI.Value())
 			if fn == "" {
 				s.download.err = errors.New("output file cannot be empty")
 				return nil
 			}
-			// TODO download query to file iff outfile is populated
+
 		case msg.Type == tea.KeySpace || msg.Type == tea.KeyEnter:
 			switch s.download.selected {
 			case dlappend:
 				s.download.append = !s.download.append
 			case dlfmtjson:
-				s.download.format.json = !s.download.format.json
+				s.download.format.json = true
 				if s.download.format.json {
 					s.download.format.csv = false
 					s.download.format.raw = false
 				}
 			case dlfmtcsv:
-				s.download.format.csv = !s.download.format.csv
+				s.download.format.csv = true
 				if s.download.format.csv {
 					s.download.format.json = false
 					s.download.format.raw = false
 				}
 			case dlfmtraw:
-				s.download.format.raw = !s.download.format.raw
+				s.download.format.raw = true
 				if s.download.format.raw {
 					s.download.format.json = false
 					s.download.format.csv = false
@@ -296,38 +303,40 @@ func updateDownload(s *DataScope, msg tea.Msg) tea.Cmd {
 	return tea.Batch(cmds...)
 }
 
+// NOTE: the options section is mildly offset to the left.
+// This is a byproduct of the invisible width of the TIs.
+// There is probably a way to left-align each option but centering on the longest width (the TIs),
+// but that is left as an exercise for someone who cares.
 func viewDownload(s *DataScope) string {
-	var sb strings.Builder
-
-	// styles
 	var (
 		sty lipgloss.Style = stylesheet.Header1Style
 	)
-	sb.WriteString(
-		lipgloss.JoinVertical(
-			lipgloss.Left,
-			sty.Render(" Output Path:"),
-			fmt.Sprintf("%c%s", pip(s.download.selected, dloutfile), s.download.outfileTI.View()),
-			viewBool(s.download.selected, dlappend, s.download.append, "Append?", sty)))
-	sb.WriteRune('\n')
-	sb.WriteString(sty.Render("Format:") + "\n")
-	sb.WriteString(viewBool(s.download.selected, dlfmtjson, s.download.format.json, "JSON", sty))
-	sb.WriteString(viewBool(s.download.selected, dlfmtcsv, s.download.format.csv, "CSV", sty))
-	sb.WriteString(viewBool(s.download.selected, dlfmtraw, s.download.format.raw, "RAW", sty))
-	sb.WriteRune('\n')
-	sb.WriteString(sty.Render("Pages:") + "\n")
-	sb.WriteString(
-		fmt.Sprintf("%c%s\n", pip(s.download.selected, dlpages), s.download.pagesTI.View()),
+
+	// create and join the options section elements
+	options := lipgloss.JoinVertical(lipgloss.Left,
+		sty.Render(" Output Path:"),
+		fmt.Sprintf("%c%s", pip(s.download.selected, dloutfile), s.download.outfileTI.View()),
+		viewBool(s.download.selected, dlappend, s.download.append, "Append?", sty, '[', ']'),
+		sty.Render(" Format:"),
+		viewBool(s.download.selected, dlfmtjson, s.download.format.json, "JSON", sty, '(', ')'),
+		viewBool(s.download.selected, dlfmtcsv, s.download.format.csv, "CSV", sty, '(', ')'),
+		viewBool(s.download.selected, dlfmtraw, s.download.format.raw, "RAW", sty, '(', ')'),
+		sty.Render(" Pages:"),
+		fmt.Sprintf("%c%s", pip(s.download.selected, dlpages), s.download.pagesTI.View()),
 	)
-	sb.WriteString(lipgloss.NewStyle().Width(30).Render("Enter a comma-seperated list of pages to" +
-		" download or leave it blank to download all of the data"))
+	// center the options section
+	hCenteredOptions := lipgloss.PlaceHorizontal(s.vp.Width, lipgloss.Center, options)
 
-	/*body := lipgloss.Place(s.vp.Width, s.vp.Height,
-	lipgloss.Center, lipgloss.Center,
-	lipgloss.NewStyle().AlignHorizontal(lipgloss.Left).Render(sb.String()))*/
+	// create the pages TI instructions
+	pagesInst := lipgloss.NewStyle().
+		Width(40).
+		AlignHorizontal(lipgloss.Center).
+		Italic(true).
+		Render("Enter a comma-seperated list of pages to" +
+			" download or leave it blank to download all results")
 
-	// if an error is queued, display it
-	var end string
+	// create the error/confirmation
+	var end string // if an error is queued, display it
 	if s.download.err != nil {
 		end = stylesheet.ErrStyle.Render(s.download.err.Error())
 	} else {
@@ -335,9 +344,11 @@ func viewDownload(s *DataScope) string {
 			Render("Press alt+enter to confirm download.")
 	}
 
-	// 'place' the options centered in the white space
-	return lipgloss.JoinVertical(lipgloss.Center, sb.String(), end)
-
+	// join options, instructions, and end
+	// centering and joining them independently allows the instructions to be wrapped and aligned
+	// seperately, without altering the options section's alignment
+	// once joined, vertically center the whole block
+	return lipgloss.PlaceVertical(s.vp.Height, lipgloss.Center, lipgloss.JoinVertical(lipgloss.Center, hCenteredOptions, pagesInst, "\n", end))
 }
 
 //#endregion
