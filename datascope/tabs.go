@@ -3,7 +3,10 @@ package datascope
 import (
 	"errors"
 	"fmt"
+	"gwcli/clilog"
 	"gwcli/stylesheet"
+	"os"
+	"strconv"
 	"strings"
 	"unicode"
 
@@ -176,6 +179,8 @@ const (
 	dlhighBound
 )
 
+const outFilePerm = 0644
+
 type downloadTab struct {
 	outfileTI textinput.Model // user input file to write to
 	append    bool            // append to the outfile instead of truncating
@@ -185,9 +190,10 @@ type downloadTab struct {
 		raw  bool
 	}
 
-	pagesTI  textinput.Model // user input to select the pages to download
-	selected uint
-	err      error
+	pagesTI      textinput.Model // user input to select the pages to download
+	selected     uint
+	downloadedFn string // the file results were last downloaded to
+	err          error
 }
 
 // Initialize and return a DownloadTab struct suitable for representing the download option
@@ -210,7 +216,7 @@ func initDownloadTab() downloadTab {
 	d.outfileTI.Prompt = ""
 	d.outfileTI.Width = width
 	d.outfileTI.Placeholder = "(optional)"
-	d.outfileTI.Blur()
+	d.outfileTI.Focus()
 
 	// initialize pagesTI
 	d.pagesTI.Prompt = ""
@@ -261,13 +267,10 @@ func updateDownload(s *DataScope, msg tea.Msg) tea.Cmd {
 			}
 			return nil
 		case msg.Alt && (msg.Type == tea.KeyEnter): // alt+enter
-			// gather selections
-			fn := strings.TrimSpace(s.download.outfileTI.Value())
-			if fn == "" {
-				s.download.err = errors.New("output file cannot be empty")
+			if err := s.dl(); err != nil {
+				s.download.err = err
 				return nil
 			}
-
 		case msg.Type == tea.KeySpace || msg.Type == tea.KeyEnter:
 			switch s.download.selected {
 			case dlappend:
@@ -301,6 +304,87 @@ func updateDownload(s *DataScope, msg tea.Msg) tea.Cmd {
 	s.download.pagesTI, cmds[1] = s.download.pagesTI.Update(msg)
 
 	return tea.Batch(cmds...)
+}
+
+// The actual download function that consumes the user inputs and creates a file
+// based on the parameters.
+func (s *DataScope) dl() error {
+	var (
+		err   error
+		f     *os.File // file path
+		pages []uint32 // pages to download (empty for all)
+		data  []string
+	)
+
+	// gather and validate selections
+	if fn := strings.TrimSpace(s.download.outfileTI.Value()); fn == "" {
+		return errors.New("output file cannot be empty")
+	} else {
+		// check append
+		var flags int = os.O_CREATE | os.O_WRONLY
+		if s.download.append {
+			flags |= os.O_APPEND
+		} else {
+			flags |= os.O_TRUNC
+		}
+		// attempt to open the file
+		if f, err = os.OpenFile(fn, flags, outFilePerm); err != nil {
+			return err
+		}
+		defer f.Close()
+	}
+
+	if strPages := strings.TrimSpace(s.download.pagesTI.Value()); strPages != "" {
+		// explode and parse each
+		exploded := strings.Split(strPages, ",")
+		for _, strpg := range exploded {
+			// sanity check page
+			pg, err := strconv.ParseUint(strpg, 10, 32)
+			if err != nil {
+				return fmt.Errorf("failed to parse page '%v':\n%v", strpg, err)
+			}
+			if pg > uint64(s.pager.TotalPages-1) {
+				return fmt.Errorf(
+					"page %v is outside the set of available pages [0-%v]",
+					pg, s.pager.TotalPages-1)
+			}
+			// add it to the list of pages to download
+			pages = append(pages, uint32(pg))
+		}
+	}
+
+	// fetch the requested data
+	if pages == nil { // all data
+		data = s.data
+	} else {
+		// allocate for the given # of pages
+		data = make([]string, len(pages)*s.pager.PerPage)
+		itemIndex := 0
+		for _, pg := range pages {
+			// fetch the data segment to append
+			lBound, hBound := uint32(s.pager.PerPage)*pg, uint32(s.pager.PerPage)*(pg+1)-1
+			clilog.Writer.Debugf("Page %v | lBound %v | hBound %v", pg, lBound, hBound)
+			dslice := s.data[lBound:hBound]
+			clilog.Writer.Debugf("dslice %v", dslice)
+
+			// append each item in the segment
+			for _, d := range dslice {
+				data[itemIndex] = d
+				itemIndex += 1
+			}
+		}
+	}
+
+	// TODO check JSON/CSV and invoke weave
+
+	// write the data into the given file
+	for _, d := range data {
+		if _, err := f.WriteString(d + "\n"); err != nil {
+			return err
+		}
+	}
+	s.download.downloadedFn = f.Name()
+	return nil
 }
 
 // NOTE: the options section is mildly offset to the left.
@@ -344,11 +428,19 @@ func viewDownload(s *DataScope) string {
 			Render("Press alt+enter to confirm download.")
 	}
 
+	var downloaded string // if a download was previously performed, say so
+	if s.download.downloadedFn != "" {
+		downloaded = lipgloss.NewStyle().Foreground(stylesheet.AccentColor2).
+			Render("Successfully downloaded results to " + s.download.downloadedFn + ".")
+	}
+
 	// join options, instructions, and end
 	// centering and joining them independently allows the instructions to be wrapped and aligned
 	// seperately, without altering the options section's alignment
 	// once joined, vertically center the whole block
-	return lipgloss.PlaceVertical(s.vp.Height, lipgloss.Center, lipgloss.JoinVertical(lipgloss.Center, hCenteredOptions, pagesInst, "\n", end))
+	return lipgloss.PlaceVertical(s.vp.Height, lipgloss.Center,
+		lipgloss.JoinVertical(lipgloss.Center,
+			hCenteredOptions, pagesInst, "\n", end, downloaded))
 }
 
 //#endregion
