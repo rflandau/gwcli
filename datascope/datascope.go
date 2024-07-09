@@ -40,7 +40,10 @@ type DataScope struct {
 	download downloadTab
 }
 
-func NewDataScope(data []string, motherRunning bool) (DataScope, tea.Cmd) {
+// Returns a new DataScope instance based on the given data array. If mother is running,
+// this subroutine will launch her into the alt screen buffer and query the terminal for its size.
+// outfn and append are optional; if outfn is given, the data will immediately be downloaded.
+func NewDataScope(data []string, motherRunning bool, outfn string, append bool) (DataScope, tea.Cmd) {
 	// set up backend paginator
 	p := paginator.New()
 	p.Type = paginator.Dots
@@ -72,6 +75,9 @@ func NewDataScope(data []string, motherRunning bool) (DataScope, tea.Cmd) {
 			return tea.WindowSizeMsg{Width: w, Height: h}
 		})
 	}
+
+	// TODO incorporate outfn check
+
 	return s, nil
 }
 
@@ -144,8 +150,8 @@ func (s DataScope) View() string {
 	return s.tabs[s.activeTab].viewFunc(&s)
 }
 
-func CobraNew(data []string, title string) (p *tea.Program) {
-	ds, _ := NewDataScope(data, false)
+func CobraNew(data []string, outfn string, append bool) (p *tea.Program) {
+	ds, _ := NewDataScope(data, false, outfn, append)
 	return tea.NewProgram(ds, tea.WithAltScreen())
 }
 
