@@ -35,7 +35,7 @@ A number of development features exist as global singletons driven by static sub
 
 - A single, shared connection to the Gravwell instance, via the Client library, is serviced by the connection package in `connection.go`.
 
-- `clilog.go` maintains a shared logger for developer logs. It is a shared instance of the gravwell ingest logger.
+- `clilog.go` maintains a shared logger for developer logs. It is a shared instance of the gravwell ingest logger. See Other Packages for more details on usage style.
 
 ### Why?
 
@@ -139,8 +139,14 @@ Other flags, such as --script, must be supported by all actions anyways, so they
 
 Busywait is just the spinner bubble, wrapped for consistent appearance.
 
-Datascope is a hybridization of the paginator and viewport bubbles; it consumes arbitrary string data and dynamically paginates it in a scrolling viewport.
+Datascope is a hybridization of the paginator and viewport bubbles with options specifically for manipulating and fetching search data.
 
 ## Stylesheet
 
 Stylesheet provides a shared repository for style constants. The intention is for this to eventually be supplantable for custom styling.
+
+## Logging
+
+Logging is all done via the clilog package, which is just an implementation of the gravwell ingest logger.
+
+Stylistically speaking, callees log relevant data only they have access to, but return errors for the caller to log, lest both callee and caller try to log the same error.
