@@ -1,9 +1,11 @@
 package datascope
 
 import (
+	"errors"
 	"fmt"
 	"gwcli/stylesheet"
 	"strings"
+	"unicode"
 
 	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
@@ -159,71 +161,105 @@ type downloadCursor = uint // current active item
 const (
 	dllowBound downloadCursor = iota
 	dloutfile
+	dlappend
 	dlfmtjson
 	dlfmtcsv
 	dlfmtraw
-	dlappend
+	dlpages
 	dlhighBound
 )
 
 type downloadTab struct {
 	outfileTI textinput.Model // user input file to write to
+	append    bool            // append to the outfile instead of truncating
 	format    struct {
 		json bool
 		csv  bool
 		raw  bool
 	}
-	append   bool // append to the outfile instead of truncating?
+
+	pagesTI  textinput.Model // user input to select the pages to download
 	selected uint
+	err      error
 }
 
+// Initialize and return a DownloadTab struct suitable for representing the download option
 func initDownloadTab() downloadTab {
+	width := 20
+
 	d := downloadTab{
+		outfileTI: textinput.New(),
+		append:    false,
 		format: struct {
 			json bool
 			csv  bool
 			raw  bool
 		}{json: false, csv: false, raw: true},
-		outfileTI: textinput.New(),
-		append:    false,
+		pagesTI:  textinput.New(),
+		selected: dloutfile,
 	}
 
+	// initialize outfileTI
 	d.outfileTI.Prompt = ""
-	d.outfileTI.Width = 20
+	d.outfileTI.Width = width
 	d.outfileTI.Placeholder = "(optional)"
 	d.outfileTI.Blur()
 
-	// start pointing to the outfile TI
-	d.selected = dloutfile
+	// initialize pagesTI
+	d.pagesTI.Prompt = ""
+	d.pagesTI.Width = width
+	d.pagesTI.Placeholder = "1,4,5"
+	d.pagesTI.Blur()
+	d.pagesTI.Validate = func(s string) error {
+		for _, r := range s {
+			if r == ',' || unicode.IsNumber(r) {
+				continue
+			}
+			return errors.New("must be numeric")
+		}
+		return nil
+	}
+
 	return d
 }
 
 func updateDownload(s *DataScope, msg tea.Msg) tea.Cmd {
 	if msg, ok := msg.(tea.KeyMsg); ok {
+		s.download.err = nil // clear empty on newest key message
 		switch {
 		case msg.Type == tea.KeyUp:
+			s.download.outfileTI.Blur()
+			s.download.pagesTI.Blur()
 			s.download.selected -= 1
 			if s.download.selected <= dllowBound {
 				s.download.selected = dlhighBound - 1
 			}
 			if s.download.selected == dloutfile {
 				s.download.outfileTI.Focus()
-			} else {
-				s.download.outfileTI.Blur()
+			} else if s.download.selected == dlpages {
+				s.download.pagesTI.Focus()
 			}
 			return nil
 		case msg.Type == tea.KeyDown:
+			s.download.outfileTI.Blur()
+			s.download.pagesTI.Blur()
 			s.download.selected += 1
 			if s.download.selected >= dlhighBound {
 				s.download.selected = dllowBound + 1
 			}
 			if s.download.selected == dloutfile {
 				s.download.outfileTI.Focus()
-			} else {
-				s.download.outfileTI.Blur()
+			} else if s.download.selected == dlpages {
+				s.download.pagesTI.Focus()
 			}
 			return nil
 		case msg.Alt && (msg.Type == tea.KeyEnter): // alt+enter
+			// check requirements
+			fn := strings.TrimSpace(s.download.outfileTI.Value())
+			if fn == "" {
+				s.download.err = errors.New("output file cannot be empty")
+				return nil
+			}
 			// TODO download query to file iff outfile is populated
 		case msg.Type == tea.KeySpace || msg.Type == tea.KeyEnter:
 			switch s.download.selected {
@@ -252,10 +288,12 @@ func updateDownload(s *DataScope, msg tea.Msg) tea.Cmd {
 		}
 	}
 
-	// pass onto the TI, if it is in focus
-	var t tea.Cmd
-	s.download.outfileTI, t = s.download.outfileTI.Update(msg)
-	return t
+	// pass onto the TIs
+	var cmds []tea.Cmd = make([]tea.Cmd, 2)
+	s.download.outfileTI, cmds[0] = s.download.outfileTI.Update(msg)
+	s.download.pagesTI, cmds[1] = s.download.pagesTI.Update(msg)
+
+	return tea.Batch(cmds...)
 }
 
 func viewDownload(s *DataScope) string {
@@ -265,23 +303,40 @@ func viewDownload(s *DataScope) string {
 	var (
 		sty lipgloss.Style = stylesheet.Header1Style
 	)
-	sb.WriteString(sty.Render("Output Path:") + "\n")
 	sb.WriteString(
-		fmt.Sprintf("%c%s\n", pip(s.download.selected, dloutfile), s.download.outfileTI.View()),
-	)
-	sb.WriteString(viewBool(s.download.selected, dlappend, s.download.append, "Append?", sty))
+		lipgloss.JoinVertical(
+			lipgloss.Left,
+			sty.Render(" Output Path:"),
+			fmt.Sprintf("%c%s", pip(s.download.selected, dloutfile), s.download.outfileTI.View()),
+			viewBool(s.download.selected, dlappend, s.download.append, "Append?", sty)))
 	sb.WriteRune('\n')
 	sb.WriteString(sty.Render("Format:") + "\n")
 	sb.WriteString(viewBool(s.download.selected, dlfmtjson, s.download.format.json, "JSON", sty))
 	sb.WriteString(viewBool(s.download.selected, dlfmtcsv, s.download.format.csv, "CSV", sty))
 	sb.WriteString(viewBool(s.download.selected, dlfmtraw, s.download.format.raw, "RAW", sty))
 	sb.WriteRune('\n')
-	sb.WriteString("Press alt+enter to confirm download.")
+	sb.WriteString(sty.Render("Pages:") + "\n")
+	sb.WriteString(
+		fmt.Sprintf("%c%s\n", pip(s.download.selected, dlpages), s.download.pagesTI.View()),
+	)
+	sb.WriteString(lipgloss.NewStyle().Width(30).Render("Enter a comma-seperated list of pages to" +
+		" download or leave it blank to download all of the data"))
+
+	/*body := lipgloss.Place(s.vp.Width, s.vp.Height,
+	lipgloss.Center, lipgloss.Center,
+	lipgloss.NewStyle().AlignHorizontal(lipgloss.Left).Render(sb.String()))*/
+
+	// if an error is queued, display it
+	var end string
+	if s.download.err != nil {
+		end = stylesheet.ErrStyle.Render(s.download.err.Error())
+	} else {
+		end = lipgloss.NewStyle().Foreground(stylesheet.AccentColor1).
+			Render("Press alt+enter to confirm download.")
+	}
 
 	// 'place' the options centered in the white space
-	return lipgloss.Place(s.vp.Width, s.vp.Height,
-		lipgloss.Center, lipgloss.Center,
-		lipgloss.NewStyle().AlignHorizontal(lipgloss.Left).Render(sb.String()))
+	return lipgloss.JoinVertical(lipgloss.Center, sb.String(), end)
 
 }
 
