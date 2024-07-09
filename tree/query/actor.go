@@ -2,6 +2,7 @@
 package query
 
 import (
+	"errors"
 	"fmt"
 	"gwcli/action"
 	"gwcli/busywait"
@@ -9,8 +10,6 @@ import (
 	"gwcli/connection"
 	"gwcli/datascope"
 	"gwcli/stylesheet"
-	"gwcli/stylesheet/colorizer"
-	"os"
 	"strings"
 	"sync/atomic"
 	"time"
@@ -19,11 +18,9 @@ import (
 	"github.com/charmbracelet/bubbles/key"
 	"github.com/charmbracelet/bubbles/spinner"
 	"github.com/charmbracelet/bubbles/textarea"
-	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 	grav "github.com/gravwell/gravwell/v3/client"
-	"github.com/gravwell/gravwell/v3/client/types"
 	"github.com/spf13/pflag"
 )
 
@@ -54,12 +51,19 @@ type query struct {
 
 	modifiers modifView
 
+	flagModifiers struct { // flag options that only affect datascope
+		json     bool
+		csv      bool
+		outfn    string
+		append   bool
+		schedule schedule
+	}
+
 	focusedEditor bool
 
 	curSearch   *grav.Search // nil or ongoing/recently-completed search
 	searchDone  atomic.Bool  // waiting thread has returned
 	searchError chan error   // result to be fetched after SearchDone
-	output      *os.File     // set once query is submitted, if outfile was set
 
 	spnr  spinner.Model // wait spinner
 	scope tea.Model     // interactively display data
@@ -124,8 +128,7 @@ func (q *query) Update(msg tea.Msg) tea.Cmd {
 		q.focusedEditor = true
 		return textarea.Blink
 	case waiting: // display spinner and wait
-		if q.searchDone.Load() {
-			// search is done, check error, display results and exit
+		if q.searchDone.Load() { // search is done
 			if err := <-q.searchError; err != nil { // failure, return to text input
 				q.editor.err = err.Error()
 				q.mode = prompting
@@ -134,38 +137,32 @@ func (q *query) Update(msg tea.Msg) tea.Cmd {
 				return cmd
 			}
 
-			// succcess
-			if q.output != nil {
-				defer q.output.Close()
+			// collect the results
+			if results, err := fetchTextResults(*q.curSearch); err != nil {
+				q.editor.err = err.Error()
+				q.mode = prompting
+				var cmd tea.Cmd
+				q.editor.ta, cmd = q.editor.ta.Update(msg)
+				return cmd
+			} else if len(results) > 0 {
+				// feed the results to datascope and hand over control
+				var data []string = make([]string, len(results))
+				for i, r := range results {
+					data[i] = string(r.Data)
+				}
+				q.mode = displaying
+
+				var cmd tea.Cmd
+				q.scope, cmd = datascope.NewDataScope(data, true,
+					q.flagModifiers.outfn, q.flagModifiers.append)
+
+				return cmd
 			}
 
-			var (
-				results []types.SearchEntry
-				err     error
-			)
-			if results, err = outputSearchResults(q.output, *q.curSearch,
-				q.modifiers.json, q.modifiers.csv); err != nil {
-				return colorizer.ErrPrintf("Failed to write to %s: %v", q.output.Name(), err)
-			} else if results == nil {
-				// already output to file, no more work needed
-				q.mode = quitting
-				return textinput.Blink
-			}
+			// no results were found
+			q.mode = quitting
+			return tea.Println(NoResultsText)
 
-			// display the output via datascope
-			q.mode = displaying
-
-			// output results as tea.Prints
-			var data []string = make([]string, len(results))
-
-			for i, r := range results {
-				data[i] = string(r.Data)
-			}
-
-			s, cmd := datascope.NewDataScope(data, true)
-			q.scope = s
-
-			return cmd
 		}
 		// still waiting
 		var cmd tea.Cmd
@@ -253,10 +250,6 @@ func (q *query) Reset() error {
 	// clear query fields
 	q.curSearch = nil
 	q.searchDone.Store(false)
-	if q.output != nil {
-		q.output.Close()
-	}
-	q.output = nil
 	q.scope = nil
 
 	localFS = initialLocalFlagSet()
@@ -267,47 +260,33 @@ func (q *query) Reset() error {
 // Consume flags and associated them to the local flagset
 func (q *query) SetArgs(_ *pflag.FlagSet, tokens []string) (string, []tea.Cmd, error) {
 	// parse the tokens agains the local flagset
-	err := localFS.Parse(tokens)
+	if err := localFS.Parse(tokens); err != nil {
+		return "", []tea.Cmd{}, err
+	}
+
+	flags, err := transmogrifyFlags(&localFS)
 	if err != nil {
-		return "", []tea.Cmd{}, err
+		return "", nil, err
 	}
 
-	// fetch and set normal flags
-	if x, err := localFS.GetDuration("duration"); err != nil {
-		return "", []tea.Cmd{}, err
-	} else if x != 0 {
-		q.modifiers.durationTI.SetValue(x.String())
-	}
-	if x, err := localFS.GetString("output"); err != nil {
-		return "", []tea.Cmd{}, err
-	} else if x != "" {
-		q.modifiers.outfileTI.SetValue(x)
-	}
-	if x, err := localFS.GetString("name"); err != nil {
-		return "", []tea.Cmd{}, err
-	} else if x != "" {
-		q.modifiers.schedule.nameTI.SetValue(x)
-		//q.modifiers.schedule.enabled = true
-	}
-	if x, err := localFS.GetString("description"); err != nil {
-		return "", []tea.Cmd{}, err
-	} else if x != "" {
-		q.modifiers.schedule.descTI.SetValue(x)
-		//.modifiers.schedule.enabled = true
-	}
-	if x, err := localFS.GetString("schedule"); err != nil {
-		return "", []tea.Cmd{}, err
-	} else if x != "" {
-		q.modifiers.schedule.descTI.SetValue(x)
-		q.modifiers.schedule.enabled = true
+	// check for script mode (invalid, as Mother is already running)
+	if flags.script {
+		return "", nil, errors.New("cannot invoke script mode while in interactive mode")
 	}
 
-	// fetch and set a query, if given
-	if tQry, err := fetchQueryString(&localFS, localFS.Args()); err != nil {
-		return "", []tea.Cmd{}, err
-	} else if tQry != "" {
-		q.editor.ta.SetValue(tQry)
-		// if the query is valid, submitQuery will place us directly into waiting mode
+	// set fields by flags
+	q.modifiers.durationTI.SetValue(flags.duration.String())
+	q.flagModifiers.json = flags.json
+	q.flagModifiers.csv = flags.csv
+	q.flagModifiers.outfn = flags.outfn
+	q.flagModifiers.append = flags.append
+	q.flagModifiers.schedule = flags.schedule
+
+	// TODO pull qry from referenceID, if given
+
+	if qry := strings.TrimSpace(strings.Join(localFS.Args(), " ")); qry != "" {
+		q.editor.ta.SetValue(qry)
+		// if we are given a query, submitQuery will place us directly into waiting mode
 		return "", []tea.Cmd{q.submitQuery()}, nil
 	}
 
@@ -340,34 +319,10 @@ func (q *query) submitQuery() tea.Cmd {
 		duration = defaultDuration
 	}
 
-	// prepare file for output and associate it to the query struct
-	if fn := strings.TrimSpace(q.modifiers.outfileTI.Value()); fn != "" {
-		q.output, err = openFile(fn, q.modifiers.appendToFile)
-		if err != nil {
-			q.editor.err = err.Error()
-			return nil
-		}
-	} else { // do not output to file
-		q.output = nil
-	}
-
-	// fetch schedule
-	var sch *schedule = nil
-	if q.modifiers.schedule.enabled {
-		sch = &schedule{}
-		sch.name = q.modifiers.schedule.nameTI.Value()
-		sch.desc = q.modifiers.schedule.descTI.Value()
-		sch.cronfreq = q.modifiers.schedule.cronfreqTI.Value()
-	}
-
-	s, schID, err := tryQuery(qry, -duration, sch)
+	s, _, err := tryQuery(qry, -duration, nil)
 	if err != nil {
 		q.editor.err = err.Error()
 		return nil
-	}
-	if schID != 0 { // if we scheduled a query, just exit
-		q.mode = quitting
-		return tea.Printf("Scheduled search (ID: %v)", schID)
 	}
 
 	// spin up a goroutine to wait on the search while we show a spinner
@@ -383,6 +338,7 @@ func (q *query) submitQuery() tea.Cmd {
 	return q.spnr.Tick // start the wait spinner
 }
 
+// swaps between focusing the editor and focusing the modifiers
 func (q *query) switchFocus() {
 	q.focusedEditor = !q.focusedEditor
 	if q.focusedEditor { // disable viewB interactions
