@@ -37,11 +37,9 @@ func (s *DataScope) generateTabs() []tab {
 		updateFunc: func(*DataScope, tea.Msg) tea.Cmd { return nil },
 		viewFunc:   func(*DataScope) string { return compiledHelpString }}
 	t[download] = tab{
-		name: "download",
-		updateFunc: func(*DataScope, tea.Msg) tea.Cmd {
-			return nil
-		},
-		viewFunc: viewDownload}
+		name:       "download",
+		updateFunc: updateDownload,
+		viewFunc:   viewDownload}
 	t[schedule] = tab{
 		name:       "schedule",
 		updateFunc: func(*DataScope, tea.Msg) tea.Cmd { return nil },
@@ -198,6 +196,66 @@ func initDownloadTab() downloadTab {
 	// start pointing to the outfile TI
 	d.selected = dloutfile
 	return d
+}
+
+func updateDownload(s *DataScope, msg tea.Msg) tea.Cmd {
+	if msg, ok := msg.(tea.KeyMsg); ok {
+		switch {
+		case msg.Type == tea.KeyUp:
+			s.download.selected -= 1
+			if s.download.selected <= dllowBound {
+				s.download.selected = dlhighBound - 1
+			}
+			if s.download.selected == dloutfile {
+				s.download.outfileTI.Focus()
+			} else {
+				s.download.outfileTI.Blur()
+			}
+			return nil
+		case msg.Type == tea.KeyDown:
+			s.download.selected += 1
+			if s.download.selected >= dlhighBound {
+				s.download.selected = dllowBound + 1
+			}
+			if s.download.selected == dloutfile {
+				s.download.outfileTI.Focus()
+			} else {
+				s.download.outfileTI.Blur()
+			}
+			return nil
+		case msg.Alt && (msg.Type == tea.KeyEnter): // alt+enter
+			// TODO download query to file iff outfile is populated
+		case msg.Type == tea.KeySpace || msg.Type == tea.KeyEnter:
+			switch s.download.selected {
+			case dlappend:
+				s.download.append = !s.download.append
+			case dlfmtjson:
+				s.download.format.json = !s.download.format.json
+				if s.download.format.json {
+					s.download.format.csv = false
+					s.download.format.raw = false
+				}
+			case dlfmtcsv:
+				s.download.format.csv = !s.download.format.csv
+				if s.download.format.csv {
+					s.download.format.json = false
+					s.download.format.raw = false
+				}
+			case dlfmtraw:
+				s.download.format.raw = !s.download.format.raw
+				if s.download.format.raw {
+					s.download.format.json = false
+					s.download.format.csv = false
+				}
+			}
+			return nil
+		}
+	}
+
+	// pass onto the TI, if it is in focus
+	var t tea.Cmd
+	s.download.outfileTI, t = s.download.outfileTI.Update(msg)
+	return t
 }
 
 func viewDownload(s *DataScope) string {
