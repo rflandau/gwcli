@@ -32,10 +32,6 @@ type modifSelection = uint
 const (
 	lowBound modifSelection = iota
 	duration
-	outFile
-	appendToFile
-	json
-	csv
 	scheduled
 	name
 	desc
@@ -51,12 +47,8 @@ type modifView struct {
 	height   uint
 	selected uint // tracks which modifier is currently active w/in this view
 	// knobs available to user
-	durationTI   textinput.Model
-	outfileTI    textinput.Model
-	appendToFile bool
-	json         bool
-	csv          bool
-	schedule     struct {
+	durationTI textinput.Model
+	schedule   struct {
 		enabled    bool
 		nameTI     textinput.Model
 		descTI     textinput.Model
@@ -112,10 +104,6 @@ func initialModifView(height, width uint) modifView {
 		return nil
 	}
 
-	// build outFile ti
-	mv.outfileTI = newTI("")
-	mv.outfileTI.Placeholder = "(optional)"
-
 	// build name ti
 	mv.schedule.nameTI = newTI("")
 
@@ -140,7 +128,6 @@ func initialModifView(height, width uint) modifView {
 // Unfocuses this view, blurring all text inputs
 func (mv *modifView) blur() {
 	mv.durationTI.Blur()
-	mv.outfileTI.Blur()
 	mv.schedule.nameTI.Blur()
 	mv.schedule.descTI.Blur()
 	mv.schedule.cronfreqTI.Blur()
@@ -164,21 +151,6 @@ func (mv *modifView) update(msg tea.Msg) []tea.Cmd {
 			mv.focusSelected()
 		case tea.KeySpace, tea.KeyEnter:
 			switch mv.selected {
-			case appendToFile:
-				mv.appendToFile = !mv.appendToFile
-				return nil
-			case json:
-				mv.json = !mv.json
-				if mv.json {
-					mv.csv = false
-				}
-				return nil
-			case csv:
-				mv.csv = !mv.csv
-				if mv.csv {
-					mv.json = false
-				}
-				return nil
 			case scheduled:
 				mv.schedule.enabled = !mv.schedule.enabled
 				return nil
@@ -188,10 +160,6 @@ func (mv *modifView) update(msg tea.Msg) []tea.Cmd {
 	var cmds []tea.Cmd = []tea.Cmd{}
 	var t tea.Cmd
 	mv.durationTI, t = mv.durationTI.Update(msg)
-	if t != nil {
-		cmds = append(cmds, t)
-	}
-	mv.outfileTI, t = mv.outfileTI.Update(msg)
 	if t != nil {
 		cmds = append(cmds, t)
 	}
@@ -218,8 +186,6 @@ func (mv *modifView) focusSelected() {
 	switch mv.selected {
 	case duration:
 		mv.durationTI.Focus()
-	case outFile:
-		mv.outfileTI.Focus()
 	case name:
 		mv.schedule.nameTI.Focus()
 	case desc:
@@ -237,43 +203,9 @@ func (mv *modifView) view() string {
 		fmt.Sprintf("%c%s\n", pip(mv.selected, duration), mv.durationTI.View()),
 	)
 
-	bldr.WriteString(drawOutpathSection(mv, !mv.schedule.enabled))
-
 	bldr.WriteString(drawScheduleSection(mv))
 
 	return bldr.String()
-}
-
-// Generates a string representing all output path modifiers and fields.
-// This whole section is greyed out if !enabled
-func drawOutpathSection(mv *modifView, enabled bool) string {
-	var (
-		b               strings.Builder
-		outpathTitleSty lipgloss.Style = stylesheet.Header1Style
-		outpathTISty    lipgloss.Style = lipgloss.NewStyle()
-	)
-	if !enabled {
-		outpathTitleSty = stylesheet.GreyedOutStyle
-		outpathTISty = stylesheet.GreyedOutStyle
-	}
-	b.WriteString(" " + outpathTitleSty.Render("Output Path:") + "\n")
-	b.WriteString(
-		fmt.Sprintf("%c%s\n", pip(mv.selected, outFile), outpathTISty.Render(mv.outfileTI.View())),
-	)
-
-	// grey out outpath options if outpath is empty
-	if strings.TrimSpace(mv.outfileTI.Value()) == "" {
-		outpathTitleSty = stylesheet.GreyedOutStyle
-	}
-
-	b.WriteString(stylesheet.Indent +
-		viewBool(mv.selected, appendToFile, mv.appendToFile, "Append?", outpathTitleSty, true))
-	b.WriteString(stylesheet.Indent +
-		viewBool(mv.selected, json, mv.json, "JSON", outpathTitleSty, true))
-	b.WriteString(stylesheet.Indent +
-		viewBool(mv.selected, csv, mv.csv, "CSV", outpathTitleSty, true))
-
-	return b.String()
 }
 
 func drawScheduleSection(mv *modifView) string {
@@ -312,11 +244,7 @@ func drawScheduleSection(mv *modifView) string {
 func (mv *modifView) reset() {
 	mv.selected = defaultModifSelection
 	mv.durationTI.Reset()
-	mv.outfileTI.Reset()
 	mv.blur()
-	mv.appendToFile = false
-	mv.json = false
-	mv.csv = false
 	mv.schedule.enabled = false
 	mv.schedule.nameTI.Reset()
 	mv.schedule.descTI.Reset()
