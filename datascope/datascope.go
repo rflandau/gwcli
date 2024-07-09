@@ -158,7 +158,7 @@ func (s *DataScope) displayPage() string {
 	var bldr strings.Builder
 	var trueIndex int = start // index of full results, between start and end
 	for _, d := range data {
-		bldr.WriteString(indexStyle.Render(strconv.Itoa(trueIndex) + ":"))
+		bldr.WriteString(indexStyle.Render(strconv.Itoa(trueIndex+1) + ":"))
 		if trueIndex%2 == 0 {
 			bldr.WriteString(evenEntryStyle.Render(d))
 		} else {
@@ -181,22 +181,29 @@ func wrap(width int, s string) string {
 	return lipgloss.NewStyle().Width(width).Render(s)
 }
 
+var compiledShortHelp = stylesheet.GreyedOutStyle.Render(
+	fmt.Sprintf("%v page • %v scroll • tab: cycle • 1-9: jump to tab • esc: quit",
+		stylesheet.LeftRight, stylesheet.UpDown),
+)
+
 // generates a renderFooter with the box+line and help keys
 func (s *DataScope) renderFooter(width int) string {
-	percent := fmt.Sprintf("%3.f%%", s.vp.ScrollPercent()*100) //infoStyle.Render(fmt.Sprintf("%3.f%%", s.vp.ScrollPercent()*100))
+	percent := fmt.Sprintf("%3.f%%", s.vp.ScrollPercent()*100)
 	line := "\n" + lipgloss.NewStyle().Foreground(stylesheet.PrimaryColor).Render(
 		strings.Repeat("─", max(0, width-lipgloss.Width(percent))),
 	)
-	help := stylesheet.GreyedOutStyle.Render(
-		fmt.Sprintf("%v page • %v scroll • tab: cycle • 1-9: jump to tab • esc: quit",
-			stylesheet.LeftRight, stylesheet.UpDown),
-	)
 
-	lineHelp := lipgloss.JoinVertical(lipgloss.Center, line, help)
+	lineHelp := lipgloss.JoinVertical(lipgloss.Center, line, compiledShortHelp)
+
+	pgr := fmt.Sprintf("%s %s",
+		lipgloss.NewStyle().Foreground(stylesheet.FocusedColor).Width(3).Render(
+			strconv.Itoa(s.pager.Page)),
+		s.pager.View(),
+	)
 
 	return lipgloss.JoinVertical(lipgloss.Center,
 		lipgloss.JoinHorizontal(lipgloss.Center, lineHelp, percent),
-		"\n"+s.pager.View(),
+		pgr,
 	)
 	//return s.pager.View()
 }
