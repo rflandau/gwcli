@@ -6,6 +6,8 @@ package main
 import (
 	"bufio"
 	"bytes"
+	"encoding/csv"
+	"encoding/json"
 	"fmt"
 	"gwcli/connection"
 	"gwcli/tree"
@@ -466,14 +468,7 @@ func TestNonInteractiveQueryFileOut(t *testing.T) {
 		nonZeroExit(t, exitCode)
 
 		// check the file has data
-		fi, err := os.Stat(outfn)
-		if err != nil {
-			t.Fatal(err)
-		}
-		if fi.Size() <= 0 {
-			t.Fatal(fi.Name(), " has invalid size: %v", fi.Size())
-		}
-
+		invalidSize(t, outfn)
 	})
 
 	t.Run("raw append", func(t *testing.T) {
@@ -524,6 +519,69 @@ func TestNonInteractiveQueryFileOut(t *testing.T) {
 		firstLine := scan.Text()
 		if firstLine != baseData {
 			t.Fatalf("expected first line of file to be %v, got %v", baseData, firstLine)
+		}
+	})
+
+	t.Run("json", func(t *testing.T) {
+		var outfn string = path.Join(dir, fmt.Sprintf("%v%d", tempFilePrefix, rand.Uint32()))
+		// execute the query in append mode
+		qry := "query tag=gravwell"
+		args := strings.Split("--insecure --script "+qry+" -o "+outfn+" --json", " ")
+		t.Log("Args: ", args)
+		exitCode := tree.Execute(args)
+		nonZeroExit(t, exitCode)
+
+		// check the file has data
+		invalidSize(t, outfn)
+
+		// check each record is valid JSON
+		f, err := os.Open(outfn)
+		if err != nil {
+			t.Fatalf(openFileFailF, f.Name())
+		}
+		scan := bufio.NewScanner(f)
+		for scan.Scan() {
+			line := strings.TrimSpace(scan.Text())
+			if line == "" {
+				continue
+			}
+			if !json.Valid([]byte(line)) {
+				t.Fatalf("record %v is not valid JSON", line)
+			}
+		}
+	})
+
+	t.Run("csv", func(t *testing.T) {
+		var outfn string = path.Join(dir, fmt.Sprintf("%v%d", tempFilePrefix, rand.Uint32()))
+		// execute the query in append mode
+		qry := "query tag=gravwell"
+		args := strings.Split("--insecure --script "+qry+" -o "+outfn+" --csv", " ")
+		t.Log("Args: ", args)
+		exitCode := tree.Execute(args)
+		nonZeroExit(t, exitCode)
+
+		// check the file has data
+		invalidSize(t, outfn)
+
+		// check each record is valid JSON
+		f, err := os.Open(outfn)
+		if err != nil {
+			t.Fatalf(openFileFailF, f.Name())
+		}
+		// csv package does not have a .Valid() like JSON
+		// instead, just check that we are able to read the data
+
+		s := csv.NewReader(f)
+		s.ReuseRecord = true // don't care about actual data; reduce allocations
+		for {
+			if r, err := s.Read(); err != nil {
+				if err == io.EOF {
+					break
+				} else {
+					t.Fatalf("bad csv record '%v': %v", r, err)
+				}
+			}
+
 		}
 	})
 }
@@ -592,5 +650,20 @@ func nonZeroExit(t *testing.T, code int) {
 	}
 
 }
+
+func invalidSize(t *testing.T, fn string) {
+	t.Helper()
+	fi, err := os.Stat(fn)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if fi.Size() <= 0 {
+		t.Fatal(fi.Name(), " has invalid size: %v", fi.Size())
+	}
+}
+
+const (
+	openFileFailF = "failed to open file %v"
+)
 
 // #endregion
