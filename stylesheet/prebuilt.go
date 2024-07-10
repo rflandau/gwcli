@@ -11,6 +11,7 @@ func NewTI(defVal string) textinput.Model {
 	ti := textinput.New()
 	ti.Prompt = ""
 	ti.Width = 20
+	ti.Blur()
 	ti.SetValue(defVal)
 	return ti
 }
