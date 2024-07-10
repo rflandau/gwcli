@@ -137,6 +137,12 @@ func run(cmd *cobra.Command, args []string) {
 		defer of.Close()
 		if err := connection.DownloadResults(&search, of, flags.json, flags.csv); err != nil {
 			clilog.Tee(clilog.ERROR, cmd.ErrOrStderr(), err.Error())
+		} else {
+			var word string = "wrote"
+			if flags.append {
+				word = "appended"
+			}
+			fmt.Fprintf(cmd.OutOrStdout(), "Successfully %v results to %v\n", word, of.Name())
 		}
 		return
 	}
