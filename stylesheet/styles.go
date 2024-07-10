@@ -23,6 +23,7 @@ var (
 			BorderForeground(AccentColor1),
 	}
 	Header1Style   = lipgloss.NewStyle().Foreground(PrimaryColor).Bold(true)
+	Header2Style   = lipgloss.NewStyle().Foreground(SecondaryColor)
 	GreyedOutStyle = lipgloss.NewStyle().Faint(true)
 	// Mother's prompt (text prefixed to user input)
 	PromptStyle = lipgloss.NewStyle().Foreground(lipgloss.Color(PrimaryColor))
