@@ -282,10 +282,6 @@ func dlrecords(f *os.File, strPages string, pager *paginator.Model, results []st
 	return nil
 }
 
-// NOTE: the options section is mildly offset to the left.
-// This is a byproduct of the invisible width of the TIs.
-// There is probably a way to left-align each option but center on the longest width (the TIs),
-// but that is left as an exercise for someone who cares.
 func viewDownload(s *DataScope) string {
 	sel := s.download.selected // brevity
 	width := s.download.outfileTI.Width
