@@ -35,3 +35,24 @@ func Pip(selected, field uint) string {
 	}
 	return ""
 }
+
+// Returns a simple checkbox with angled edges.
+// If val is true, a check mark will be displayed
+func Checkbox(val bool) string {
+	return box(val, '[', ']')
+}
+
+// Checkbox but with rounded edges.
+func Radiobox(val bool) string {
+	return box(val, '(', ')')
+}
+
+// Returns a simple checkbox.
+// If val is true, a check mark will be displayed
+func box(val bool, leftBoundary, rightBoundary rune) string {
+	c := ' '
+	if val {
+		c = '✓'
+	}
+	return fmt.Sprintf("%c%v%c", leftBoundary, c, rightBoundary)
+}
