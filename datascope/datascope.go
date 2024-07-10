@@ -83,6 +83,17 @@ func NewDataScope(data []string, motherRunning bool, search *grav.Search, outfn 
 	// save search
 	s.search = search
 
+	// if outfile was given, attempt automatic download
+	if outfn != "" {
+		res, success := s.dl(outfn)
+		s.download.resultString = res
+		if !success {
+			clilog.Writer.Error(res)
+		} else {
+			clilog.Writer.Info(res)
+		}
+	}
+
 	// mother does not start in alt screen, and thus requires manual measurements
 	if motherRunning {
 		return s, tea.Sequence(tea.EnterAltScreen, func() tea.Msg {
@@ -93,8 +104,6 @@ func NewDataScope(data []string, motherRunning bool, search *grav.Search, outfn 
 			return tea.WindowSizeMsg{Width: w, Height: h}
 		}), nil
 	}
-
-	// TODO incorporate outfn auto-download check
 
 	return s, nil, nil
 }
