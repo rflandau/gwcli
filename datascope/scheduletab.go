@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"gwcli/stylesheet"
+	"gwcli/stylesheet/colorizer"
 	"strings"
 	"sync"
 
@@ -101,13 +102,16 @@ func updateSchedule(s *DataScope, msg tea.Msg) tea.Cmd {
 func viewSchedule(s *DataScope) string {
 	sel := s.schedule.selected // brevity
 
-	var titleSty lipgloss.Style = stylesheet.Header1Style.Width(20).AlignHorizontal(lipgloss.Right)
+	var (
+		titleSty   lipgloss.Style = stylesheet.Header1Style
+		alignerSty lipgloss.Style = lipgloss.NewStyle().Width(20).AlignHorizontal(lipgloss.Right)
+	)
 
 	// build the field names column
 	fields := lipgloss.JoinVertical(lipgloss.Right,
-		fmt.Sprintf("%c%s ", pip(sel, schcronfreq), titleSty.Render("Frequency: ")),
-		fmt.Sprintf("%c%s ", pip(sel, schname), titleSty.Render("Name: ")),
-		fmt.Sprintf("%c%s ", pip(sel, schdesc), titleSty.Render("Description: ")),
+		alignerSty.Render(fmt.Sprintf("%s %s ", colorizer.Pip(sel, schcronfreq), titleSty.Render("Frequency: "))),
+		alignerSty.Render(fmt.Sprintf("%s %s ", colorizer.Pip(sel, schname), titleSty.Render("Name: "))),
+		alignerSty.Render(fmt.Sprintf("%s %s ", colorizer.Pip(sel, schdesc), titleSty.Render("Description: "))),
 	)
 
 	// build the TIs column
