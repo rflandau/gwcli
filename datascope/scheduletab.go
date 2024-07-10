@@ -103,15 +103,21 @@ func viewSchedule(s *DataScope) string {
 	sel := s.schedule.selected // brevity
 
 	var (
-		titleSty   lipgloss.Style = stylesheet.Header1Style
-		alignerSty lipgloss.Style = lipgloss.NewStyle().Width(20).AlignHorizontal(lipgloss.Right)
+		titleSty       lipgloss.Style = stylesheet.Header1Style
+		leftAlignerSty lipgloss.Style = lipgloss.NewStyle().
+				Width(20).
+				AlignHorizontal(lipgloss.Right).
+				PaddingRight(1)
 	)
 
 	// build the field names column
 	fields := lipgloss.JoinVertical(lipgloss.Right,
-		alignerSty.Render(fmt.Sprintf("%s%s ", colorizer.Pip(sel, schcronfreq), titleSty.Render("Frequency: "))),
-		alignerSty.Render(fmt.Sprintf("%s%s ", colorizer.Pip(sel, schname), titleSty.Render("Name: "))),
-		alignerSty.Render(fmt.Sprintf("%s%s ", colorizer.Pip(sel, schdesc), titleSty.Render("Description: "))),
+		leftAlignerSty.Render(fmt.Sprintf("%s%s",
+			colorizer.Pip(sel, schcronfreq), titleSty.Render("Frequency:"))),
+		leftAlignerSty.Render(fmt.Sprintf("%s%s",
+			colorizer.Pip(sel, schname), titleSty.Render("Name:"))),
+		leftAlignerSty.Render(fmt.Sprintf("%s%s",
+			colorizer.Pip(sel, schdesc), titleSty.Render("Description:"))),
 	)
 
 	// build the TIs column
