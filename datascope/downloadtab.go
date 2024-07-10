@@ -287,55 +287,96 @@ func dlrecords(f *os.File, strPages string, pager *paginator.Model, results []st
 // There is probably a way to left-align each option but center on the longest width (the TIs),
 // but that is left as an exercise for someone who cares.
 func viewDownload(s *DataScope) string {
-	var (
-		sty lipgloss.Style = stylesheet.Header1Style
+	sel := s.download.selected // brevity
+	width := s.download.outfileTI.Width
+
+	var ( // shared styles
+		titleSty    lipgloss.Style = stylesheet.Header1Style
+		subtitleSty                = stylesheet.Header2Style
 	)
 
-	// create and join the options section elements
-	options := lipgloss.JoinVertical(lipgloss.Left,
-		sty.Render(" Output Path:"),
-		fmt.Sprintf("%s%s", colorizer.Pip(s.download.selected, dloutfile), s.download.outfileTI.View()),
-		viewBool(s.download.selected, dlappend, s.download.append, "Append?", sty, '[', ']'),
-		sty.Render(" Format:"),
-		viewBool(s.download.selected, dlfmtjson, s.download.format.json, "JSON", sty, '(', ')'),
-		viewBool(s.download.selected, dlfmtcsv, s.download.format.csv, "CSV", sty, '(', ')'),
-		viewBool(s.download.selected, dlfmtraw, s.download.format.raw, "RAW", sty, '(', ')'),
-		sty.Render(" Pages:"),
-		fmt.Sprintf("%s%s", colorizer.Pip(s.download.selected, dlpages), s.download.pagesTI.View()),
-	)
-	// center the options section
-	hCenteredOptions := lipgloss.PlaceHorizontal(s.vp.Width, lipgloss.Center, options)
+	prime := primaryDownloadSegment(titleSty, subtitleSty, width, sel, &s.download)
 
-	// create the pages TI instructions
-	pagesInst := lipgloss.NewStyle().
-		Width(40).
-		AlignHorizontal(lipgloss.Center).
-		Italic(true).
-		Render("Enter a comma-seperated list of pages to" +
-			" download or leave it blank to download all results")
+	// TODO display records TI and instructions below
+	/*pagesInst := lipgloss.NewStyle().
+	Width(40).
+	AlignHorizontal(lipgloss.Center).
+	Italic(true).
+	Render("Enter a comma-seperated list of pages to" +
+		" download or leave it blank to download all results")*/
 
-	// create the error/confirmation
-	var end string // if an error is queued, display it
-	if s.download.inputErrorString != "" {
-		end = stylesheet.ErrStyle.Render(s.download.inputErrorString)
-	} else {
-		end = lipgloss.NewStyle().Foreground(stylesheet.AccentColor1).
-			Render("Press alt+enter to confirm download.")
-	}
-
-	var downloaded string // if a download was previously performed, say so
-	if s.download.resultString != "" {
-		downloaded = "\n" +
-			lipgloss.NewStyle().Foreground(stylesheet.AccentColor2).Render(s.download.resultString)
-	}
-
-	// join options, instructions, and end
-	// centering and joining them independently allows the instructions to be wrapped and aligned
-	// seperately, without altering the options section's alignment
-	// once joined, vertically center the whole block
-	return lipgloss.PlaceVertical(s.vp.Height, lipgloss.Center,
+	return lipgloss.Place(s.vp.Width, s.vp.Height, lipgloss.Center, 0.7,
 		lipgloss.JoinVertical(lipgloss.Center,
-			hCenteredOptions, pagesInst, "\n", end, downloaded))
+			prime,
+			"",
+			stylesheet.ErrStyle.Render(s.download.inputErrorString),
+			titleSty.Render(s.download.resultString)))
+}
+
+// helper subroutine for viewDownload.
+// Generates output and format segments and joins them together.
+func primaryDownloadSegment(titleSty, subtitleSty lipgloss.Style, width int, selected uint, dl *downloadTab) string {
+	var lcolAligner lipgloss.Style = lipgloss.NewStyle().Width(width).AlignHorizontal(lipgloss.Right).PaddingRight(1)
+	var rcolAligner lipgloss.Style = lipgloss.NewStyle().Width(width).AlignHorizontal(lipgloss.Left)
+
+	// generate output segement
+
+	var ( // left column strings
+		outputStr = fmt.Sprintf("%s%s",
+			colorizer.Pip(selected, dloutfile), titleSty.Render("Output Path:"))
+		appendStr = fmt.Sprintf("%s%s",
+			colorizer.Pip(selected, dlappend), subtitleSty.Render("Append?"))
+	)
+
+	l := lipgloss.JoinVertical(lipgloss.Right,
+		lcolAligner.Render(outputStr),
+		lcolAligner.Render(appendStr),
+	)
+
+	var (
+		outputTIStr = dl.outfileTI.View()
+		appendBox   = colorizer.Checkbox(dl.append)
+	)
+
+	r := lipgloss.JoinVertical(lipgloss.Left,
+		rcolAligner.Render(outputTIStr),
+		rcolAligner.Render(appendBox))
+
+	// conjoin output pieces
+	outputSeg := lipgloss.JoinHorizontal(lipgloss.Center, l, r)
+
+	// generate format segment
+	var ( // format segment left column elements
+		jsonStr = fmt.Sprintf("%s%s",
+			colorizer.Pip(selected, dlfmtjson), subtitleSty.Render("JSON"))
+		csvStr = fmt.Sprintf("%s%s",
+			colorizer.Pip(selected, dlfmtcsv), subtitleSty.Render("CSV"))
+		rawStr = fmt.Sprintf("%s%s",
+			colorizer.Pip(selected, dlfmtraw), subtitleSty.Render("raw"))
+	)
+
+	var ( // format segment right column elements
+		jsonBox = colorizer.Radiobox(dl.format.json)
+		csvBox  = colorizer.Radiobox(dl.format.csv)
+		rawBox  = colorizer.Radiobox(dl.format.raw)
+	)
+
+	// conjoin format pieces
+	formatSeg := lipgloss.JoinHorizontal(lipgloss.Center,
+		lipgloss.JoinVertical(lipgloss.Right,
+			lcolAligner.Render(jsonStr),
+			lcolAligner.Render(csvStr),
+			lcolAligner.Render(rawStr)),
+		lipgloss.JoinVertical(lipgloss.Left,
+			rcolAligner.Render(jsonBox),
+			rcolAligner.Render(csvBox),
+			rcolAligner.Render(rawBox)),
+	)
+
+	return lipgloss.JoinVertical(lipgloss.Center,
+		outputSeg,
+		titleSty.Render("Format"),
+		formatSeg)
 }
 
 //#endregion
