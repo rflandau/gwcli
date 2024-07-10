@@ -258,20 +258,6 @@ func (s *DataScope) setViewportHeight(width int) {
 }
 
 // #region styling
-var viewportHeaderBoxStyle = func() lipgloss.Style {
-	b := lipgloss.RoundedBorder()
-	b.Right = "├"
-	return lipgloss.NewStyle().BorderStyle(b).
-		Padding(0, 1).
-		BorderForeground(stylesheet.PrimaryColor)
-}()
-
-var infoStyle = func() lipgloss.Style {
-	b := lipgloss.RoundedBorder()
-	b.Left = "┤"
-	return viewportHeaderBoxStyle.BorderStyle(b)
-}()
-
 var evenEntryStyle = lipgloss.NewStyle()
 var oddEntryStyle = lipgloss.NewStyle().Foreground(stylesheet.SecondaryColor)
 var indexStyle = lipgloss.NewStyle().Foreground(stylesheet.AccentColor1)
