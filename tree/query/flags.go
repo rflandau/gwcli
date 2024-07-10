@@ -33,7 +33,8 @@ func transmogrifyFlags(fs *pflag.FlagSet) (queryflags, error) {
 		return qf, err
 	}
 	if qf.script, err = fs.GetBool("script"); err != nil {
-		return qf, err
+		// this will fail if mother is running, it is okay to swallow
+		qf.script = false
 	}
 	if qf.json, err = fs.GetBool("json"); err != nil {
 		return qf, err
