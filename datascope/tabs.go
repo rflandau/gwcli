@@ -6,6 +6,7 @@ import (
 	"gwcli/clilog"
 	"gwcli/connection"
 	"gwcli/stylesheet"
+	"gwcli/stylesheet/colorizer"
 	"os"
 	"strconv"
 	"strings"
@@ -55,15 +56,6 @@ func (s *DataScope) generateTabs() []tab {
 	return t
 }
 
-// if this field is the selected field, returns the selection rune.
-// otherwise, returns a space
-func pip(selected, field uint) rune {
-	if selected == field {
-		return stylesheet.SelectionPrefix
-	}
-	return ' '
-}
-
 // Returns a string representing the current state of the given boolean value.
 // selected is the current index.
 // fieldNum is the index of the field we are drawing
@@ -78,7 +70,7 @@ func viewBool(selected uint, fieldNum uint, field bool, fieldName string, sty li
 		checked = '✓'
 	}
 
-	return fmt.Sprintf("%c%c%s%c %s", pip(selected, fieldNum), lBrack, sty.Render(string(checked)), rBrack, sty.Render(fieldName))
+	return fmt.Sprintf("%s%c%s%c %s", colorizer.Pip(selected, fieldNum), lBrack, sty.Render(string(checked)), rBrack, sty.Render(fieldName))
 }
 
 //#region results tab
@@ -442,14 +434,14 @@ func viewDownload(s *DataScope) string {
 	// create and join the options section elements
 	options := lipgloss.JoinVertical(lipgloss.Left,
 		sty.Render(" Output Path:"),
-		fmt.Sprintf("%c%s", pip(s.download.selected, dloutfile), s.download.outfileTI.View()),
+		fmt.Sprintf("%s%s", colorizer.Pip(s.download.selected, dloutfile), s.download.outfileTI.View()),
 		viewBool(s.download.selected, dlappend, s.download.append, "Append?", sty, '[', ']'),
 		sty.Render(" Format:"),
 		viewBool(s.download.selected, dlfmtjson, s.download.format.json, "JSON", sty, '(', ')'),
 		viewBool(s.download.selected, dlfmtcsv, s.download.format.csv, "CSV", sty, '(', ')'),
 		viewBool(s.download.selected, dlfmtraw, s.download.format.raw, "RAW", sty, '(', ')'),
 		sty.Render(" Pages:"),
-		fmt.Sprintf("%c%s", pip(s.download.selected, dlpages), s.download.pagesTI.View()),
+		fmt.Sprintf("%s%s", colorizer.Pip(s.download.selected, dlpages), s.download.pagesTI.View()),
 	)
 	// center the options section
 	hCenteredOptions := lipgloss.PlaceHorizontal(s.vp.Width, lipgloss.Center, options)
