@@ -192,10 +192,10 @@ type downloadTab struct {
 		raw  bool
 	}
 
-	pagesTI         textinput.Model // user input to select the pages to download
-	selected        uint
-	dlSuccessString string // the file results were last downloaded to
-	err             error
+	pagesTI          textinput.Model // user input to select the pages to download
+	selected         uint
+	resultString     string // results of the previous download
+	inputErrorString string // issues with current user input
 }
 
 // Initialize and return a DownloadTab struct suitable for representing the download option.
@@ -249,7 +249,7 @@ func initDownloadTab(outfn string, append, json, csv bool) downloadTab {
 
 func updateDownload(s *DataScope, msg tea.Msg) tea.Cmd {
 	if msg, ok := msg.(tea.KeyMsg); ok {
-		s.download.err = nil // clear empty on newest key message
+		s.download.inputErrorString = "" // clear input error on newest key message
 		switch msg.Type {
 		case tea.KeyUp:
 			s.download.outfileTI.Blur()
@@ -279,11 +279,21 @@ func updateDownload(s *DataScope, msg tea.Msg) tea.Cmd {
 			return nil
 		case tea.KeySpace, tea.KeyEnter:
 			if msg.Alt && msg.Type == tea.KeyEnter { // only accept alt+enter
-				if err := s.dl(); err != nil {
-					s.download.err = err
-					clilog.Writer.Error(err.Error())
+				// gather and validate selections
+				fn := strings.TrimSpace(s.download.outfileTI.Value())
+				if fn == "" {
+					str := "output file cannot be empty"
+					s.download.inputErrorString = str
 					return nil
 				}
+				res, success := s.dl(fn)
+				s.download.resultString = res
+				if !success {
+					clilog.Writer.Error(res)
+				} else {
+					clilog.Writer.Info(res)
+				}
+				return nil
 			}
 			// handle booleans
 			if s.download.selected == dlappend {
@@ -303,51 +313,51 @@ func updateDownload(s *DataScope, msg tea.Msg) tea.Cmd {
 
 // The actual download function that consumes the user inputs and creates a file
 // based on the parameters.
-func (s *DataScope) dl() error {
+// fn must not be the empty string.
+// returns a string suitable for displaying to the user the result of the download
+func (s *DataScope) dl(fn string) (result string, success bool) {
 	var (
 		err error
 		f   *os.File // file path
 	)
 
-	// gather and validate selections
-	if fn := strings.TrimSpace(s.download.outfileTI.Value()); fn == "" {
-		return errors.New("output file cannot be empty")
+	baseErrorResultString := "Failed to save results to file: "
+
+	// check append
+	var flags int = os.O_CREATE | os.O_WRONLY
+	if s.download.append {
+		flags |= os.O_APPEND
 	} else {
-		// check append
-		var flags int = os.O_CREATE | os.O_WRONLY
-		if s.download.append {
-			flags |= os.O_APPEND
-		} else {
-			flags |= os.O_TRUNC
-		}
-		// attempt to open the file
-		if f, err = os.OpenFile(fn, flags, outFilePerm); err != nil {
-			return err
-		}
-		defer f.Close()
+		flags |= os.O_TRUNC
 	}
+	// attempt to open the file
+	if f, err = os.OpenFile(fn, flags, outFilePerm); err != nil {
+		return baseErrorResultString + err.Error(), false
+	}
+	defer f.Close()
 
 	clilog.Writer.Debugf("Successfully opened file %v", f.Name())
 
-	var dlSuccessString string
 	// branch on records-only or full download
 	if strPages := strings.TrimSpace(s.download.pagesTI.Value()); strPages != "" {
 		// specific records
 		if err := dlrecords(f, strPages, &s.pager, s.data); err != nil {
-			return err
+			return baseErrorResultString + err.Error(), false
 		}
-		dlSuccessString = fmt.Sprintf("Downloaded entries %v to %v", strPages, f.Name())
-	} else {
-		// whole file
-		if err := connection.DownloadResults(s.search, f,
-			s.download.format.json, s.download.format.csv); err != nil {
-			return err
+		var word string = "Wrote"
+		if s.download.append {
+			word = "Appended"
 		}
-		dlSuccessString = "Downloaded results to " + f.Name()
+
+		return fmt.Sprintf("%v entries %v to %v", word, strPages, f.Name()), true
+	}
+	// whole file
+	if err := connection.DownloadResults(s.search, f,
+		s.download.format.json, s.download.format.csv); err != nil {
+		return baseErrorResultString + err.Error(), false
 	}
 
-	s.download.dlSuccessString = dlSuccessString
-	return nil
+	return connection.DownloadQuerySuccessfulString(f.Name(), s.download.append), true
 }
 
 // helper record for dl.
@@ -429,17 +439,18 @@ func viewDownload(s *DataScope) string {
 
 	// create the error/confirmation
 	var end string // if an error is queued, display it
-	if s.download.err != nil {
-		end = stylesheet.ErrStyle.Render(s.download.err.Error())
+	if s.download.inputErrorString != "" {
+		end = stylesheet.ErrStyle.Render(s.download.inputErrorString)
 	} else {
 		end = lipgloss.NewStyle().Foreground(stylesheet.AccentColor1).
 			Render("Press alt+enter to confirm download.")
 	}
 
 	var downloaded string // if a download was previously performed, say so
-	if s.download.dlSuccessString != "" {
-		downloaded = lipgloss.NewStyle().Foreground(stylesheet.AccentColor2).
-			Render("Successfully downloaded results to " + s.download.dlSuccessString + ".")
+	if s.download.resultString != "" {
+		dlstyle := lipgloss.NewStyle().Foreground(stylesheet.AccentColor2)
+		downloaded = dlstyle.Render("Previous download results:") + "\n" +
+			dlstyle.Render(s.download.resultString)
 	}
 
 	// join options, instructions, and end

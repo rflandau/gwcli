@@ -274,3 +274,12 @@ func renderToDownload(rndr string, csv, json bool) (string, error) {
 			" Please use the web interface.")
 	}
 }
+
+// Returns a consistent sting for a successful query result download
+func DownloadQuerySuccessfulString(filename string, append bool) string {
+	var word string = "wrote"
+	if append {
+		word = "appended"
+	}
+	return fmt.Sprintf("Successfully %v results to %v", word, filename)
+}
