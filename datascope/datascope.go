@@ -241,7 +241,6 @@ func (s *DataScope) renderFooter(width int) string {
 		lipgloss.JoinHorizontal(lipgloss.Center, lineHelp, percent),
 		pgr,
 	)
-	//return s.pager.View()
 }
 
 // Sets the height of the viewport, using s.rawHeight minus the height of non-data segments
