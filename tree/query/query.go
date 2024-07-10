@@ -4,7 +4,6 @@
 package query
 
 import (
-	"errors"
 	"fmt"
 	"gwcli/action"
 	"gwcli/busywait"
@@ -14,7 +13,6 @@ import (
 	"gwcli/mother"
 	"gwcli/stylesheet"
 	"gwcli/treeutils"
-	"io"
 	"os"
 	"strings"
 	"time"
@@ -137,7 +135,7 @@ func run(cmd *cobra.Command, args []string) {
 			return
 		}
 		defer of.Close()
-		if err := downloadResults(search, of, flags.json, flags.csv); err != nil {
+		if err := connection.DownloadResults(&search, of, flags.json, flags.csv); err != nil {
 			clilog.Tee(clilog.ERROR, cmd.ErrOrStderr(), err.Error())
 		}
 		return
@@ -163,9 +161,14 @@ func run(cmd *cobra.Command, args []string) {
 
 		// spin up a scrolling pager to display
 		// NOTE: we already check output above; pass in nil
-		if _, err := datascope.CobraNew(strs, "", false).Run(); err != nil {
+		if p, err := datascope.CobraNew(strs, &search, "", false, false, false); err != nil {
 			clilog.Tee(clilog.ERROR, cmd.ErrOrStderr(), err.Error())
 			return
+		} else {
+			if _, err := p.Run(); err != nil {
+				clilog.Tee(clilog.ERROR, cmd.ErrOrStderr(), err.Error())
+				return
+			}
 		}
 	} else { // no results to display
 		fmt.Fprintln(cmd.OutOrStdout(), NoResultsText)
@@ -194,30 +197,6 @@ func waitForSearch(s grav.Search, scriptMode bool) error {
 		if _, err := spnrP.Run(); err != nil {
 			return err
 		}
-	}
-	return nil
-}
-
-// Given a search, a file to write to, and the format to download in, downloadResults fetches and
-// writes the data resulting from the search.
-func downloadResults(s grav.Search, f *os.File, json, csv bool) error {
-	var (
-		err    error
-		format string
-		rc     io.ReadCloser
-	)
-	if format, err = renderToDownload(s.RenderMod, csv, json); err != nil {
-		return err
-	}
-	clilog.Writer.Debugf("output file, renderer '%s' -> '%s'", s.RenderMod, format)
-	if rc, err = connection.Client.DownloadSearch(s.ID, types.TimeRange{}, format); err != nil {
-		return err
-	}
-
-	if b, err := f.ReadFrom(rc); err != nil {
-		return err
-	} else {
-		clilog.Writer.Infof("Streamed %d bytes into %s", b, f.Name())
 	}
 	return nil
 }
@@ -270,7 +249,7 @@ func tryQuery(qry string, duration time.Duration, sch *schedule) (grav.Search, i
 	}
 
 	// check for scheduling
-	if sch != nil {
+	if sch != nil && sch.cronfreq != "" {
 		clilog.Writer.Debugf("Scheduling query %v (%v) for %v", sch.name, qry, sch.cronfreq)
 		id, err := connection.Client.CreateScheduledSearch(sch.name, sch.desc, sch.cronfreq,
 			uuid.UUID{}, qry, duration, []int32{connection.MyInfo.DefaultGID})
@@ -317,25 +296,6 @@ func openFile(path string, append bool) (*os.File, error) {
 	}
 
 	return f, nil
-}
-
-// Maps Render module and csv/json flag state to a string usable with DownloadSearch().
-// JSON, then CSV, take precidence over a direct render -> format map
-func renderToDownload(r string, csv, json bool) (string, error) {
-	if json {
-		return types.DownloadJSON, nil
-	}
-	if csv {
-		return types.DownloadCSV, nil
-	}
-	switch r {
-	case types.RenderNameHex, types.RenderNameRaw, types.RenderNameText:
-		return types.DownloadText, nil
-	case types.RenderNamePcap:
-		return types.DownloadPCAP, nil
-	default:
-		return "", errors.New("Unable to retrieve " + r + " results via the cli. Please use the web interface.")
-	}
 }
 
 // Fetches all text results related to the given search by continually re-fetching until no more

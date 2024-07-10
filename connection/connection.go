@@ -11,6 +11,7 @@ import (
 	"errors"
 	"fmt"
 	"gwcli/clilog"
+	"io"
 	"os"
 	"path"
 	"strings"
@@ -228,4 +229,48 @@ func End() error {
 
 	Client.Close()
 	return nil
+}
+
+// Given a search, a file to write to, and the format to download in, DownloadResults fetches and
+// writes the data resulting from the search.
+func DownloadResults(s *grav.Search, f *os.File, json, csv bool) error {
+	var (
+		err    error
+		format string
+		rc     io.ReadCloser
+	)
+	if format, err = renderToDownload(s.RenderMod, csv, json); err != nil {
+		return err
+	}
+	clilog.Writer.Debugf("output file, renderer '%s' -> '%s'", s.RenderMod, format)
+	if rc, err = Client.DownloadSearch(s.ID, types.TimeRange{}, format); err != nil {
+		return err
+	}
+
+	if b, err := f.ReadFrom(rc); err != nil {
+		return err
+	} else {
+		clilog.Writer.Infof("Streamed %d bytes into %s", b, f.Name())
+	}
+	return nil
+}
+
+// Maps Render module and csv/json flag state to a string usable with DownloadSearch().
+// JSON, then CSV, take precidence over a direct render -> format map
+func renderToDownload(rndr string, csv, json bool) (string, error) {
+	if json {
+		return types.DownloadJSON, nil
+	}
+	if csv {
+		return types.DownloadCSV, nil
+	}
+	switch rndr {
+	case types.RenderNameHex, types.RenderNameRaw, types.RenderNameText:
+		return types.DownloadText, nil
+	case types.RenderNamePcap:
+		return types.DownloadPCAP, nil
+	default:
+		return "", errors.New("Unable to retrieve " + rndr + " results via the cli." +
+			" Please use the web interface.")
+	}
 }
