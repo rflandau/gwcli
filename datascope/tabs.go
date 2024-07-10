@@ -228,7 +228,7 @@ func initDownloadTab(outfn string, append, json, csv bool) downloadTab {
 	// initialize outfileTI
 	d.outfileTI.Prompt = ""
 	d.outfileTI.Width = width
-	d.outfileTI.Placeholder = "(optional)"
+	d.outfileTI.Placeholder = ""
 	d.outfileTI.Focus()
 	d.outfileTI.SetValue(outfn)
 
@@ -485,6 +485,40 @@ func viewDownload(s *DataScope) string {
 		lipgloss.JoinVertical(lipgloss.Center,
 			hCenteredOptions, pagesInst, "\n", end, downloaded))
 }
+
+//#endregion
+
+//#region schedule tab
+
+type scheduleCursor = uint
+
+const (
+	schlowBound scheduleCursor = iota
+	schname
+	schdesc
+	schcronfreq
+	schhighBound
+)
+
+type scheduleTab struct {
+	nameTI     textinput.Model
+	descTI     textinput.Model
+	cronfreqTI textinput.Model
+}
+
+func initScheduleTab() scheduleTab {
+	sch := scheduleTab{
+		nameTI:     stylesheet.NewTI(""),
+		descTI:     stylesheet.NewTI(""),
+		cronfreqTI: stylesheet.NewTI(""),
+	}
+
+	return sch
+}
+
+/*func updateSchedule(s *DataScope, msg tea.Msg) tea.Cmd {
+
+}*/
 
 //#endregion
 
