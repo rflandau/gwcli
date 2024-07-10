@@ -4,14 +4,18 @@
 package main
 
 import (
+	"bufio"
 	"bytes"
 	"fmt"
 	"gwcli/connection"
 	"gwcli/tree"
 	"io"
+	"math/rand"
 	"os"
+	"path"
 	"strings"
 	"testing"
+	"time"
 
 	grav "github.com/gravwell/gravwell/v3/client"
 	"github.com/gravwell/gravwell/v3/utils/weave"
@@ -33,7 +37,7 @@ func TestNonInteractive(t *testing.T) {
 	realStdout = os.Stdout
 	realStderr = os.Stderr
 
-	// connect to the server for manually calls
+	// connect to the server for manual calls
 	testclient, err := grav.NewOpts(grav.Opts{Server: server, UseHttps: false, InsecureNoEnforceCerts: true})
 	if err != nil {
 		panic(err)
@@ -429,6 +433,101 @@ func TestNonInteractive(t *testing.T) {
 
 }
 
+func TestNonInteractiveQueryFileOut(t *testing.T) {
+	// create results to ensure data is returned
+	testclient, err := grav.NewOpts(grav.Opts{Server: server, UseHttps: false, InsecureNoEnforceCerts: true})
+	if err != nil {
+		panic(err)
+	}
+	if err = testclient.Login(user, password); err != nil {
+		panic(err)
+	}
+
+	if s, err := testclient.StartSearch("tag=gravwell",
+		time.Now().Add(-1*time.Second), time.Now(), false); err != nil {
+		t.Skip("Failed to create search as base data: ", err)
+	} else {
+		if err := testclient.WaitForSearch(s); err != nil {
+			t.Skip("Failed to wait for base data search: ", err)
+		}
+	}
+
+	dir := t.TempDir()
+	tempFilePrefix := "gwcliTestNonInteractiveQueryOut"
+
+	t.Run("raw", func(t *testing.T) {
+		var outfn string = path.Join(dir, fmt.Sprintf("%v%d", tempFilePrefix, rand.Uint32()))
+
+		qry := "query tag=gravwell"
+		args := strings.Split("--insecure --script "+qry+" -o "+outfn, " ")
+		t.Log("Args: ", args)
+
+		exitCode := tree.Execute(args)
+		nonZeroExit(t, exitCode)
+
+		// check the file has data
+		fi, err := os.Stat(outfn)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if fi.Size() <= 0 {
+			t.Fatal(fi.Name(), " has invalid size: %v", fi.Size())
+		}
+
+	})
+
+	t.Run("raw append", func(t *testing.T) {
+		var outfn string = path.Join(dir, fmt.Sprintf("%v%d", tempFilePrefix, rand.Uint32()))
+
+		baseData := "Hello World"
+
+		// prepopulate the file with data to check for append
+		if err := os.WriteFile(outfn, []byte(baseData+"\n"), 0644); err != nil {
+			t.Fatalf("Failed to prepopulate %v: %v", outfn, err)
+		}
+
+		priorFI, err := os.Stat(outfn)
+		if err != nil {
+			t.Fatal(err)
+		}
+		priorSize := priorFI.Size()
+		if priorSize <= 0 {
+			t.Fatalf("test file to append to has invalid size: %v", priorSize)
+		}
+
+		// execute the query in append mode
+		qry := "query tag=gravwell"
+		args := strings.Split("--insecure --script "+qry+" -o "+outfn+" --append", " ")
+		t.Log("Args: ", args)
+		exitCode := tree.Execute(args)
+		nonZeroExit(t, exitCode)
+
+		// check the file has more data than before
+		postFI, err := os.Stat(outfn)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if postFI.Size() <= priorSize {
+			t.Fatalf("expected post size (%v) to be greater than prior size (%v)", postFI.Size(), priorSize)
+		}
+
+		// check that the first line still exists
+		f, err := os.Open(outfn)
+		if err != nil {
+			t.Fatalf("failed to read from file %v: %v", outfn, err)
+		}
+		defer f.Close()
+		scan := bufio.NewScanner(f)
+		if !scan.Scan() {
+			t.Fatal("failed to scan first line. Error? ", scan.Err())
+		}
+		firstLine := scan.Text()
+		if firstLine != baseData {
+			t.Fatalf("expected first line of file to be %v, got %v", baseData, firstLine)
+		}
+	})
+}
+
 //#endregion
 
 func mockIO() (stdoutData chan string, stderrData chan string, err error) {
@@ -482,3 +581,16 @@ func restoreIO() {
 	}
 	os.Stderr = realStderr
 }
+
+// #region strings and failure checks
+
+// Dies if code is <> 0
+func nonZeroExit(t *testing.T, code int) {
+	t.Helper()
+	if code != 0 {
+		t.Fatalf("non-zero exit code %v", code)
+	}
+
+}
+
+// #endregion
