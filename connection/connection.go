@@ -11,9 +11,9 @@ import (
 	"errors"
 	"fmt"
 	"gwcli/clilog"
+	"gwcli/utilities/cfgdir"
 	"io"
 	"os"
-	"path"
 	"strings"
 
 	grav "github.com/gravwell/gravwell/v3/client"
@@ -21,26 +21,6 @@ import (
 	"github.com/gravwell/gravwell/v3/client/types"
 	"github.com/gravwell/gravwell/v3/ingest/log"
 )
-
-// files within the config directory
-const (
-	tokenName   = "token"
-	restLogName = "rest.log"
-)
-
-// all data persistent data is store in $os.UserConfigDir/gwcli/
-// or local to the instantiation, if that fails
-var cfgDir string // set on init
-
-// on startup, identify and cache the config directory
-func init() {
-	const cfgSubFolder = "gwcli"
-	cd, err := os.UserConfigDir()
-	if err != nil {
-		cd = "."
-	}
-	cfgDir = path.Join(cd, cfgSubFolder)
-}
 
 var Client *grav.Client
 
@@ -64,7 +44,7 @@ func Initialize(conn string, UseHttps, InsecureNoEnforceCerts bool, restLogPath 
 		}
 	} else if clilog.Writer != nil && clilog.Writer.GetLevel() >= log.Level(clilog.INFO) {
 		// spin up the rest logger if in INFO+
-		l, err = objlog.NewJSONLogger(path.Join(cfgDir, restLogName))
+		l, err = objlog.NewJSONLogger(cfgdir.DefaultRestLogPath)
 		if err != nil {
 			return err
 		}
@@ -132,7 +112,7 @@ func Login(cred Credentials, scriptMode bool) (err error) {
 func LoginViaToken() (err error) {
 	var tknbytes []byte
 	// NOTE the reversal of standard error checking (`err == nil`)
-	if tknbytes, err = os.ReadFile(path.Join(cfgDir, tokenName)); err == nil {
+	if tknbytes, err = os.ReadFile(cfgdir.DefaultTokenPath); err == nil {
 		if err = Client.ImportLoginToken(string(tknbytes)); err == nil {
 			if err = Client.TestLogin(); err == nil {
 				return nil
@@ -192,19 +172,9 @@ func CreateToken() error {
 	if token, err = Client.ExportLoginToken(); err != nil {
 		return fmt.Errorf("failed to export login token: %v", err)
 	}
-	if err = os.MkdirAll(cfgDir, 0700); err != nil {
-		// check for exists error
-		clilog.Writer.Debugf("mkdir error: %v", err)
-		pe := err.(*os.PathError)
-		if pe.Err != os.ErrExist {
-			return fmt.Errorf("failed to ensure existance of directory %v: %v",
-				cfgDir, err)
-		}
-	}
-	tokenPath := path.Join(cfgDir, tokenName)
 
 	// write out the token
-	fd, err := os.OpenFile(tokenPath, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0600)
+	fd, err := os.OpenFile(cfgdir.DefaultTokenPath, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0600)
 	if err != nil {
 		return fmt.Errorf("failed to create token: %v", err)
 	}
@@ -216,7 +186,7 @@ func CreateToken() error {
 		return fmt.Errorf("failed to close token file: %v", err)
 	}
 
-	clilog.Writer.Infof("Created token file @ %v", tokenPath)
+	clilog.Writer.Infof("Created token file @ %v", cfgdir.DefaultTokenPath)
 	return nil
 }
 
