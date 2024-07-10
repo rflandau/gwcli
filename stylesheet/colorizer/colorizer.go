@@ -27,6 +27,8 @@ func ColorCommandName(c *cobra.Command) string {
 	}
 }
 
+// if field == selected, returns the selection rune.
+// otherwise, returns a space.
 func Pip(selected, field uint) string {
 	if selected == field {
 		return lipgloss.NewStyle().Foreground(stylesheet.AccentColor2).Render(string(stylesheet.SelectionPrefix))
