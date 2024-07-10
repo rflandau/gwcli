@@ -4,12 +4,14 @@ import (
 	"errors"
 	"fmt"
 	"gwcli/clilog"
+	"gwcli/connection"
 	"gwcli/stylesheet"
 	"os"
 	"strconv"
 	"strings"
 	"unicode"
 
+	"github.com/charmbracelet/bubbles/paginator"
 	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
@@ -190,14 +192,17 @@ type downloadTab struct {
 		raw  bool
 	}
 
-	pagesTI      textinput.Model // user input to select the pages to download
-	selected     uint
-	downloadedFn string // the file results were last downloaded to
-	err          error
+	pagesTI         textinput.Model // user input to select the pages to download
+	selected        uint
+	dlSuccessString string // the file results were last downloaded to
+	err             error
 }
 
-// Initialize and return a DownloadTab struct suitable for representing the download option
-func initDownloadTab() downloadTab {
+// Initialize and return a DownloadTab struct suitable for representing the download option.
+//
+// ! JSON and CSV should not both be true. However, they can both be false.
+// Setting both to true is undefined behavior.
+func initDownloadTab(outfn string, append, json, csv bool) downloadTab {
 	width := 20
 
 	d := downloadTab{
@@ -207,9 +212,14 @@ func initDownloadTab() downloadTab {
 			json bool
 			csv  bool
 			raw  bool
-		}{json: false, csv: false, raw: true},
+		}{json: json, csv: csv, raw: false},
 		pagesTI:  textinput.New(),
 		selected: dloutfile,
+	}
+
+	// set raw if !(json or csv)
+	if !json && !csv {
+		d.format.raw = true
 	}
 
 	// initialize outfileTI
@@ -217,6 +227,7 @@ func initDownloadTab() downloadTab {
 	d.outfileTI.Width = width
 	d.outfileTI.Placeholder = "(optional)"
 	d.outfileTI.Focus()
+	d.outfileTI.SetValue(outfn)
 
 	// initialize pagesTI
 	d.pagesTI.Prompt = ""
@@ -270,6 +281,7 @@ func updateDownload(s *DataScope, msg tea.Msg) tea.Cmd {
 			if msg.Alt && msg.Type == tea.KeyEnter { // only accept alt+enter
 				if err := s.dl(); err != nil {
 					s.download.err = err
+					clilog.Writer.Error(err.Error())
 					return nil
 				}
 			}
@@ -293,10 +305,8 @@ func updateDownload(s *DataScope, msg tea.Msg) tea.Cmd {
 // based on the parameters.
 func (s *DataScope) dl() error {
 	var (
-		err   error
-		f     *os.File // file path
-		pages []uint32 // pages to download (empty for all)
-		data  []string
+		err error
+		f   *os.File // file path
 	)
 
 	// gather and validate selections
@@ -317,54 +327,75 @@ func (s *DataScope) dl() error {
 		defer f.Close()
 	}
 
+	clilog.Writer.Debugf("Successfully opened file %v", f.Name())
+
+	var dlSuccessString string
+	// branch on records-only or full download
 	if strPages := strings.TrimSpace(s.download.pagesTI.Value()); strPages != "" {
-		// explode and parse each
-		exploded := strings.Split(strPages, ",")
-		for _, strpg := range exploded {
-			// sanity check page
-			pg, err := strconv.ParseUint(strpg, 10, 32)
-			if err != nil {
-				return fmt.Errorf("failed to parse page '%v':\n%v", strpg, err)
-			}
-			if pg > uint64(s.pager.TotalPages-1) {
-				return fmt.Errorf(
-					"page %v is outside the set of available pages [0-%v]",
-					pg, s.pager.TotalPages-1)
-			}
-			// add it to the list of pages to download
-			pages = append(pages, uint32(pg))
+		// specific records
+		if err := dlrecords(f, strPages, &s.pager, s.data); err != nil {
+			return err
 		}
-	}
-
-	// fetch the requested data
-	if pages == nil { // all data
-		data = s.data
+		dlSuccessString = fmt.Sprintf("Downloaded entries %v to %v", strPages, f.Name())
 	} else {
-		// allocate for the given # of pages
-		data = make([]string, len(pages)*s.pager.PerPage)
-		itemIndex := 0
-		for _, pg := range pages {
-			// fetch the data segment to append
-			lBound, hBound := uint32(s.pager.PerPage)*pg, uint32(s.pager.PerPage)*(pg+1)-1
-			clilog.Writer.Debugf("Page %v | lBound %v | hBound %v", pg, lBound, hBound)
-			dslice := s.data[lBound:hBound]
-			clilog.Writer.Debugf("dslice %v", dslice)
-
-			// append each item in the segment
-			for _, d := range dslice {
-				data[itemIndex] = d
-				itemIndex += 1
-			}
+		// whole file
+		if err := connection.DownloadResults(s.search, f,
+			s.download.format.json, s.download.format.csv); err != nil {
+			return err
 		}
+		dlSuccessString = "Downloaded results to " + f.Name()
 	}
 
-	// write the data into the given file
+	s.download.dlSuccessString = dlSuccessString
+	return nil
+}
+
+// helper record for dl.
+// Downloads just the records specified.
+func dlrecords(f *os.File, strPages string, pager *paginator.Model, results []string) error {
+	var (
+		pages []uint32
+	)
+
+	// explode and parse each page
+	exploded := strings.Split(strPages, ",")
+	for _, strpg := range exploded {
+		// sanity check page
+		pg, err := strconv.ParseUint(strpg, 10, 32)
+		if err != nil {
+			return fmt.Errorf("failed to parse page '%v':\n%v", strpg, err)
+		}
+		if pg > uint64(pager.TotalPages-1) {
+			return fmt.Errorf(
+				"page %v is outside the set of available pages [0-%v]",
+				pg, pager.TotalPages-1)
+		}
+		// add it to the list of pages to download
+		pages = append(pages, uint32(pg))
+	}
+
+	// allocate for the given # of pages
+	data := make([]string, len(pages)*pager.PerPage)
+	itemIndex := 0
+	for _, pg := range pages {
+		// fetch the data segment to append
+		lBound, hBound := uint32(pager.PerPage)*pg, uint32(pager.PerPage)*(pg+1)-1
+		clilog.Writer.Debugf("Page %v | lBound %v | hBound %v", pg, lBound, hBound)
+		dslice := results[lBound:hBound]
+		clilog.Writer.Debugf("dslice %v", dslice)
+
+		// append each item in the segment
+		for _, d := range dslice {
+			data[itemIndex] = d
+			itemIndex += 1
+		}
+	}
 	for _, d := range data {
 		if _, err := f.WriteString(d + "\n"); err != nil {
 			return err
 		}
 	}
-	s.download.downloadedFn = f.Name()
+
 	return nil
 }
 
@@ -406,9 +437,9 @@ func viewDownload(s *DataScope) string {
 	}
 
 	var downloaded string // if a download was previously performed, say so
-	if s.download.downloadedFn != "" {
+	if s.download.dlSuccessString != "" {
 		downloaded = lipgloss.NewStyle().Foreground(stylesheet.AccentColor2).
-			Render("Successfully downloaded results to " + s.download.downloadedFn + ".")
+			Render("Successfully downloaded results to " + s.download.dlSuccessString + ".")
 	}
 
 	// join options, instructions, and end

@@ -7,6 +7,7 @@
 package datascope
 
 import (
+	"errors"
 	"fmt"
 	"gwcli/clilog"
 	"gwcli/stylesheet"
@@ -21,6 +22,7 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/charmbracelet/x/term"
+	grav "github.com/gravwell/gravwell/v3/client"
 )
 
 type DataScope struct {
@@ -37,13 +39,26 @@ type DataScope struct {
 	showTabs  bool
 	activeTab uint
 
+	search *grav.Search // the search being displayed
+
 	download downloadTab
 }
 
 // Returns a new DataScope instance based on the given data array. If mother is running,
 // this subroutine will launch her into the alt screen buffer and query the terminal for its size.
 // outfn and append are optional; if outfn is given, the data will immediately be downloaded.
-func NewDataScope(data []string, motherRunning bool, outfn string, append bool) (DataScope, tea.Cmd) {
+func NewDataScope(data []string, motherRunning bool, search *grav.Search, outfn string, append, json, csv bool) (DataScope, tea.Cmd, error) {
+	// sanity check arguments
+	if search == nil {
+		return DataScope{}, nil, errors.New("search cannot be nil")
+	}
+	if len(data) == 0 {
+		return DataScope{}, nil, errors.New("no data to display")
+	}
+	if json && csv {
+		return DataScope{}, nil, errors.New("output format cannot be both JSON and CSV")
+	}
+
 	// set up backend paginator
 	p := paginator.New()
 	p.Type = paginator.Dots
@@ -57,13 +72,16 @@ func NewDataScope(data []string, motherRunning bool, outfn string, append bool) 
 		ready:         false,
 		data:          data,
 		motherRunning: motherRunning,
-		download:      initDownloadTab(),
+		download:      initDownloadTab(outfn, append, json, csv),
 	}
 
 	// set up tabs
 	s.tabs = s.generateTabs()
 	s.activeTab = results
 	s.showTabs = true
+
+	// save search
+	s.search = search
 
 	// mother does not start in alt screen, and thus requires manual measurements
 	if motherRunning {
@@ -73,12 +91,12 @@ func NewDataScope(data []string, motherRunning bool, outfn string, append bool) 
 				clilog.Writer.Errorf("Failed to fetch terminal size: %v", err)
 			}
 			return tea.WindowSizeMsg{Width: w, Height: h}
-		})
+		}), nil
 	}
 
-	// TODO incorporate outfn check
+	// TODO incorporate outfn auto-download check
 
-	return s, nil
+	return s, nil, nil
 }
 
 func (s DataScope) Init() tea.Cmd {
@@ -150,9 +168,12 @@ func (s DataScope) View() string {
 	return s.tabs[s.activeTab].viewFunc(&s)
 }
 
-func CobraNew(data []string, outfn string, append bool) (p *tea.Program) {
-	ds, _ := NewDataScope(data, false, outfn, append)
-	return tea.NewProgram(ds, tea.WithAltScreen())
+func CobraNew(data []string, search *grav.Search, outfn string, append, json, csv bool) (p *tea.Program, err error) {
+	ds, _, err := NewDataScope(data, false, search, outfn, append, json, csv)
+	if err != nil {
+		return nil, err
+	}
+	return tea.NewProgram(ds, tea.WithAltScreen()), nil
 }
 
 // displays the current page

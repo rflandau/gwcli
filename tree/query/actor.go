@@ -150,12 +150,18 @@ func (q *query) Update(msg tea.Msg) tea.Cmd {
 				for i, r := range results {
 					data[i] = string(r.Data)
 				}
-				q.mode = displaying
 
 				var cmd tea.Cmd
-				q.scope, cmd = datascope.NewDataScope(data, true,
-					q.flagModifiers.outfn, q.flagModifiers.append)
+				q.scope, cmd, err = datascope.NewDataScope(data, true, q.curSearch,
+					q.flagModifiers.outfn, q.flagModifiers.append,
+					q.flagModifiers.json, q.flagModifiers.csv)
+				if err != nil {
+					clilog.Writer.Errorf("failed to create DataScope: %v", err)
+					q.mode = quitting
+					return tea.Println(err.Error())
+				}
 
+				q.mode = displaying
 				return cmd
 			}
 
