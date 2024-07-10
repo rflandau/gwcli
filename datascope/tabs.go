@@ -49,8 +49,8 @@ func (s *DataScope) generateTabs() []tab {
 		viewFunc:   viewDownload}
 	t[schedule] = tab{
 		name:       "schedule",
-		updateFunc: func(*DataScope, tea.Msg) tea.Cmd { return nil },
-		viewFunc:   func(*DataScope) string { return "" }}
+		updateFunc: updateSchedule,
+		viewFunc:   viewSchedule}
 
 	return t
 }
@@ -216,7 +216,7 @@ func initDownloadTab(outfn string, append, json, csv bool) downloadTab {
 			csv  bool
 			raw  bool
 		}{json: json, csv: csv, raw: false},
-		pagesTI:  textinput.New(),
+		pagesTI:  textinput.New(), // TODO use stylesheet.NewTI()
 		selected: dloutfile,
 	}
 
@@ -485,40 +485,6 @@ func viewDownload(s *DataScope) string {
 		lipgloss.JoinVertical(lipgloss.Center,
 			hCenteredOptions, pagesInst, "\n", end, downloaded))
 }
-
-//#endregion
-
-//#region schedule tab
-
-type scheduleCursor = uint
-
-const (
-	schlowBound scheduleCursor = iota
-	schname
-	schdesc
-	schcronfreq
-	schhighBound
-)
-
-type scheduleTab struct {
-	nameTI     textinput.Model
-	descTI     textinput.Model
-	cronfreqTI textinput.Model
-}
-
-func initScheduleTab() scheduleTab {
-	sch := scheduleTab{
-		nameTI:     stylesheet.NewTI(""),
-		descTI:     stylesheet.NewTI(""),
-		cronfreqTI: stylesheet.NewTI(""),
-	}
-
-	return sch
-}
-
-/*func updateSchedule(s *DataScope, msg tea.Msg) tea.Cmd {
-
-}*/
 
 //#endregion
 
