@@ -17,6 +17,7 @@ import (
 	"gwcli/tree/tree"
 	"gwcli/tree/user"
 	"gwcli/treeutils"
+	"gwcli/utilities/cfgdir"
 	"gwcli/utilities/usage"
 	"time"
 
@@ -115,7 +116,7 @@ func GenerateFlags(root *cobra.Command) {
 	root.PersistentFlags().StringP("passfile", "p", "", "the path to a file containing your password")
 	root.PersistentFlags().Bool("no-color", false, "disables colourized output.")
 	root.PersistentFlags().String("server", "localhost:80", "<host>:<port> of instance to connect to.\n")
-	root.PersistentFlags().StringP("log", "l", "./gwcli.log", "log location for developer logs.\n")
+	root.PersistentFlags().StringP("log", "l", cfgdir.DefaultStdLogPath, "log location for developer logs.\n")
 	root.PersistentFlags().String("loglevel", "DEBUG", "log level for developer logs (-l).\n"+
 		"Possible values: 'OFF', 'DEBUG', 'INFO', 'WARN', 'ERROR', 'CRITICAL', 'FATAL'.\n")
 	root.PersistentFlags().Bool("insecure", false, "do not use HTTPS and do not enforce certs.")
