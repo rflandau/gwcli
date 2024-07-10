@@ -35,13 +35,14 @@ type DataScope struct {
 	rawHeight int // usable height, as reported by the tty
 	rawWidth  int // usabe width, as reported by the tty
 
-	tabs      []tab
+	tabs      []tab // TODO junk tab array?
 	showTabs  bool
 	activeTab uint
 
 	search *grav.Search // the search being displayed
 
 	download downloadTab
+	schedule scheduleTab
 }
 
 // Returns a new DataScope instance based on the given data array. If mother is running,
@@ -73,6 +74,7 @@ func NewDataScope(data []string, motherRunning bool, search *grav.Search, outfn 
 		data:          data,
 		motherRunning: motherRunning,
 		download:      initDownloadTab(outfn, append, json, csv),
+		schedule:      initScheduleTab(),
 	}
 
 	// set up tabs
