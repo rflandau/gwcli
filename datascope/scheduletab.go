@@ -121,24 +121,6 @@ func viewSchedule(s *DataScope) string {
 		s.schedule.descTI.View(),
 	)
 
-	// build each TI
-	/*cf := fmt.Sprintf("%c%s: %s",
-		pip(sel, schcronfreq),
-		titleSty.Render("Frequency: "),
-		s.schedule.cronfreqTI.View())
-	name := fmt.Sprintf("%c%s: %s",
-		pip(sel, schname),
-		titleSty.Render("Name: "),
-		s.schedule.nameTI.View())
-	desc := fmt.Sprintf("%c%s: %s",
-		pip(sel, schdesc),
-		titleSty.Render("Description: "),
-		s.schedule.descTI.View())
-
-	options := lipgloss.JoinVertical(lipgloss.Center,
-		cf,
-		name,
-		desc)*/
 	return lipgloss.Place(s.vp.Width, s.vp.Height, lipgloss.Center, lipgloss.Center, lipgloss.JoinHorizontal(lipgloss.Center, fields, TIs))
 }
 
