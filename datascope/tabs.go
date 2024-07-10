@@ -174,6 +174,9 @@ const (
 	dllowBound downloadCursor = iota
 	dloutfile
 	dlappend
+	dlfmtjson
+	dlfmtcsv
+	dlfmtraw
 	dlpages
 	dlhighBound
 )
@@ -207,7 +210,7 @@ func initDownloadTab(outfn string, append, json, csv bool) downloadTab {
 
 	d := downloadTab{
 		outfileTI: textinput.New(),
-		append:    false,
+		append:    append,
 		format: struct {
 			json bool
 			csv  bool
@@ -296,9 +299,27 @@ func updateDownload(s *DataScope, msg tea.Msg) tea.Cmd {
 				return nil
 			}
 			// handle booleans
-			if s.download.selected == dlappend {
+			switch s.download.selected {
+			case dlappend:
 				s.download.append = !s.download.append
-				return nil
+			case dlfmtjson:
+				s.download.format.json = true
+				if s.download.format.json {
+					s.download.format.csv = false
+					s.download.format.raw = false
+				}
+			case dlfmtcsv:
+				s.download.format.csv = true
+				if s.download.format.csv {
+					s.download.format.json = false
+					s.download.format.raw = false
+				}
+			case dlfmtraw:
+				s.download.format.raw = true
+				if s.download.format.raw {
+					s.download.format.json = false
+					s.download.format.csv = false
+				}
 			}
 		}
 	}
@@ -411,7 +432,7 @@ func dlrecords(f *os.File, strPages string, pager *paginator.Model, results []st
 
 // NOTE: the options section is mildly offset to the left.
 // This is a byproduct of the invisible width of the TIs.
-// There is probably a way to left-align each option but centering on the longest width (the TIs),
+// There is probably a way to left-align each option but center on the longest width (the TIs),
 // but that is left as an exercise for someone who cares.
 func viewDownload(s *DataScope) string {
 	var (
@@ -423,6 +444,10 @@ func viewDownload(s *DataScope) string {
 		sty.Render(" Output Path:"),
 		fmt.Sprintf("%c%s", pip(s.download.selected, dloutfile), s.download.outfileTI.View()),
 		viewBool(s.download.selected, dlappend, s.download.append, "Append?", sty, '[', ']'),
+		sty.Render(" Format:"),
+		viewBool(s.download.selected, dlfmtjson, s.download.format.json, "JSON", sty, '(', ')'),
+		viewBool(s.download.selected, dlfmtcsv, s.download.format.csv, "CSV", sty, '(', ')'),
+		viewBool(s.download.selected, dlfmtraw, s.download.format.raw, "RAW", sty, '(', ')'),
 		sty.Render(" Pages:"),
 		fmt.Sprintf("%c%s", pip(s.download.selected, dlpages), s.download.pagesTI.View()),
 	)
@@ -448,9 +473,8 @@ func viewDownload(s *DataScope) string {
 
 	var downloaded string // if a download was previously performed, say so
 	if s.download.resultString != "" {
-		dlstyle := lipgloss.NewStyle().Foreground(stylesheet.AccentColor2)
-		downloaded = dlstyle.Render("Previous download results:") + "\n" +
-			dlstyle.Render(s.download.resultString)
+		downloaded = "\n" +
+			lipgloss.NewStyle().Foreground(stylesheet.AccentColor2).Render(s.download.resultString)
 	}
 
 	// join options, instructions, and end
