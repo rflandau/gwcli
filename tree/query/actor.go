@@ -152,6 +152,8 @@ func (q *query) Update(msg tea.Msg) tea.Cmd {
 				}
 
 				var cmd tea.Cmd
+				// JSON,CSV,outfn,append are user-editable in the DataScope; these just set initial
+				// values
 				q.scope, cmd, err = datascope.NewDataScope(data, true, q.curSearch,
 					q.flagModifiers.outfn, q.flagModifiers.append,
 					q.flagModifiers.json, q.flagModifiers.csv)
