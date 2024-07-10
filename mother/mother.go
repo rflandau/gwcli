@@ -82,6 +82,10 @@ func new(root *navCmd, cur *cobra.Command, trailingTokens []string, _ *lipgloss.
 	} else if c != nil {
 		root.RemoveCommand(c)
 	}
+	// disable --script when Mother is running
+	if err := root.PersistentFlags().MarkHidden("script"); err != nil {
+		clilog.Writer.Warnf("failed to hide --script: %v", err)
+	}
 
 	// text input
 	ti := textinput.New()
