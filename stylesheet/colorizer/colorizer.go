@@ -54,5 +54,5 @@ func box(val bool, leftBoundary, rightBoundary rune) string {
 	if val {
 		c = '✓'
 	}
-	return fmt.Sprintf("%c%v%c", leftBoundary, c, rightBoundary)
+	return fmt.Sprintf("%c%c%c", leftBoundary, c, rightBoundary)
 }
