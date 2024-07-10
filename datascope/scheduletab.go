@@ -109,9 +109,9 @@ func viewSchedule(s *DataScope) string {
 
 	// build the field names column
 	fields := lipgloss.JoinVertical(lipgloss.Right,
-		alignerSty.Render(fmt.Sprintf("%s %s ", colorizer.Pip(sel, schcronfreq), titleSty.Render("Frequency: "))),
-		alignerSty.Render(fmt.Sprintf("%s %s ", colorizer.Pip(sel, schname), titleSty.Render("Name: "))),
-		alignerSty.Render(fmt.Sprintf("%s %s ", colorizer.Pip(sel, schdesc), titleSty.Render("Description: "))),
+		alignerSty.Render(fmt.Sprintf("%s%s ", colorizer.Pip(sel, schcronfreq), titleSty.Render("Frequency: "))),
+		alignerSty.Render(fmt.Sprintf("%s%s ", colorizer.Pip(sel, schname), titleSty.Render("Name: "))),
+		alignerSty.Render(fmt.Sprintf("%s%s ", colorizer.Pip(sel, schdesc), titleSty.Render("Description: "))),
 	)
 
 	// build the TIs column
