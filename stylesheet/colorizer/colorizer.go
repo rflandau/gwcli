@@ -1,4 +1,5 @@
-// colorizer provides utilities for applying the stylesheet
+// colorizer provides common utilities that rely on the stylesheet.
+// These functions are to support a consistent UI.
 package colorizer
 
 import (
@@ -7,6 +8,7 @@ import (
 	"gwcli/stylesheet"
 
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/charmbracelet/lipgloss"
 	"github.com/spf13/cobra"
 )
 
@@ -23,4 +25,11 @@ func ColorCommandName(c *cobra.Command) string {
 	} else {
 		return stylesheet.NavStyle.Render(c.Name())
 	}
+}
+
+func Pip(selected, field uint) string {
+	if selected == field {
+		return lipgloss.NewStyle().Foreground(stylesheet.AccentColor2).Render(string(stylesheet.SelectionPrefix))
+	}
+	return ""
 }
