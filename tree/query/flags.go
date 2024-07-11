@@ -8,14 +8,14 @@ import (
 )
 
 type queryflags struct {
-	duration    time.Duration
-	script      bool
-	json        bool
-	csv         bool
-	outfn       string
-	append      bool
-	schedule    schedule
-	referenceID string
+	duration time.Duration
+	script   bool
+	json     bool
+	csv      bool
+	outfn    string
+	append   bool
+	schedule schedule
+	//referenceID string
 }
 
 // transmogrifyFlags takes a *parsed* flagset and returns a structured, typed, and (in the case of
