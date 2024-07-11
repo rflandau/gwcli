@@ -111,7 +111,7 @@ func viewSchedule(s *DataScope) string {
 	)
 
 	tabDesc := tabDescStyle(s.vp.Width).Render("Schedule this search to be rerun at" +
-		" consistent intervals.")
+		" consistent intervals." + "\nQuery: " + stylesheet.Header2Style.Render(s.search.SearchString))
 
 	// TODO list the search on this page with a bool to hide it
 
