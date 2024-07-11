@@ -323,6 +323,11 @@ func outputFormatSegment(titleSty, subtitleSty, lcolAligner, rcolAligner lipglos
 	// conjoin output pieces
 	outputSeg := lipgloss.JoinHorizontal(lipgloss.Center, l, r)
 
+	// if records is set, do not display the format section
+	if strings.TrimSpace(dl.recordsTI.Value()) != "" {
+		return outputSeg
+	}
+
 	// generate format segment
 	var ( // format segment left column elements
 		jsonStr = fmt.Sprintf("%s%s",
