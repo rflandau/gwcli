@@ -350,11 +350,11 @@ func (q *query) submitQuery() tea.Cmd {
 func (q *query) switchFocus() {
 	q.focusedEditor = !q.focusedEditor
 	if q.focusedEditor { // disable viewB interactions
-		q.modifiers.blur()
+		q.modifiers.durationTI.Blur()
 		q.editor.ta.Focus()
 	} else { // disable query editor interaction
 		q.editor.ta.Blur()
-		q.modifiers.focusSelected()
+		q.modifiers.durationTI.Focus()
 	}
 }
 

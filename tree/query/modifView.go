@@ -16,30 +16,17 @@ import (
 	"github.com/charmbracelet/lipgloss"
 )
 
-/**
- * when adding new items to the view, make sure to:
- * 1: add a new modfSelection constant
- * 2: add enter/space/selection functionality to the update function
- * 3: if it is a text input:
- *		a: initialize it!
- *		b: include it in focusedSelected()
- *		c: call its update function in Update()
- * 4: clear it in .Reset()
- * 5: if it has an associated flag, make sure it is set in `actor.go`.SetArgs()
- */
+// modifSelection provides the skeleton for cursoring through options within this view.
+// All other options have been relocated so it is rather overengineered currently.
+// However, its skeleton has been left in place so adding new options in the future is easy.
+// See datascope's download and schedule tabs for examples
 type modifSelection = uint
 
 const (
 	lowBound modifSelection = iota
 	duration
-	scheduled
-	name
-	desc
-	cronfreq
 	highBound
 )
-
-const defaultModifSelection = duration
 
 // modifView represents the composable view box containing all configurable features of the query
 type modifView struct {
@@ -48,42 +35,26 @@ type modifView struct {
 	selected uint // tracks which modifier is currently active w/in this view
 	// knobs available to user
 	durationTI textinput.Model
-	schedule   struct {
-		enabled    bool
-		nameTI     textinput.Model
-		descTI     textinput.Model
-		cronfreqTI textinput.Model
-	}
 
 	keys []key.Binding
 }
 
 // generate the second view to be composed with the query editor
 func initialModifView(height, width uint) modifView {
-
-	// helper function for setting up a standard text input
-	newTI := func(dflt string) textinput.Model {
-		ti := textinput.New()
-		ti.Width = int(width)
-		ti.Blur()
-		ti.Prompt = ""
-		ti.SetValue(dflt)
-		return ti
-	}
-
 	mv := modifView{
 		width:    width,
 		height:   height,
-		selected: defaultModifSelection,
+		selected: duration, // default to duration
 		keys: []key.Binding{
 			key.NewBinding(
 				key.WithKeys(stylesheet.UpDown),
-				key.WithHelp(stylesheet.UpDown, "select input"),
+				// help is not necessary when there is only one option
+				// key.WithHelp(stylesheet.UpDown, "select input"),
 			)},
 	}
 
 	// build duration ti
-	mv.durationTI = newTI(defaultDuration.String())
+	mv.durationTI = stylesheet.NewTI(defaultDuration.String())
 	mv.durationTI.Placeholder = "1h00m00s00ms00us00ns"
 	mv.durationTI.Validate = func(s string) error {
 		// checks that the string is composed of valid characters for duration parsing
@@ -97,40 +68,13 @@ func initialModifView(height, width uint) modifView {
 			if unicode.IsDigit(r) {
 				continue
 			}
-			if _, f := validChars[r]; !f {
+			if _, found := validChars[r]; !found {
 				return errors.New("only digits or the characters h, m, s, u, and n are allowed")
 			}
 		}
 		return nil
 	}
-
-	// build name ti
-	mv.schedule.nameTI = newTI("")
-
-	// build description ti
-	mv.schedule.descTI = newTI("")
-
-	// buid schedule frequency ti
-	mv.schedule.cronfreqTI = newTI("")
-	mv.schedule.cronfreqTI.Placeholder = "* * * * *"
-	mv.schedule.cronfreqTI.Validate = func(s string) error {
-		exploded := strings.Split(s, " ")
-		if len(exploded) > 5 {
-			return errors.New("must be exactly 5 values")
-		}
-		return nil
-	}
-
 	return mv
-
-}
-
-// Unfocuses this view, blurring all text inputs
-func (mv *modifView) blur() {
-	mv.durationTI.Blur()
-	mv.schedule.nameTI.Blur()
-	mv.schedule.descTI.Blur()
-	mv.schedule.cronfreqTI.Blur()
 }
 
 func (mv *modifView) update(msg tea.Msg) []tea.Cmd {
@@ -142,57 +86,17 @@ func (mv *modifView) update(msg tea.Msg) []tea.Cmd {
 			if mv.selected <= lowBound {
 				mv.selected = highBound - 1
 			}
-			mv.focusSelected()
 		case tea.KeyDown:
 			mv.selected += 1
 			if mv.selected >= highBound {
 				mv.selected = lowBound + 1
 			}
-			mv.focusSelected()
-		case tea.KeySpace, tea.KeyEnter:
-			switch mv.selected {
-			case scheduled:
-				mv.schedule.enabled = !mv.schedule.enabled
-				return nil
-			}
 		}
 	}
-	var cmds []tea.Cmd = []tea.Cmd{}
-	var t tea.Cmd
-	mv.durationTI, t = mv.durationTI.Update(msg)
-	if t != nil {
-		cmds = append(cmds, t)
-	}
-	mv.schedule.nameTI, t = mv.schedule.nameTI.Update(msg)
-	if t != nil {
-		cmds = append(cmds, t)
-	}
-	mv.schedule.descTI, t = mv.schedule.descTI.Update(msg)
-	if t != nil {
-		cmds = append(cmds, t)
-	}
-	mv.schedule.cronfreqTI, t = mv.schedule.cronfreqTI.Update(msg)
-	if t != nil {
-		cmds = append(cmds, t)
-	}
+	var cmds []tea.Cmd = make([]tea.Cmd, 1)
+	mv.durationTI, cmds[0] = mv.durationTI.Update(msg)
 
 	return cmds
-}
-
-// Focuses the text input associated with the current selection, blurring all others
-func (mv *modifView) focusSelected() {
-	mv.blur()
-
-	switch mv.selected {
-	case duration:
-		mv.durationTI.Focus()
-	case name:
-		mv.schedule.nameTI.Focus()
-	case desc:
-		mv.schedule.descTI.Focus()
-	case cronfreq:
-		mv.schedule.cronfreqTI.Focus()
-	}
 }
 
 func (mv *modifView) view() string {
@@ -203,53 +107,12 @@ func (mv *modifView) view() string {
 		fmt.Sprintf("%c%s\n", pip(mv.selected, duration), mv.durationTI.View()),
 	)
 
-	bldr.WriteString(drawScheduleSection(mv))
-
 	return bldr.String()
 }
 
-func drawScheduleSection(mv *modifView) string {
-	var (
-		b           strings.Builder
-		schTitleSty lipgloss.Style = stylesheet.Header1Style
-		schTISty    lipgloss.Style = lipgloss.NewStyle()
-	)
-	// bool to enable the rest of the section
-	b.WriteString(viewBool(mv.selected, scheduled, mv.schedule.enabled, "Schedule?",
-		schTitleSty, false))
-
-	if !mv.schedule.enabled { // only display rest of section if scheduled
-		schTitleSty = stylesheet.GreyedOutStyle
-		schTISty = stylesheet.GreyedOutStyle
-	}
-
-	b.WriteString(stylesheet.Indent + " | " + schTitleSty.Render("Name:") + "\n")
-	b.WriteString(
-		fmt.Sprintf(stylesheet.Indent+"%c| %s\n",
-			pip(mv.selected, name), schTISty.Render(mv.schedule.nameTI.View())),
-	)
-	b.WriteString(stylesheet.Indent + " | " + schTitleSty.Render("Desc:") + "\n")
-	b.WriteString(
-		fmt.Sprintf(stylesheet.Indent+"%c| %s\n",
-			pip(mv.selected, desc), schTISty.Render(mv.schedule.descTI.View())),
-	)
-	b.WriteString(stylesheet.Indent + " | " + schTitleSty.Render("Schedule:") + "\n")
-	b.WriteString(
-		fmt.Sprintf(stylesheet.Indent+"%c| %s\n",
-			pip(mv.selected, cronfreq), schTISty.Render(mv.schedule.cronfreqTI.View())),
-	)
-	return b.String()
-}
-
 func (mv *modifView) reset() {
-	mv.selected = defaultModifSelection
 	mv.durationTI.Reset()
-	mv.blur()
-	mv.schedule.enabled = false
-	mv.schedule.nameTI.Reset()
-	mv.schedule.descTI.Reset()
-	mv.schedule.cronfreqTI.Reset()
-
+	mv.durationTI.Blur()
 }
 
 // if this field is the selected field, returns the selection rune.
