@@ -3,11 +3,10 @@ package datascope
 /**
  * Contains the generalized data and subroutines for propagating DataScope's tabs.
  * Also contains the implementation of the results and help tabs.
- * Download and Schedule have been split off into their own files.
+ * Results, Download, and Schedule have been split off into their own files.
  */
 
 import (
-	"fmt"
 	"gwcli/stylesheet"
 	"strings"
 
@@ -64,7 +63,10 @@ const (
 // results the array of tabs with all requisite data built in
 func (s *DataScope) generateTabs() []tab {
 	t := make([]tab, 4)
-	t[results] = tab{name: "results", updateFunc: updateResults, viewFunc: viewResults}
+	t[results] = tab{
+		name:       "results",
+		updateFunc: updateResults,
+		viewFunc:   viewResults}
 	t[help] = tab{
 		name:       "help",
 		updateFunc: func(*DataScope, tea.Msg) tea.Cmd { return nil },
@@ -80,36 +82,6 @@ func (s *DataScope) generateTabs() []tab {
 
 	return t
 }
-
-//#region results tab
-
-func updateResults(s *DataScope, msg tea.Msg) tea.Cmd {
-	var (
-		cmd  tea.Cmd
-		cmds []tea.Cmd
-	)
-	prevPage := s.pager.Page
-	s.pager, cmd = s.pager.Update(msg)
-	cmds = append(cmds, cmd)
-	// pass the new content to the view
-	s.vp.SetContent(s.displayPage())
-	s.vp, cmd = s.vp.Update(msg)
-	cmds = append(cmds, cmd)
-	if prevPage != s.pager.Page { // if page changed, reset to top of view
-		s.vp.GotoTop()
-	}
-	return tea.Sequence(cmds...)
-}
-
-// view when 'results' tab is active
-func viewResults(s *DataScope) string {
-	if !s.ready {
-		return "\nInitializing..."
-	}
-	return fmt.Sprintf("%s\n%s", s.vp.View(), s.renderFooter(s.vp.Width))
-}
-
-//#endregion
 
 //#region help tab
 

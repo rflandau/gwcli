@@ -132,7 +132,6 @@ func (s DataScope) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			s.showTabs = !s.showTabs
 			// recalculate height and update display
 			s.setViewportHeight(s.rawWidth)
-			s.vp.SetContent(s.displayPage())
 			return s, nil
 		case key.Matches(msg, keys.cycleTabs):
 			s.activeTab += 1
@@ -158,12 +157,10 @@ func (s DataScope) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			s.setViewportHeight(s.rawWidth)
 			s.vp.MouseWheelDelta = 1
 			s.vp.HighPerformanceRendering = false
-			s.vp.SetContent(s.displayPage())
 			s.ready = true
 		} else { // just an update
 			s.vp.Width = s.rawWidth
 			s.setViewportHeight(msg.Width)
-			s.vp.SetContent(s.displayPage())
 		}
 
 		recompileHelp(&s)
@@ -191,27 +188,6 @@ func CobraNew(data []string, search *grav.Search, outfn string,
 	return tea.NewProgram(ds, tea.WithAltScreen()), nil
 }
 
-// displays the current page
-func (s *DataScope) displayPage() string {
-	start, end := s.pager.GetSliceBounds(len(s.data))
-	data := s.data[start:end]
-
-	// apply alterating color scheme
-	var bldr strings.Builder
-	var trueIndex int = start // index of full results, between start and end
-	for _, d := range data {
-		bldr.WriteString(indexStyle.Render(strconv.Itoa(trueIndex+1) + ":"))
-		if trueIndex%2 == 0 {
-			bldr.WriteString(evenEntryStyle.Render(d))
-		} else {
-			bldr.WriteString(oddEntryStyle.Render(d))
-		}
-		bldr.WriteRune('\n')
-		trueIndex += 1
-	}
-	return wrap(s.vp.Width, bldr.String())
-}
-
 // applies text wrapping to the given content. This is mandatory prior to SetContent, lest the text
 // be clipped. It is a *possible* bug of the viewport bubble.
 //
@@ -224,7 +200,7 @@ func wrap(width int, s string) string {
 }
 
 var compiledShortHelp = stylesheet.GreyedOutStyle.Render(
-	fmt.Sprintf("%v page • %v scroll • tab: cycle • 1-9: jump to tab • esc: quit",
+	fmt.Sprintf("%v page • %v scroll • tab: cycle • esc: quit",
 		stylesheet.LeftRight, stylesheet.UpDown),
 )
 
