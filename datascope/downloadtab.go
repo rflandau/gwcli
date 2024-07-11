@@ -38,9 +38,10 @@ type downloadTab struct {
 	outfileTI textinput.Model // user input file to write to
 	append    bool            // append to the outfile instead of truncating
 	format    struct {
-		json bool
-		csv  bool
-		raw  bool
+		enabled bool
+		json    bool
+		csv     bool
+		raw     bool
 	}
 
 	recordsTI        textinput.Model // user input to select the pages to download
@@ -60,10 +61,11 @@ func initDownloadTab(outfn string, append, json, csv bool) downloadTab {
 		outfileTI: textinput.New(),
 		append:    append,
 		format: struct {
-			json bool
-			csv  bool
-			raw  bool
-		}{json: json, csv: csv, raw: false},
+			enabled bool
+			json    bool
+			csv     bool
+			raw     bool
+		}{enabled: true, json: json, csv: csv, raw: false},
 		recordsTI: textinput.New(), // TODO use stylesheet.NewTI()
 		selected:  dloutfile,
 	}
@@ -80,10 +82,10 @@ func initDownloadTab(outfn string, append, json, csv bool) downloadTab {
 	d.outfileTI.Focus()
 	d.outfileTI.SetValue(outfn)
 
-	// initialize pagesTI
+	// initialize recordsTI
 	d.recordsTI.Prompt = ""
 	d.recordsTI.Width = width
-	d.recordsTI.Placeholder = "1,4,5"
+	d.recordsTI.Placeholder = "1,4,740"
 	d.recordsTI.Blur()
 	d.recordsTI.Validate = func(s string) error {
 		for _, r := range s {
@@ -106,6 +108,13 @@ func updateDownload(s *DataScope, msg tea.Msg) tea.Cmd {
 			s.download.outfileTI.Blur()
 			s.download.recordsTI.Blur()
 			s.download.selected -= 1
+			// if the format section is disabled, skip its elements
+			if !s.download.format.enabled {
+				switch s.download.selected {
+				case dlfmtjson, dlfmtcsv, dlfmtraw:
+					s.download.selected = dlappend
+				} // if no format elements are selection do nothing
+			}
 			if s.download.selected <= dllowBound {
 				s.download.selected = dlhighBound - 1
 			}
@@ -119,6 +128,13 @@ func updateDownload(s *DataScope, msg tea.Msg) tea.Cmd {
 			s.download.outfileTI.Blur()
 			s.download.recordsTI.Blur()
 			s.download.selected += 1
+			// if the format section is disabled, skip its elements
+			if !s.download.format.enabled {
+				switch s.download.selected {
+				case dlfmtjson, dlfmtcsv, dlfmtraw:
+					s.download.selected = dlrecords
+				} // if no format elements are selection do nothing
+			}
 			if s.download.selected >= dlhighBound {
 				s.download.selected = dllowBound + 1
 			}
@@ -176,6 +192,13 @@ func updateDownload(s *DataScope, msg tea.Msg) tea.Cmd {
 	var cmds []tea.Cmd = make([]tea.Cmd, 2)
 	s.download.outfileTI, cmds[0] = s.download.outfileTI.Update(msg)
 	s.download.recordsTI, cmds[1] = s.download.recordsTI.Update(msg)
+
+	// if recordsTI has input, disable format section
+	if strings.TrimSpace(s.download.recordsTI.Value()) != "" {
+		s.download.format.enabled = false
+	} else {
+		s.download.format.enabled = true
+	}
 
 	return tea.Batch(cmds...)
 }
@@ -327,7 +350,7 @@ func outputFormatSegment(titleSty, subtitleSty, lcolAligner, rcolAligner lipglos
 	outputSeg := lipgloss.JoinHorizontal(lipgloss.Center, l, r)
 
 	// if records is set, do not display the format section
-	if strings.TrimSpace(dl.recordsTI.Value()) != "" {
+	if !dl.format.enabled {
 		return outputSeg
 	}
 
