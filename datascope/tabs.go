@@ -9,7 +9,6 @@ package datascope
 import (
 	"fmt"
 	"gwcli/stylesheet"
-	"gwcli/stylesheet/colorizer"
 	"strings"
 
 	tea "github.com/charmbracelet/bubbletea"
@@ -23,7 +22,9 @@ const (
 	verticalPlace = 0.7 // vertical offset for lipgloss.Place for tabs to use in their view()
 )
 
-var tabDescStyle = func(width int) lipgloss.Style { return lipgloss.NewStyle().Width(width).PaddingBottom(2) }
+var tabDescStyle = func(width int) lipgloss.Style {
+	return lipgloss.NewStyle().Width(width).PaddingBottom(2).AlignHorizontal(lipgloss.Center)
+}
 
 //#endregion
 
@@ -62,23 +63,6 @@ func (s *DataScope) generateTabs() []tab {
 		viewFunc:   viewSchedule}
 
 	return t
-}
-
-// Returns a string representing the current state of the given boolean value.
-// selected is the current index.
-// fieldNum is the index of the field we are drawing
-// (evaluated against selected for whether or not to draw the pip).
-// field is the current value of the field that corresponds to fieldNum.
-// fieldName is as it says on the tin.
-// sty is the style to apply to fieldName.
-// l/r Brack are the open/close brackets this boolean should use.
-func viewBool(selected uint, fieldNum uint, field bool, fieldName string, sty lipgloss.Style, lBrack, rBrack rune) string {
-	var checked rune = ' '
-	if field {
-		checked = '✓'
-	}
-
-	return fmt.Sprintf("%s%c%s%c %s", colorizer.Pip(selected, fieldNum), lBrack, sty.Render(string(checked)), rBrack, sty.Render(fieldName))
 }
 
 //#region results tab
