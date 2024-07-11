@@ -12,7 +12,6 @@ import (
 	"strings"
 	"unicode"
 
-	"github.com/charmbracelet/bubbles/paginator"
 	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
@@ -212,17 +211,17 @@ func (s *DataScope) dl(fn string) (result string, success bool) {
 	clilog.Writer.Debugf("Successfully opened file %v", f.Name())
 
 	// branch on records-only or full download
-	if strPages := strings.TrimSpace(s.download.recordsTI.Value()); strPages != "" {
+	if strRecords := strings.TrimSpace(s.download.recordsTI.Value()); strRecords != "" {
 		// specific records
-		if err := dlrecordsOnly(f, strPages, &s.pager, s.data); err != nil {
+		records, err := dlrecordsOnly(f, strRecords, s.data)
+		if err != nil {
 			return baseErrorResultString + err.Error(), false
 		}
 		var word string = "Wrote"
 		if s.download.append {
 			word = "Appended"
 		}
-
-		return fmt.Sprintf("%v entries %v to %v", word, strPages, f.Name()), true
+		return fmt.Sprintf("%v entries %v to %v", word, records, f.Name()), true
 	}
 	// whole file
 	if err := connection.DownloadResults(s.search, f,
@@ -234,52 +233,39 @@ func (s *DataScope) dl(fn string) (result string, success bool) {
 }
 
 // helper record for dl.
-// Downloads just the records specified.
-func dlrecordsOnly(f *os.File, strPages string, pager *paginator.Model, results []string) error {
-	var (
-		pages []uint32
-	)
+// Writes just the records specified in the comma-seperated list strRecords to the file f.
+// Returns the list of record numbers whose values were written or an error
+func dlrecordsOnly(f *os.File, strRecords string, data []string) ([]uint32, error) {
+	exploded := strings.Split(strRecords, ",")
+	var writtenRecords []uint32 = make([]uint32, len(exploded))
+	var i int = 0
+	for _, strRec := range exploded {
+		// sanity check record
+		if strings.TrimSpace(strRec) == "" {
+			continue
+		}
+		var rec uint32
+		if n, err := strconv.ParseUint(strRec, 10, 32); err != nil {
+			return nil, fmt.Errorf("failed to parse record '%v':\n%v", strRec, err)
+		} else {
+			rec = (uint32(n))
+		}
+		rec -= 1 // decrement, as the user sees records starting at 1, instead of 0
 
-	// explode and parse each page
-	exploded := strings.Split(strPages, ",")
-	for _, strpg := range exploded {
-		// sanity check page
-		pg, err := strconv.ParseUint(strpg, 10, 32)
-		if err != nil {
-			return fmt.Errorf("failed to parse page '%v':\n%v", strpg, err)
+		totalRecords := uint32(len(data))
+		if rec > totalRecords {
+			return nil, fmt.Errorf(
+				"record %v is outside the set of available records [0-%v]",
+				rec, totalRecords)
 		}
-		if pg > uint64(pager.TotalPages-1) {
-			return fmt.Errorf(
-				"page %v is outside the set of available pages [0-%v]",
-				pg, pager.TotalPages-1)
-		}
-		// add it to the list of pages to download
-		pages = append(pages, uint32(pg))
+
+		// requested number is in good condition; write is data to the file
+		f.WriteString(data[rec] + "\n")
+		writtenRecords[i] = rec + 1 // increment back to the user-displayed record #
+		i++
 	}
 
-	// allocate for the given # of pages
-	data := make([]string, len(pages)*pager.PerPage)
-	itemIndex := 0
-	for _, pg := range pages {
-		// fetch the data segment to append
-		lBound, hBound := uint32(pager.PerPage)*pg, uint32(pager.PerPage)*(pg+1)-1
-		clilog.Writer.Debugf("Page %v | lBound %v | hBound %v", pg, lBound, hBound)
-		dslice := results[lBound:hBound]
-		clilog.Writer.Debugf("dslice %v", dslice)
-
-		// append each item in the segment
-		for _, d := range dslice {
-			data[itemIndex] = d
-			itemIndex += 1
-		}
-	}
-	for _, d := range data {
-		if _, err := f.WriteString(d + "\n"); err != nil {
-			return err
-		}
-	}
-
-	return nil
+	return writtenRecords, nil
 }
 
 func viewDownload(s *DataScope) string {
