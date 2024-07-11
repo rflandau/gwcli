@@ -11,13 +11,13 @@ import (
 	"errors"
 	"fmt"
 	"gwcli/stylesheet"
+	"gwcli/stylesheet/colorizer"
 	"strings"
 	"unicode"
 
 	"github.com/charmbracelet/bubbles/key"
 	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
-	"github.com/charmbracelet/lipgloss"
 )
 
 // modifSelection provides the skeleton for cursoring through options within this view.
@@ -108,7 +108,7 @@ func (mv *modifView) view() string {
 
 	bldr.WriteString(" " + stylesheet.Header1Style.Render("Duration:") + "\n")
 	bldr.WriteString(
-		fmt.Sprintf("%c%s\n", pip(mv.selected, duration), mv.durationTI.View()),
+		fmt.Sprintf("%s%s\n", colorizer.Pip(mv.selected, duration), mv.durationTI.View()),
 	)
 
 	return bldr.String()
@@ -117,28 +117,4 @@ func (mv *modifView) view() string {
 func (mv *modifView) reset() {
 	mv.durationTI.Reset()
 	mv.durationTI.Blur()
-}
-
-// if this field is the selected field, returns the selection rune.
-// otherwise, returns a space
-func pip(selected, field uint) rune {
-	if selected == field {
-		return stylesheet.SelectionPrefix
-	}
-	return ' '
-}
-
-// Returns a string representing the current state of the given boolean value.
-func viewBool(selected uint, field uint, val bool, fieldName string, sty lipgloss.Style, child bool) string {
-	var checked rune = ' '
-	if val {
-		checked = '✓'
-	}
-
-	var divisor = ""
-	if child {
-		divisor = "| "
-	}
-
-	return fmt.Sprintf("%c%v[%s] %s\n", pip(selected, field), divisor, sty.Render(string(checked)), sty.Render(fieldName))
 }
