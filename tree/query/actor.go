@@ -1,5 +1,9 @@
-// action.Model (interactive) implementation of query
 package query
+
+/**
+ * This file contains the action.Model implemenation of the query action and coordinates the
+ * interoperation of the composed editor and modifier views.
+ */
 
 import (
 	"errors"

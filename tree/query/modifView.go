@@ -1,7 +1,11 @@
-// Supporting code for the query actor
-// Modifiers provides switches and buttons to tweak how the search will be run/displayed
-
 package query
+
+/**
+ * This file defines the modifiers view, pre-execution modifications of the query.
+ * It is intended to collect and display data auxillary (required or optional) to the query itself.
+ * DataScope contains actions that can be taken after the query is completed; this is just for
+ * modification or actions that must be completed prior to execution.
+ */
 
 import (
 	"errors"

@@ -1,7 +1,9 @@
-// Supporting code for the query actor
-// editor consumes the actual query text to be executed
-
 package query
+
+/**
+ * This file defines the editor view, which contains the query editor users can enter their search
+ * string into.
+ */
 
 import (
 	"fmt"
@@ -60,6 +62,8 @@ func (ev *editorView) update(msg tea.Msg) (cmd tea.Cmd, submit bool) {
 }
 
 func (va *editorView) view() string {
-	return fmt.Sprintf("%s\n%s\n%s", stylesheet.Header1Style.Render("Query:"), va.ta.View(),
+	return fmt.Sprintf("%s\n%s\n%s",
+		stylesheet.Header1Style.Render("Query:"),
+		va.ta.View(),
 		stylesheet.ErrStyle.Width(stylesheet.TIWidth).Render(va.err)) // add a width style for wrapping
 }
