@@ -47,7 +47,7 @@ type downloadTab struct {
 		raw  bool
 	}
 
-	pagesTI          textinput.Model // user input to select the pages to download
+	recordsTI        textinput.Model // user input to select the pages to download
 	selected         uint
 	resultString     string // results of the previous download
 	inputErrorString string // issues with current user input
@@ -68,8 +68,8 @@ func initDownloadTab(outfn string, append, json, csv bool) downloadTab {
 			csv  bool
 			raw  bool
 		}{json: json, csv: csv, raw: false},
-		pagesTI:  textinput.New(), // TODO use stylesheet.NewTI()
-		selected: dloutfile,
+		recordsTI: textinput.New(), // TODO use stylesheet.NewTI()
+		selected:  dloutfile,
 	}
 
 	// set raw if !(json or csv)
@@ -85,11 +85,11 @@ func initDownloadTab(outfn string, append, json, csv bool) downloadTab {
 	d.outfileTI.SetValue(outfn)
 
 	// initialize pagesTI
-	d.pagesTI.Prompt = ""
-	d.pagesTI.Width = width
-	d.pagesTI.Placeholder = "1,4,5"
-	d.pagesTI.Blur()
-	d.pagesTI.Validate = func(s string) error {
+	d.recordsTI.Prompt = ""
+	d.recordsTI.Width = width
+	d.recordsTI.Placeholder = "1,4,5"
+	d.recordsTI.Blur()
+	d.recordsTI.Validate = func(s string) error {
 		for _, r := range s {
 			if r == ',' || unicode.IsNumber(r) {
 				continue
@@ -108,7 +108,7 @@ func updateDownload(s *DataScope, msg tea.Msg) tea.Cmd {
 		switch msg.Type {
 		case tea.KeyUp:
 			s.download.outfileTI.Blur()
-			s.download.pagesTI.Blur()
+			s.download.recordsTI.Blur()
 			s.download.selected -= 1
 			if s.download.selected <= dllowBound {
 				s.download.selected = dlhighBound - 1
@@ -116,12 +116,12 @@ func updateDownload(s *DataScope, msg tea.Msg) tea.Cmd {
 			if s.download.selected == dloutfile {
 				s.download.outfileTI.Focus()
 			} else if s.download.selected == dlpages {
-				s.download.pagesTI.Focus()
+				s.download.recordsTI.Focus()
 			}
 			return nil
 		case tea.KeyDown:
 			s.download.outfileTI.Blur()
-			s.download.pagesTI.Blur()
+			s.download.recordsTI.Blur()
 			s.download.selected += 1
 			if s.download.selected >= dlhighBound {
 				s.download.selected = dllowBound + 1
@@ -129,7 +129,7 @@ func updateDownload(s *DataScope, msg tea.Msg) tea.Cmd {
 			if s.download.selected == dloutfile {
 				s.download.outfileTI.Focus()
 			} else if s.download.selected == dlpages {
-				s.download.pagesTI.Focus()
+				s.download.recordsTI.Focus()
 			}
 			return nil
 		case tea.KeySpace, tea.KeyEnter:
@@ -179,7 +179,7 @@ func updateDownload(s *DataScope, msg tea.Msg) tea.Cmd {
 	// pass onto the TIs
 	var cmds []tea.Cmd = make([]tea.Cmd, 2)
 	s.download.outfileTI, cmds[0] = s.download.outfileTI.Update(msg)
-	s.download.pagesTI, cmds[1] = s.download.pagesTI.Update(msg)
+	s.download.recordsTI, cmds[1] = s.download.recordsTI.Update(msg)
 
 	return tea.Batch(cmds...)
 }
@@ -212,7 +212,7 @@ func (s *DataScope) dl(fn string) (result string, success bool) {
 	clilog.Writer.Debugf("Successfully opened file %v", f.Name())
 
 	// branch on records-only or full download
-	if strPages := strings.TrimSpace(s.download.pagesTI.Value()); strPages != "" {
+	if strPages := strings.TrimSpace(s.download.recordsTI.Value()); strPages != "" {
 		// specific records
 		if err := dlrecords(f, strPages, &s.pager, s.data); err != nil {
 			return baseErrorResultString + err.Error(), false
@@ -284,7 +284,7 @@ func dlrecords(f *os.File, strPages string, pager *paginator.Model, results []st
 
 func viewDownload(s *DataScope) string {
 	sel := s.download.selected // brevity
-	width := s.download.outfileTI.Width
+	width := s.download.outfileTI.Width + 5
 
 	var ( // shared styles
 		titleSty    lipgloss.Style = stylesheet.Header1Style
@@ -293,17 +293,31 @@ func viewDownload(s *DataScope) string {
 
 	prime := primaryDownloadSegment(titleSty, subtitleSty, width, sel, &s.download)
 
-	// TODO display records TI and instructions below
-	/*pagesInst := lipgloss.NewStyle().
-	Width(40).
-	AlignHorizontal(lipgloss.Center).
-	Italic(true).
-	Render("Enter a comma-seperated list of pages to" +
-		" download or leave it blank to download all results")*/
+	// grey-out records if the TI is empty
+	recSty := titleSty
+	if strings.TrimSpace(s.download.recordsTI.Value()) == "" {
+		recSty = stylesheet.GreyedOutStyle
+	}
+
+	var lcolAligner lipgloss.Style = lipgloss.NewStyle().Width(width).AlignHorizontal(lipgloss.Right).PaddingRight(1)
+	var rcolAligner lipgloss.Style = lipgloss.NewStyle().Width(width).AlignHorizontal(lipgloss.Left)
+
+	recs := lipgloss.JoinHorizontal(lipgloss.Center,
+		lcolAligner.Render(fmt.Sprintf("%s%s",
+			colorizer.Pip(sel, dlpages), recSty.Render("Record Numbers:"))),
+		rcolAligner.Render(s.download.recordsTI.View()),
+	)
+
+	recordsDesc := lipgloss.NewStyle().Width(40).AlignHorizontal(lipgloss.Center).Italic(true).
+		Render("Enter a comma-seperated list of records to download just those records," +
+			" instead of the whole file.")
 
 	return lipgloss.Place(s.vp.Width, s.vp.Height, lipgloss.Center, 0.7,
 		lipgloss.JoinVertical(lipgloss.Center,
 			prime,
+			"",
+			recs,
+			recordsDesc,
 			"",
 			stylesheet.ErrStyle.Render(s.download.inputErrorString),
 			titleSty.Render(s.download.resultString)))
