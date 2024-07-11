@@ -29,7 +29,7 @@ const (
 	dlfmtjson
 	dlfmtcsv
 	dlfmtraw
-	dlpages
+	dlrecords
 	dlhighBound
 )
 
@@ -115,7 +115,7 @@ func updateDownload(s *DataScope, msg tea.Msg) tea.Cmd {
 			}
 			if s.download.selected == dloutfile {
 				s.download.outfileTI.Focus()
-			} else if s.download.selected == dlpages {
+			} else if s.download.selected == dlrecords {
 				s.download.recordsTI.Focus()
 			}
 			return nil
@@ -128,7 +128,7 @@ func updateDownload(s *DataScope, msg tea.Msg) tea.Cmd {
 			}
 			if s.download.selected == dloutfile {
 				s.download.outfileTI.Focus()
-			} else if s.download.selected == dlpages {
+			} else if s.download.selected == dlrecords {
 				s.download.recordsTI.Focus()
 			}
 			return nil
@@ -214,7 +214,7 @@ func (s *DataScope) dl(fn string) (result string, success bool) {
 	// branch on records-only or full download
 	if strPages := strings.TrimSpace(s.download.recordsTI.Value()); strPages != "" {
 		// specific records
-		if err := dlrecords(f, strPages, &s.pager, s.data); err != nil {
+		if err := dlrecordsOnly(f, strPages, &s.pager, s.data); err != nil {
 			return baseErrorResultString + err.Error(), false
 		}
 		var word string = "Wrote"
@@ -235,7 +235,7 @@ func (s *DataScope) dl(fn string) (result string, success bool) {
 
 // helper record for dl.
 // Downloads just the records specified.
-func dlrecords(f *os.File, strPages string, pager *paginator.Model, results []string) error {
+func dlrecordsOnly(f *os.File, strPages string, pager *paginator.Model, results []string) error {
 	var (
 		pages []uint32
 	)
@@ -289,35 +289,19 @@ func viewDownload(s *DataScope) string {
 	var ( // shared styles
 		titleSty    lipgloss.Style = stylesheet.Header1Style
 		subtitleSty                = stylesheet.Header2Style
+		lcolAligner lipgloss.Style = lipgloss.NewStyle().Width(width).AlignHorizontal(lipgloss.Right).PaddingRight(1)
+		rcolAligner lipgloss.Style = lipgloss.NewStyle().Width(width).AlignHorizontal(lipgloss.Left)
 	)
 
-	prime := primaryDownloadSegment(titleSty, subtitleSty, width, sel, &s.download)
+	prime := outputFormatSegment(titleSty, subtitleSty, lcolAligner, rcolAligner, sel, &s.download)
 
-	// grey-out records if the TI is empty
-	recSty := titleSty
-	if strings.TrimSpace(s.download.recordsTI.Value()) == "" {
-		recSty = stylesheet.GreyedOutStyle
-	}
-
-	var lcolAligner lipgloss.Style = lipgloss.NewStyle().Width(width).AlignHorizontal(lipgloss.Right).PaddingRight(1)
-	var rcolAligner lipgloss.Style = lipgloss.NewStyle().Width(width).AlignHorizontal(lipgloss.Left)
-
-	recs := lipgloss.JoinHorizontal(lipgloss.Center,
-		lcolAligner.Render(fmt.Sprintf("%s%s",
-			colorizer.Pip(sel, dlpages), recSty.Render("Record Numbers:"))),
-		rcolAligner.Render(s.download.recordsTI.View()),
-	)
-
-	recordsDesc := lipgloss.NewStyle().Width(40).AlignHorizontal(lipgloss.Center).Italic(true).
-		Render("Enter a comma-seperated list of records to download just those records," +
-			" instead of the whole file.")
+	recs := recordSegment(titleSty, lcolAligner, rcolAligner, sel, &s.download)
 
 	return lipgloss.Place(s.vp.Width, s.vp.Height, lipgloss.Center, 0.7,
 		lipgloss.JoinVertical(lipgloss.Center,
 			prime,
 			"",
 			recs,
-			recordsDesc,
 			"",
 			stylesheet.ErrStyle.Render(s.download.inputErrorString),
 			titleSty.Render(s.download.resultString)))
@@ -325,10 +309,8 @@ func viewDownload(s *DataScope) string {
 
 // helper subroutine for viewDownload.
 // Generates output and format segments and joins them together.
-func primaryDownloadSegment(titleSty, subtitleSty lipgloss.Style, width int, selected uint, dl *downloadTab) string {
-	var lcolAligner lipgloss.Style = lipgloss.NewStyle().Width(width).AlignHorizontal(lipgloss.Right).PaddingRight(1)
-	var rcolAligner lipgloss.Style = lipgloss.NewStyle().Width(width).AlignHorizontal(lipgloss.Left)
-
+func outputFormatSegment(titleSty, subtitleSty, lcolAligner, rcolAligner lipgloss.Style,
+	selected downloadCursor, dl *downloadTab) string {
 	// generate output segement
 
 	var ( // left column strings
@@ -387,6 +369,28 @@ func primaryDownloadSegment(titleSty, subtitleSty lipgloss.Style, width int, sel
 		outputSeg,
 		titleSty.Render("Format"),
 		formatSeg)
+}
+
+func recordSegment(titleSty, lcolAligner, rcolAligner lipgloss.Style,
+	selected downloadCursor, dl *downloadTab) string {
+	// grey-out records if the TI is empty
+	recSty := titleSty
+	if strings.TrimSpace(dl.recordsTI.Value()) == "" {
+		recSty = stylesheet.GreyedOutStyle
+	}
+
+	recs := lipgloss.JoinHorizontal(lipgloss.Center,
+		lcolAligner.Render(fmt.Sprintf("%s%s",
+			colorizer.Pip(selected, dlrecords), recSty.Render("Record Numbers:"))),
+		rcolAligner.Render(dl.recordsTI.View()),
+	)
+
+	recordsDesc := lipgloss.NewStyle().Width(40).AlignHorizontal(lipgloss.Center).Italic(true).
+		Render("OPTIONAL:\n" + "Enter a comma-seperated list of records to download just those records," +
+			" instead of the whole file.")
+	return lipgloss.JoinVertical(lipgloss.Center,
+		recordsDesc,
+		recs)
 }
 
 //#endregion
