@@ -13,6 +13,7 @@ import (
 	"gwcli/mother"
 	"gwcli/stylesheet"
 	"gwcli/treeutils"
+	"gwcli/utilities/uniques"
 	"os"
 	"strings"
 	"time"
@@ -25,9 +26,6 @@ import (
 )
 
 const (
-	// the Gravwell client can only consume time formatted as follows
-	timeFormat = "2006-01-02T15:04:05.999999999Z07:00"
-
 	defaultDuration = 1 * time.Hour
 
 	pageSize = 500 // fetch results page by page
@@ -262,8 +260,8 @@ func tryQuery(qry string, duration time.Duration, sch *schedule) (grav.Search, i
 
 	end := time.Now()
 	sreq := types.StartSearchRequest{
-		SearchStart:  end.Add(duration).Format(timeFormat),
-		SearchEnd:    end.Format(timeFormat),
+		SearchStart:  end.Add(duration).Format(uniques.SearchTimeFormat),
+		SearchEnd:    end.Format(uniques.SearchTimeFormat),
 		Background:   false,
 		SearchString: qry, // pull query from the commandline
 		NoHistory:    false,
