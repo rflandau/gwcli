@@ -17,7 +17,15 @@ import (
 	"github.com/charmbracelet/lipgloss/table"
 )
 
-const verticalPlace = 0.7 // vertical offset for lipgloss.Place for tabs to use in their view()
+//#region variables for enforcing consistent appearances across tabs
+
+const (
+	verticalPlace = 0.7 // vertical offset for lipgloss.Place for tabs to use in their view()
+)
+
+var tabDescStyle = func(width int) lipgloss.Style { return lipgloss.NewStyle().Width(width).PaddingBottom(2) }
+
+//#endregion
 
 type tab struct {
 	name string

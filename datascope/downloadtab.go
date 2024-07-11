@@ -279,6 +279,9 @@ func viewDownload(s *DataScope) string {
 		rcolAligner lipgloss.Style = lipgloss.NewStyle().Width(width).AlignHorizontal(lipgloss.Left)
 	)
 
+	tabDesc := tabDescStyle(s.vp.Width).Render("Download all data in your preferred format or" +
+		" cherry-pick specific records by their index.")
+
 	prime := outputFormatSegment(titleSty, subtitleSty, lcolAligner, rcolAligner, sel, &s.download)
 
 	recs := recordSegment(titleSty, lcolAligner, rcolAligner, sel, &s.download)
@@ -286,12 +289,14 @@ func viewDownload(s *DataScope) string {
 	return lipgloss.Place(s.vp.Width, s.vp.Height,
 		lipgloss.Center, verticalPlace,
 		lipgloss.JoinVertical(lipgloss.Center,
+			tabDesc,
 			prime,
 			"",
 			recs,
 			"",
 			stylesheet.ErrStyle.Render(s.download.inputErrorString),
-			titleSty.Render(s.download.resultString)))
+			titleSty.Render(s.download.resultString)),
+	)
 }
 
 // helper subroutine for viewDownload.

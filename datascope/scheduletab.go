@@ -110,6 +110,11 @@ func viewSchedule(s *DataScope) string {
 				PaddingRight(1)
 	)
 
+	tabDesc := tabDescStyle(s.vp.Width).Render("Schedule this search to be rerun at" +
+		" consistent intervals.")
+
+	// TODO list the search on this page with a bool to hide it
+
 	// build the field names column
 	fields := lipgloss.JoinVertical(lipgloss.Right,
 		leftAlignerSty.Render(fmt.Sprintf("%s%s",
@@ -127,9 +132,16 @@ func viewSchedule(s *DataScope) string {
 		s.schedule.descTI.View(),
 	)
 
+	composed := lipgloss.JoinHorizontal(lipgloss.Center,
+		fields,
+		TIs)
+
 	return lipgloss.Place(s.vp.Width, s.vp.Height,
 		lipgloss.Center, verticalPlace,
-		lipgloss.JoinHorizontal(lipgloss.Center, fields, TIs))
+		lipgloss.JoinVertical(lipgloss.Center,
+			tabDesc,
+			composed),
+	)
 }
 
 // Focuses the TI corresponding to sch.selected and blurs all others.
