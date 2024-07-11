@@ -34,9 +34,6 @@ const (
 
 const outFilePerm = 0644
 
-// TODO convert pages to records, for just downloading individual records (a la copying)
-// likely must also support X-Y notation
-
 type downloadTab struct {
 	outfileTI textinput.Model // user input file to write to
 	append    bool            // append to the outfile instead of truncating
@@ -294,7 +291,7 @@ func viewDownload(s *DataScope) string {
 			"",
 			recs,
 			"",
-			stylesheet.ErrStyle.Render(s.download.inputErrorString),
+			submitString(s.download.inputErrorString),
 			titleSty.Render(s.download.resultString)),
 	)
 }

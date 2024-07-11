@@ -24,7 +24,9 @@ const (
 )
 
 type scheduleTab struct {
-	selected scheduleCursor
+	selected         scheduleCursor
+	resultString     string // result of the previous scheduling
+	inputErrorString string // issues with current user input
 
 	cronfreqTI textinput.Model
 	nameTI     textinput.Model
@@ -72,6 +74,8 @@ func updateSchedule(s *DataScope, msg tea.Msg) tea.Cmd {
 			s.schedule.focusSelected()
 		case tea.KeyEnter:
 			if msg.Alt { // only accept alt+enter
+				// gather and validate selections
+
 				// TODO submit scheduled query
 			}
 		}
@@ -113,8 +117,6 @@ func viewSchedule(s *DataScope) string {
 	tabDesc := tabDescStyle(s.vp.Width).Render("Schedule this search to be rerun at" +
 		" consistent intervals." + "\nQuery: " + stylesheet.Header2Style.Render(s.search.SearchString))
 
-	// TODO list the search on this page with a bool to hide it
-
 	// build the field names column
 	fields := lipgloss.JoinVertical(lipgloss.Right,
 		leftAlignerSty.Render(fmt.Sprintf("%s%s",
@@ -140,7 +142,10 @@ func viewSchedule(s *DataScope) string {
 		lipgloss.Center, verticalPlace,
 		lipgloss.JoinVertical(lipgloss.Center,
 			tabDesc,
-			composed),
+			composed,
+			"",
+			submitString(s.schedule.inputErrorString),
+			titleSty.Render(s.schedule.resultString)),
 	)
 }
 
