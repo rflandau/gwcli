@@ -140,7 +140,7 @@ func Test_tryQuery(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, _, err := tryQuery(tt.args.qry, tt.args.duration)
+			got, err := tryQuery(tt.args.qry, tt.args.duration)
 			if err != nil {
 				if tt.wantErr {
 					return

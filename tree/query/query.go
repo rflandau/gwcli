@@ -123,11 +123,8 @@ func run(cmd *cobra.Command, args []string) {
 	}
 	// submit the immediate query
 	var search grav.Search
-	if s, schID, err := tryQuery(qry, -flags.duration); err != nil {
+	if s, err := tryQuery(qry, -flags.duration); err != nil {
 		clilog.Tee(clilog.ERROR, cmd.ErrOrStderr(), err.Error())
-		return
-	} else if schID != 0 { // if scheduled, we are done
-		fmt.Fprintf(cmd.OutOrStdout(), "Scheduled search (ID: %v)", schID)
 		return
 	} else {
 		search = s
@@ -252,15 +249,15 @@ type schedule struct {
 // Validates and (if valid) submits the given query to the connected server instance.
 // Duration must be negative or zero. A positive duration will result in an error.
 // Returns a search if immediate and a scheduled search id if scheduled.
-func tryQuery(qry string, duration time.Duration) (grav.Search, int32, error) {
+func tryQuery(qry string, duration time.Duration) (grav.Search, error) {
 	var err error
 	if duration > 0 {
-		return grav.Search{}, 0, fmt.Errorf("duration must be negative or zero (given %v)", duration)
+		return grav.Search{}, fmt.Errorf("duration must be negative or zero (given %v)", duration)
 	}
 
 	// validate search query
 	if err = connection.Client.ParseSearch(qry); err != nil {
-		return grav.Search{}, 0, fmt.Errorf("'%s' is not a valid query: %s", qry, err.Error())
+		return grav.Search{}, fmt.Errorf("'%s' is not a valid query: %s", qry, err.Error())
 	}
 
 	// check for scheduling
@@ -277,7 +274,7 @@ func tryQuery(qry string, duration time.Duration) (grav.Search, int32, error) {
 	clilog.Writer.Infof("Executing foreground search '%v' from %v -> %v",
 		sreq.SearchString, sreq.SearchStart, sreq.SearchEnd)
 	s, err := connection.Client.StartSearchEx(sreq)
-	return s, 0, err
+	return s, err
 }
 
 // Opens and returns a file handle, configured by the state of append.
