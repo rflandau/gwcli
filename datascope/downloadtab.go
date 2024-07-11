@@ -283,7 +283,8 @@ func viewDownload(s *DataScope) string {
 
 	recs := recordSegment(titleSty, lcolAligner, rcolAligner, sel, &s.download)
 
-	return lipgloss.Place(s.vp.Width, s.vp.Height, lipgloss.Center, 0.7,
+	return lipgloss.Place(s.vp.Width, s.vp.Height,
+		lipgloss.Center, verticalPlace,
 		lipgloss.JoinVertical(lipgloss.Center,
 			prime,
 			"",

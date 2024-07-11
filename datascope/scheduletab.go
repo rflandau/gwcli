@@ -127,7 +127,9 @@ func viewSchedule(s *DataScope) string {
 		s.schedule.descTI.View(),
 	)
 
-	return lipgloss.Place(s.vp.Width, s.vp.Height, lipgloss.Center, lipgloss.Center, lipgloss.JoinHorizontal(lipgloss.Center, fields, TIs))
+	return lipgloss.Place(s.vp.Width, s.vp.Height,
+		lipgloss.Center, verticalPlace,
+		lipgloss.JoinHorizontal(lipgloss.Center, fields, TIs))
 }
 
 // Focuses the TI corresponding to sch.selected and blurs all others.

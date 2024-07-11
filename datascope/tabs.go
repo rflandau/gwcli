@@ -17,6 +17,8 @@ import (
 	"github.com/charmbracelet/lipgloss/table"
 )
 
+const verticalPlace = 0.7 // vertical offset for lipgloss.Place for tabs to use in their view()
+
 type tab struct {
 	name string
 
