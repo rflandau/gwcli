@@ -225,7 +225,7 @@ func (s *DataScope) dl(fn string) (result string, success bool) {
 		f   *os.File // file path
 	)
 
-	baseErrorResultString := "Failed to save results to file: "
+	baseErrorResultString := "Failed to save results to file '" + fn + "': "
 
 	// check append
 	var flags int = os.O_CREATE | os.O_WRONLY
