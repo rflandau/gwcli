@@ -22,6 +22,8 @@ import (
 	"github.com/gravwell/gravwell/v3/ingest/log"
 )
 
+//const refreshInterval time.Duration = 10 * time.Minute // how often we refresh the user token
+
 var Client *grav.Client
 
 var MyInfo types.UserDetails
@@ -93,7 +95,24 @@ func Login(cred Credentials, scriptMode bool) (err error) {
 		if err := CreateToken(); err != nil {
 			clilog.Writer.Warnf(err.Error())
 			// failing to create the token is not fatal
-		}
+		} /*else {
+			// spin up a goroutine to refresh the login token automatically
+			go func() {
+				// endlessly sleep, refresh token, then sleep again
+				for {
+					time.Sleep(refreshInterval)
+					if err := Client.RefreshLoginToken(); err != nil {
+						clilog.Writer.Warnf("failed to refresh JWT: %v", err)
+					} else {
+						// re-export the new token
+						if err := CreateToken(); err != nil {
+							clilog.Writer.Warnf("failed to re-create JWT on refresh: %v",
+								err.Error())
+						}
+					}
+				}
+			}()
+		} */
 	} else {
 		clilog.Writer.Infof("Logged in via JWT")
 	}
@@ -214,8 +233,10 @@ func DownloadResults(s *grav.Search, f *os.File, json, csv bool) error {
 	}
 	clilog.Writer.Debugf("output file, renderer '%s' -> '%s'", s.RenderMod, format)
 	if rc, err = Client.DownloadSearch(s.ID, types.TimeRange{}, format); err != nil {
+		clilog.Writer.Errorf("DownloadSearch for ID '%v', format '%v' failed", s.ID, format) // log extra data
 		return err
 	}
+	defer rc.Close()
 
 	if b, err := f.ReadFrom(rc); err != nil {
 		return err
