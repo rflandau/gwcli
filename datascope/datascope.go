@@ -179,7 +179,11 @@ func (s DataScope) View() string {
 	return s.tabs[s.activeTab].viewFunc(&s)
 }
 
-func CobraNew(data []string, search *grav.Search, outfn string, append, json, csv bool) (p *tea.Program, err error) {
+// Creates a new bubble tea program, in alt buffer mode, running only the DataScope.
+// For use from Cobra.Run() subroutines.
+// Start the returned program via .Run().
+func CobraNew(data []string, search *grav.Search, outfn string,
+	append, json, csv bool) (p *tea.Program, err error) {
 	ds, _, err := NewDataScope(data, false, search, outfn, append, json, csv)
 	if err != nil {
 		return nil, err
