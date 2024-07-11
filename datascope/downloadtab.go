@@ -105,44 +105,10 @@ func updateDownload(s *DataScope, msg tea.Msg) tea.Cmd {
 		s.download.inputErrorString = "" // clear input error on newest key message
 		switch msg.Type {
 		case tea.KeyUp:
-			s.download.outfileTI.Blur()
-			s.download.recordsTI.Blur()
-			s.download.selected -= 1
-			// if the format section is disabled, skip its elements
-			if !s.download.format.enabled {
-				switch s.download.selected {
-				case dlfmtjson, dlfmtcsv, dlfmtraw:
-					s.download.selected = dlappend
-				} // if no format elements are selection do nothing
-			}
-			if s.download.selected <= dllowBound {
-				s.download.selected = dlhighBound - 1
-			}
-			if s.download.selected == dloutfile {
-				s.download.outfileTI.Focus()
-			} else if s.download.selected == dlrecords {
-				s.download.recordsTI.Focus()
-			}
+			cycleUp(&s.download)
 			return nil
 		case tea.KeyDown:
-			s.download.outfileTI.Blur()
-			s.download.recordsTI.Blur()
-			s.download.selected += 1
-			// if the format section is disabled, skip its elements
-			if !s.download.format.enabled {
-				switch s.download.selected {
-				case dlfmtjson, dlfmtcsv, dlfmtraw:
-					s.download.selected = dlrecords
-				} // if no format elements are selection do nothing
-			}
-			if s.download.selected >= dlhighBound {
-				s.download.selected = dllowBound + 1
-			}
-			if s.download.selected == dloutfile {
-				s.download.outfileTI.Focus()
-			} else if s.download.selected == dlrecords {
-				s.download.recordsTI.Focus()
-			}
+			cycleDown(&s.download)
 			return nil
 		case tea.KeySpace, tea.KeyEnter:
 			if msg.Alt && msg.Type == tea.KeyEnter { // only accept alt+enter
@@ -201,6 +167,52 @@ func updateDownload(s *DataScope, msg tea.Msg) tea.Cmd {
 	}
 
 	return tea.Batch(cmds...)
+}
+
+// Cycle Up steps once up the list of options (defined by the downloadCursor enumerations),
+// skipping the format section if it is disabled and looping to the last option if the user cycles
+// up while on the first.
+func cycleUp(dl *downloadTab) {
+	dl.outfileTI.Blur()
+	dl.recordsTI.Blur()
+	dl.selected -= 1
+	// if the format section is disabled, skip its elements
+	if !dl.format.enabled {
+		switch dl.selected {
+		case dlfmtjson, dlfmtcsv, dlfmtraw:
+			dl.selected = dlappend
+		} // if no format elements are selection do nothing
+	}
+	if dl.selected <= dllowBound {
+		dl.selected = dlhighBound - 1
+	}
+	if dl.selected == dloutfile {
+		dl.outfileTI.Focus()
+	} else if dl.selected == dlrecords {
+		dl.recordsTI.Focus()
+	}
+}
+
+// See cycleUp()
+func cycleDown(dl *downloadTab) {
+	dl.outfileTI.Blur()
+	dl.recordsTI.Blur()
+	dl.selected += 1
+	// if the format section is disabled, skip its elements
+	if !dl.format.enabled {
+		switch dl.selected {
+		case dlfmtjson, dlfmtcsv, dlfmtraw:
+			dl.selected = dlrecords
+		} // if no format elements are selection do nothing
+	}
+	if dl.selected >= dlhighBound {
+		dl.selected = dllowBound + 1
+	}
+	if dl.selected == dloutfile {
+		dl.outfileTI.Focus()
+	} else if dl.selected == dlrecords {
+		dl.recordsTI.Focus()
+	}
 }
 
 // The actual download function that consumes the user inputs and creates a file
