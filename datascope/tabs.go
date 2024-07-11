@@ -27,17 +27,19 @@ var tabDescStyle = func(width int) lipgloss.Style {
 }
 
 // Displays either the key-bind to submit the action on the current tab or the input error,
-// if one exists
-func submitString(inputErr string) string {
-	sty := lipgloss.NewStyle().
-		PaddingTop(1).PaddingBottom(1).
+// if one exists, as well as the result string, beneath the submit-string/input-error
+func submitString(inputErr, result string) string {
+	alignerSty := lipgloss.NewStyle().
+		PaddingTop(1).
 		AlignHorizontal(lipgloss.Center)
-	if strings.TrimSpace(inputErr) == "" {
-		return sty.
-			Foreground(stylesheet.TertiaryColor).
-			Render("Press alt+enter to submit")
+	var inputColor = stylesheet.TertiaryColor
+	if strings.TrimSpace(inputErr) != "" {
+		inputColor = stylesheet.ErrorColor
 	}
-	return sty.Foreground(stylesheet.ErrorColor).Render(inputErr)
+	return lipgloss.JoinVertical(lipgloss.Center,
+		alignerSty.Foreground(inputColor).Render(inputErr),
+		alignerSty.Foreground(stylesheet.SecondaryColor).Render(result),
+	)
 }
 
 //#endregion

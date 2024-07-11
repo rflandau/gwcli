@@ -291,8 +291,8 @@ func viewDownload(s *DataScope) string {
 			"",
 			recs,
 			"",
-			submitString(s.download.inputErrorString),
-			titleSty.Render(s.download.resultString)),
+			submitString(s.download.inputErrorString, s.download.resultString),
+		),
 	)
 }
 

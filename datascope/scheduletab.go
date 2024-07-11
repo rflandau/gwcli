@@ -3,14 +3,19 @@ package datascope
 import (
 	"errors"
 	"fmt"
+	"gwcli/clilog"
+	"gwcli/connection"
 	"gwcli/stylesheet"
 	"gwcli/stylesheet/colorizer"
+	"gwcli/utilities/uniques"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
+	"github.com/google/uuid"
 )
 
 type scheduleCursor = uint
@@ -59,6 +64,7 @@ func initScheduleTab() scheduleTab {
 
 func updateSchedule(s *DataScope, msg tea.Msg) tea.Cmd {
 	if msg, ok := msg.(tea.KeyMsg); ok {
+		s.schedule.inputErrorString = ""
 		switch msg.Type {
 		case tea.KeyUp:
 			s.schedule.selected -= 1
@@ -75,8 +81,50 @@ func updateSchedule(s *DataScope, msg tea.Msg) tea.Cmd {
 		case tea.KeyEnter:
 			if msg.Alt { // only accept alt+enter
 				// gather and validate selections
+				var (
+					n   = strings.TrimSpace(s.schedule.nameTI.Value())
+					d   = strings.TrimSpace(s.schedule.descTI.Value())
+					cf  = strings.TrimSpace(s.schedule.cronfreqTI.Value())
+					qry = s.search.SearchString
+				)
+				if n == "" || d == "" || cf == "" {
+					s.schedule.inputErrorString = "name, description, and frequency are all required"
+					return nil
+				}
+				// validate cron formatting
+				if exploded := strings.Split(cf, " "); len(exploded) != 5 {
+					s.schedule.inputErrorString = "frequency must have 5 elements," +
+						"in the format '* * * * *'"
+					return nil
+				}
 
-				// TODO submit scheduled query
+				clilog.Writer.Debugf("Scheduling query %v (%v) for %v", n, qry, cf)
+				// fetch the duration from the search struct
+				start, err := time.Parse(uniques.SearchTimeFormat, s.search.SearchStart)
+				if err != nil {
+					s.schedule.resultString = "failed to read duration start time: " + err.Error()
+					clilog.Writer.Error(s.schedule.resultString)
+					return nil
+				}
+				end, err := time.Parse(uniques.SearchTimeFormat, s.search.SearchEnd)
+				if err != nil {
+					s.schedule.resultString = "failed to read duration end time: " + err.Error()
+					clilog.Writer.Error(s.schedule.resultString)
+					return nil
+				}
+
+				// TODO provide a dialogue for selecting groups/permissions
+				id, err := connection.Client.CreateScheduledSearch(n, d, cf,
+					uuid.UUID{}, qry, end.Sub(start),
+					[]int32{connection.MyInfo.DefaultGID})
+				if err != nil {
+					s.schedule.resultString = "failed to schedule query: " + err.Error()
+					clilog.Writer.Error(s.schedule.resultString)
+					return nil
+				}
+				s.schedule.resultString = fmt.Sprintf("successfully scheduled query (ID: %v)", id)
+				clilog.Writer.Info(s.schedule.resultString)
+				return nil
 			}
 		}
 	}
@@ -144,8 +192,8 @@ func viewSchedule(s *DataScope) string {
 			tabDesc,
 			composed,
 			"",
-			submitString(s.schedule.inputErrorString),
-			titleSty.Render(s.schedule.resultString)),
+			submitString(s.schedule.inputErrorString, s.schedule.resultString),
+		),
 	)
 }
 
