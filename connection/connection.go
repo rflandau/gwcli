@@ -15,7 +15,9 @@ import (
 	"io"
 	"os"
 	"strings"
+	"time"
 
+	"github.com/google/uuid"
 	grav "github.com/gravwell/gravwell/v3/client"
 	"github.com/gravwell/gravwell/v3/client/objlog"
 	"github.com/gravwell/gravwell/v3/client/types"
@@ -218,6 +220,38 @@ func End() error {
 
 	Client.Close()
 	return nil
+}
+
+// A validation wrapper around Client.CreateScheduledSearch to provide consistent
+// validation, logging, and errors.
+//
+// Returns:
+//   - an ID on success, -1 on failure
+//   - a reason on invalid parameters
+//   - and an error iff the server returns an error
+func CreateScheduledSearch(name, desc, freq, qry string, dur time.Duration) (
+	id int32, invalid string, err error,
+) {
+	// validate parameters
+	if qry == "" {
+		return -1, "cannot schedule an empty query", nil
+	} else if name == "" || desc == "" || freq == "" {
+		return -1, "name, description, and frequency are required", nil
+	} else if len(strings.Split(freq, " ")) != 5 {
+		return -1, "frequency must have 5 elements, in the format '* * * * *'", nil
+	} else if dur > 0 {
+		return -1, fmt.Sprintf("duration must be positive (given:%v)", dur), nil
+	}
+
+	// submit the request
+	clilog.Writer.Debugf("Scheduling query %v (%v) for %v", name, qry, freq)
+	// TODO provide a dialogue for selecting groups/permissions
+	id, err = Client.CreateScheduledSearch(name, desc, freq,
+		uuid.UUID{}, qry, dur, []int32{MyInfo.DefaultGID})
+	if err != nil {
+		return -1, "", err
+	}
+	return id, "", nil
 }
 
 // Given a search, a file to write to, and the format to download in, DownloadResults fetches and

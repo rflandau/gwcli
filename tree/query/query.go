@@ -107,9 +107,23 @@ func run(cmd *cobra.Command, args []string) {
 		return
 	}
 
-	// submit the query
+	// check if it is a scheduled query
+	if flags.schedule.cronfreq != "" {
+		id, invalid, err := connection.CreateScheduledSearch(flags.schedule.name, flags.schedule.desc,
+			flags.schedule.cronfreq, qry, flags.duration)
+		if invalid != "" { // bad parameters
+			clilog.Tee(clilog.INFO, cmd.OutOrStdout(), invalid)
+			return
+		} else if err != nil {
+			clilog.Tee(clilog.ERROR, cmd.ErrOrStderr(), err.Error())
+		}
+		clilog.Tee(clilog.INFO, cmd.OutOrStdout(),
+			fmt.Sprintf("Successfully scheduled query (ID: %v)", id))
+		return
+	}
+	// submit the immediate query
 	var search grav.Search
-	if s, schID, err := tryQuery(qry, -flags.duration, &flags.schedule); err != nil {
+	if s, schID, err := tryQuery(qry, -flags.duration); err != nil {
 		clilog.Tee(clilog.ERROR, cmd.ErrOrStderr(), err.Error())
 		return
 	} else if schID != 0 { // if scheduled, we are done
@@ -238,7 +252,7 @@ type schedule struct {
 // Validates and (if valid) submits the given query to the connected server instance.
 // Duration must be negative or zero. A positive duration will result in an error.
 // Returns a search if immediate and a scheduled search id if scheduled.
-func tryQuery(qry string, duration time.Duration, sch *schedule) (grav.Search, int32, error) {
+func tryQuery(qry string, duration time.Duration) (grav.Search, int32, error) {
 	var err error
 	if duration > 0 {
 		return grav.Search{}, 0, fmt.Errorf("duration must be negative or zero (given %v)", duration)
@@ -250,13 +264,6 @@ func tryQuery(qry string, duration time.Duration, sch *schedule) (grav.Search, i
 	}
 
 	// check for scheduling
-	if sch != nil && sch.cronfreq != "" {
-		clilog.Writer.Debugf("Scheduling query %v (%v) for %v", sch.name, qry, sch.cronfreq)
-		id, err := connection.Client.CreateScheduledSearch(sch.name, sch.desc, sch.cronfreq,
-			uuid.UUID{}, qry, duration, []int32{connection.MyInfo.DefaultGID})
-		// TODO provide a dialogue for selecting groups/permissions
-		return grav.Search{}, id, err
-	}
 
 	end := time.Now()
 	sreq := types.StartSearchRequest{
