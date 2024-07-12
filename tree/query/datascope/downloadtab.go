@@ -258,6 +258,11 @@ func (s *DataScope) dl(fn string) (result string, success bool) {
 	// whole file
 	if err := connection.DownloadResults(s.search, f,
 		s.download.format.json, s.download.format.csv); err != nil {
+		// check specifically for a 404 error
+		if strings.Contains(err.Error(), "404") {
+			return baseErrorResultString + "search aged out due to inactivity. Please re-run it.",
+				false
+		}
 		return baseErrorResultString + err.Error(), false
 	}
 
