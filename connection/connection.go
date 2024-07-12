@@ -300,7 +300,7 @@ func DownloadResults(s *grav.Search, f *os.File, json, csv bool) error {
 	}
 	clilog.Writer.Debugf("output file, renderer '%s' -> '%s'", s.RenderMod, format)
 	if rc, err = Client.DownloadSearch(s.ID, types.TimeRange{}, format); err != nil {
-		clilog.Writer.Errorf("DownloadSearch for ID '%v', format '%v' failed", s.ID, format) // log extra data
+		clilog.Writer.Errorf("DownloadSearch for ID '%v', format '%v' failed: %v", s.ID, format, err) // log extra data
 		return err
 	}
 	defer rc.Close()
