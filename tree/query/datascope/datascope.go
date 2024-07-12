@@ -49,7 +49,7 @@ const (
 //
 //   - the search ID this goroutine is tracking is replaced
 //
-// the goroutine will die on next cycle.
+// the goroutine will die on next wake.
 func keepAlive(search *grav.Search) {
 	/**
 	 * A long-winded explanation of the problem this solves:
