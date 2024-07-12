@@ -26,6 +26,7 @@ import (
 
 	"github.com/charmbracelet/bubbles/key"
 	"github.com/charmbracelet/bubbles/paginator"
+	"github.com/charmbracelet/bubbles/textinput"
 	"github.com/charmbracelet/bubbles/viewport"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
@@ -220,19 +221,23 @@ func (s DataScope) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			s.showTabs = !s.showTabs
 			// recalculate height and update display
 			s.setViewportHeight(s.rawWidth)
-			return s, nil
+			return s, textinput.Blink
 		case key.Matches(msg, keys.cycleTabs):
 			s.activeTab += 1
 			if s.activeTab >= uint(len(s.tabs)) {
 				s.activeTab = 0
 			}
+			return s, textinput.Blink
+
 		case key.Matches(msg, keys.reverseCycleTabs):
 			if s.activeTab == 0 {
 				s.activeTab = uint(len(s.tabs)) - 1
 			} else {
 				s.activeTab -= 1
 			}
+			return s, textinput.Blink
 		}
+
 	case tea.WindowSizeMsg:
 		s.rawHeight = msg.Height
 		s.rawWidth = msg.Width
