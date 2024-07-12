@@ -14,6 +14,7 @@ import (
 	"gwcli/utilities/cfgdir"
 	"io"
 	"os"
+	"strconv"
 	"strings"
 	"time"
 
@@ -232,15 +233,35 @@ func End() error {
 func CreateScheduledSearch(name, desc, freq, qry string, dur time.Duration) (
 	id int32, invalid string, err error,
 ) {
+	id = -1
 	// validate parameters
 	if qry == "" {
-		return -1, "cannot schedule an empty query", nil
+		return id, "cannot schedule an empty query", nil
 	} else if name == "" || desc == "" || freq == "" {
-		return -1, "name, description, and frequency are required", nil
-	} else if len(strings.Split(freq, " ")) != 5 {
-		return -1, "frequency must have 5 elements, in the format '* * * * *'", nil
-	} else if dur > 0 {
-		return -1, fmt.Sprintf("duration must be positive (given:%v)", dur), nil
+		return id, "name, description, and frequency are required", nil
+	} else if dur < 0 {
+		return id, fmt.Sprintf("duration must be positive (given:%v)", dur), nil
+	}
+
+	exploded := strings.Split(freq, " ")
+	// validate cron format (`0-59` `0-23` `1-31` `1-12` `0-7`, ranges inclusive)
+	if len(exploded) != 5 {
+		return id, "frequency must have 5 elements, in the format '* * * * *'", nil
+	}
+	if inv := invalidCronWord(exploded[0], "first", 0, 59); inv != "" {
+		return id, inv, nil
+	}
+	if inv := invalidCronWord(exploded[1], "second", 0, 23); inv != "" {
+		return id, inv, nil
+	}
+	if inv := invalidCronWord(exploded[2], "third", 1, 31); inv != "" {
+		return id, inv, nil
+	}
+	if inv := invalidCronWord(exploded[3], "fourth", 1, 12); inv != "" {
+		return id, inv, nil
+	}
+	if inv := invalidCronWord(exploded[4], "fifth", 0, 7); inv != "" {
+		return id, inv, nil
 	}
 
 	// submit the request
@@ -249,9 +270,21 @@ func CreateScheduledSearch(name, desc, freq, qry string, dur time.Duration) (
 	id, err = Client.CreateScheduledSearch(name, desc, freq,
 		uuid.UUID{}, qry, dur, []int32{MyInfo.DefaultGID})
 	if err != nil {
-		return -1, "", err
+		return -1, "", fmt.Errorf("failed to schedule search: %v", err)
 	}
 	return id, "", nil
+}
+
+// Validates the given cron word, ensuring it parses and is between the two bounds (inclusively).
+// entryNumber is the order of this word ("first", "second", "third", ...).
+func invalidCronWord(word, entryNumber string, lowBound, highBound int) (invalid string) {
+	if i, err := strconv.Atoi(word); err != nil {
+		return err.Error() // return as input error
+	} else if i < lowBound || i > highBound {
+		return fmt.Sprintf("%s value must be between %d and %d, inclusively",
+			entryNumber, lowBound, highBound)
+	}
+	return ""
 }
 
 // Given a search, a file to write to, and the format to download in, DownloadResults fetches and

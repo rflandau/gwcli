@@ -11,11 +11,11 @@ import (
 	"strings"
 	"sync"
 	"time"
+	"unicode"
 
 	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
-	"github.com/google/uuid"
 )
 
 type scheduleCursor = uint
@@ -48,10 +48,35 @@ func initScheduleTab() scheduleTab {
 	// set TI-specific options
 	sch.cronfreqTI.Placeholder = "* * * * *"
 	sch.cronfreqTI.Validate = func(s string) error {
+		// check for an empty TI
+		if strings.TrimSpace(s) == "" {
+			return nil
+		}
+		runes := []rune(s)
+		if len(runes) < 1 {
+			return nil
+		}
+
+		// check that the latest input is a digit or space
+		if char := runes[len(runes)-1]; !unicode.IsSpace(char) && !unicode.IsDigit(rune(char)) {
+			return errors.New("frequency can contain only digits")
+		}
+
+		// check that we do not have too many values
 		exploded := strings.Split(s, " ")
 		if len(exploded) > 5 {
 			return errors.New("must be exactly 5 values")
 		}
+
+		// check that the newest word is <= 2 characters
+		lastWord := []rune(exploded[len(exploded)-1])
+		if len(lastWord) > 2 {
+			return errors.New("each word is <= 2 digits")
+		}
+
+		// checking for the values of each word is delayed until connection.CreateScheduledSearch to
+		// save on cycles
+
 		return nil
 	}
 
@@ -87,18 +112,6 @@ func updateSchedule(s *DataScope, msg tea.Msg) tea.Cmd {
 					cf  = strings.TrimSpace(s.schedule.cronfreqTI.Value())
 					qry = s.search.SearchString
 				)
-				if n == "" || d == "" || cf == "" {
-					s.schedule.inputErrorString = "name, description, and frequency are all required"
-					return nil
-				}
-				// validate cron formatting
-				if exploded := strings.Split(cf, " "); len(exploded) != 5 {
-					s.schedule.inputErrorString = "frequency must have 5 elements," +
-						"in the format '* * * * *'"
-					return nil
-				}
-
-				clilog.Writer.Debugf("Scheduling query %v (%v) for %v", n, qry, cf)
 				// fetch the duration from the search struct
 				start, err := time.Parse(uniques.SearchTimeFormat, s.search.SearchStart)
 				if err != nil {
@@ -113,17 +126,17 @@ func updateSchedule(s *DataScope, msg tea.Msg) tea.Cmd {
 					return nil
 				}
 
-				// TODO provide a dialogue for selecting groups/permissions
-				id, err := connection.Client.CreateScheduledSearch(n, d, cf,
-					uuid.UUID{}, qry, end.Sub(start),
-					[]int32{connection.MyInfo.DefaultGID})
-				if err != nil {
-					s.schedule.resultString = "failed to schedule query: " + err.Error()
-					clilog.Writer.Error(s.schedule.resultString)
-					return nil
+				id, invalid, err := connection.CreateScheduledSearch(n, d, cf, qry, end.Sub(start))
+				if invalid != "" { // bad parameters
+					s.schedule.inputErrorString = invalid
+					clilog.Writer.Debug(s.schedule.inputErrorString)
+				} else if err != nil {
+					s.schedule.resultString = err.Error()
+					clilog.Writer.Error(err.Error())
+				} else {
+					s.schedule.resultString = fmt.Sprintf("successfully scheduled query (ID: %v)", id)
+					clilog.Writer.Info(s.schedule.resultString)
 				}
-				s.schedule.resultString = fmt.Sprintf("successfully scheduled query (ID: %v)", id)
-				clilog.Writer.Info(s.schedule.resultString)
 				return nil
 			}
 		}
