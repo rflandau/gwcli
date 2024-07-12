@@ -97,12 +97,14 @@ func updateSchedule(s *DataScope, msg tea.Msg) tea.Cmd {
 				s.schedule.selected = schhighBound - 1
 			}
 			s.schedule.focusSelected()
+			return textinput.Blink
 		case tea.KeyDown:
 			s.schedule.selected += 1
 			if s.schedule.selected >= schhighBound {
 				s.schedule.selected = schlowBound + 1
 			}
 			s.schedule.focusSelected()
+			return textinput.Blink
 		case tea.KeyEnter:
 			if msg.Alt { // only accept alt+enter
 				// gather and validate selections
