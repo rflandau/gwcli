@@ -12,6 +12,7 @@ import (
 	"fmt"
 	"gwcli/clilog"
 	"gwcli/utilities/cfgdir"
+	"gwcli/utilities/uniques"
 	"io"
 	"os"
 	"strconv"
@@ -285,6 +286,40 @@ func invalidCronWord(word, entryNumber string, lowBound, highBound int) (invalid
 			entryNumber, lowBound, highBound)
 	}
 	return ""
+}
+
+// Validates and submits the given query to the connected server instance.
+// Duration must be negative or zero (X time units back in time from now()).
+// A positive duration will result in an error.
+//
+// Returns a handle to executing searching.
+func StartQuery(qry string, durFromNow time.Duration) (grav.Search, error) {
+	var err error
+	if durFromNow > 0 {
+		return grav.Search{}, fmt.Errorf("duration must be negative or zero (given %v)", durFromNow)
+	}
+
+	// validate search query
+	if err = Client.ParseSearch(qry); err != nil {
+		return grav.Search{}, fmt.Errorf("'%s' is not a valid query: %s", qry, err.Error())
+	}
+
+	// check for scheduling
+
+	end := time.Now()
+	sreq := types.StartSearchRequest{
+		SearchStart:  end.Add(durFromNow).Format(uniques.SearchTimeFormat),
+		SearchEnd:    end.Format(uniques.SearchTimeFormat),
+		Background:   false,
+		SearchString: qry, // pull query from the commandline
+		NoHistory:    false,
+		Preview:      false,
+	}
+	clilog.Writer.Infof("Executing foreground search '%v' from %v -> %v",
+		sreq.SearchString, sreq.SearchStart, sreq.SearchEnd)
+	s, err := Client.StartSearchEx(sreq)
+	return s, err
+
 }
 
 // Given a search, a file to write to, and the format to download in, DownloadResults fetches and

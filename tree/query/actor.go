@@ -331,7 +331,7 @@ func (q *query) submitQuery() tea.Cmd {
 		duration = defaultDuration
 	}
 
-	s, err := tryQuery(qry, -duration)
+	s, err := connection.StartQuery(qry, -duration)
 	if err != nil {
 		q.editor.err = err.Error()
 		return nil
