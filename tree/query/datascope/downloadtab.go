@@ -410,14 +410,14 @@ func recordSegment(titleSty, lcolAligner, rcolAligner lipgloss.Style,
 	)
 
 	recordsDesc := lipgloss.NewStyle().
+		Render("Enter a comma-seperated list of records to download just those records,") + "\n"
+	recordsDesc += lipgloss.NewStyle().Bold(true).Render("instead of the whole file.")
+	recordsDescFormatted := lipgloss.NewStyle().
 		Width(lipgloss.Width(recs)).
-		AlignHorizontal(lipgloss.Left).
-		Italic(true).
-		Render("Enter a comma-seperated list of records to download just those records," +
-			" instead of the whole file.")
+		AlignHorizontal(lipgloss.Center).Render(recordsDesc)
 	return lipgloss.JoinVertical(lipgloss.Center,
 		recs,
-		recordsDesc)
+		recordsDescFormatted)
 }
 
 //#endregion
