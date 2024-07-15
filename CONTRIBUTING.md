@@ -1,17 +1,8 @@
 # Overview
+
+In essence, gwcli is a [Cobra](cobra.dev) tree that can be crawled around via our [Bubble Tea](https://github.com/charmbracelet/bubbletea) instance. As such, you should understand the [Elm Architecture](https://guide.elm-lang.org/architecture/) before continuing. Don't worry, it is really simple. For more on how they work together, see the section below on [Cobra/Bubble Tea Interoperation](#cobrabubble-tea-interop).
+
 gwcli is built to allow more functionality to be easily plugged in. As such, it follows design principles closer to that of a toolbox or framework. For instance, [list scaffolding](utilities/scaffold/list) provides complete functionality for listing any kind of data in a unified way while requiring minimal new code. The goal is to genericize as much as possible, so future developers can simply call these genericized subrotuines.
-
-# Keep In Mind
-
-- Actions' Update subroutines should *always* return a tea.Cmd when handing control back to Mother.
-
-    - If you do not have anything to tea.Println on completion, use a .Blink method
-
-    - This is to prevent faux-hanging. Bubble Tea only triggers its cycle when a message comes in. Returning nil when few other messages are being sent can cause the application to appear unresponsive when it is instead waiting for another message, thus triggering the anticipated redraw.
-
-- This is a prompt; anything not immediately interactive should be output via tea.Print* as history, rather than in the .View() that will be lost on redraw. 
-
-- Do not include newlines in lipgloss renders. It produces weird results.
 
 # Terminology
 
@@ -24,6 +15,18 @@ Our Bubble Tea model implementation, our controller, is *Mother*.
 Tree leaves (commands that can be invoked interactively or from a script), such as `search`, are *Actions*.
 
 Tree nodes (commands that require further input/are submenus), such as `user`, are *Navs*.
+
+# Quick Tips
+
+- Actions' Update subroutines should **always** return a tea.Cmd when handing control back to Mother.
+
+    - If you do not have anything to tea.Println on completion, use a .Blink method
+
+    - This is to prevent faux-hanging. Bubble Tea only triggers its cycle when a message comes in. Returning nil when few other messages are being sent can cause the application to appear unresponsive when it is instead waiting for another message, thus triggering the anticipated redraw.
+
+- This is a prompt; anything not immediately interactive should be output via tea.Print* as history, rather than in the .View() that will be lost on redraw. 
+
+- Do not include newlines in lipgloss renders. It produces weird results.
 
 # Design and Philosophy
 
@@ -53,16 +56,19 @@ Mother keeps track of the active Action (leaf cobra.Command) and looks up its me
 ```mermaid
 flowchart
     subgraph Cobra Command Tree
-        root(Nav) <-->  n1(Nav) & n2(Nav)
-        n1 <--> n3(Nav) & a1(Action)
-        n2 <--> a2(Action) & a3(Action)
-        n3 <--> a4(Action) & a5(Action) & a6(Action)
+        root(Nav):::nav <-->  n1(Nav):::nav & n2(Nav):::nav
+        n1 <--> n3(Nav):::nav & a1(Action):::action
+        n2 <--> a2(Action):::action & a3(Action):::action
+        n3 <--> a4(Action):::action & a5(Action):::action & a6(Action):::action
     end
     mother>Mother]
     mother -.*PWD.-> n3
     mother -.*Root.-> root
     mother -.*Action.-> a6
     mother ==*Action==> ActionMap ==*Action's<br>Update()/View()==> mother
+
+    classDef nav stroke:#bb7af7
+    classDef action stroke:#f79c7a
 ```
 
 ### Why?
@@ -114,14 +120,14 @@ flowchart
     EnterHandoff>Enter<br>Handoff Mode] -->
     SetArgs(child.SetArgs) --> MotherUpdate>Mother.Update] --> Done(child.Done?)
     --false--> Update(child.Update) --> MotherView>Mother.View] -->View[child.View]
-    --> Done
+    --> MotherUpdate
 
     Done --true--> ExitHandoff>Exit<br>Handoff Mode] --> Reset[child.Reset]
 ```
 
 ### Scaffolding
 
-Where possible, use the functionality in the scaffold package to rapidly construct new actions that fit one of the scaffold archetypes.
+Where possible, use the functionality in the [scaffold](/utilities/scaffold/) package to rapidly construct new actions that fit one of the scaffold archetypes.
 
 ## Local Versus Persistent Flags
 
