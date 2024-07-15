@@ -32,9 +32,17 @@ func submitString(inputErr, result string, width int) string {
 		PaddingTop(1).
 		AlignHorizontal(lipgloss.Center).
 		Width(width)
-	var inputColor = stylesheet.ErrorColor
+	var (
+		inputErrOrAltEnterColor        = stylesheet.TertiaryColor
+		inputErrOrAltEnterText  string = "Press Alt+Enter to submit"
+	)
+	if inputErr != "" {
+		inputErrOrAltEnterColor = stylesheet.ErrorColor
+		inputErrOrAltEnterText = inputErr
+	}
+
 	return lipgloss.JoinVertical(lipgloss.Center,
-		alignerSty.Foreground(inputColor).Render(inputErr),
+		alignerSty.Foreground(inputErrOrAltEnterColor).Render(inputErrOrAltEnterText),
 		alignerSty.Foreground(stylesheet.SecondaryColor).Render(result),
 	)
 }
