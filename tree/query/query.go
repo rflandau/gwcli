@@ -135,7 +135,9 @@ func run(cmd *cobra.Command, args []string) {
 		return
 	}
 
-	if flags.outfn != "" { // if an output file was given, stream the results into it
+	// if an output file was given and we are in script mode, stream the results into it
+	// if we are not in script mode, DS will automatically download results for us
+	if flags.outfn != "" && flags.script {
 		// open the file
 		var of *os.File
 		if of, err = openFile(flags.outfn, flags.append); err != nil {
@@ -171,8 +173,9 @@ func run(cmd *cobra.Command, args []string) {
 		}
 
 		// spin up a scrolling pager to display
-		// NOTE: we already check output above; pass in nil
-		if p, err := datascope.CobraNew(strs, &search, "", false, false, false); err != nil {
+		if p, err := datascope.CobraNew(
+			strs, &search, flags.outfn, flags.append, flags.json, flags.csv,
+		); err != nil {
 			clilog.Tee(clilog.ERROR, cmd.ErrOrStderr(), err.Error())
 			return
 		} else {
