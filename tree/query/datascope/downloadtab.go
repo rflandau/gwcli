@@ -262,8 +262,8 @@ func (s *DataScope) dl(fn string) (result string, success bool) {
 // helper record for dl.
 // Writes just the records specified in the comma-seperated list strRecords to the file f.
 // Returns the list of record numbers whose values were written or an error
-func dlrecordsOnly(f *os.File, strRecords string, data []string) ([]uint32, error) {
-	exploded := strings.Split(strRecords, ",")
+func dlrecordsOnly(f *os.File, strRecordsTI string, data []string) ([]uint32, error) {
+	exploded := strings.Split(strRecordsTI, ",")
 	var writtenRecords []uint32 = make([]uint32, len(exploded))
 	var i int = 0
 	for _, strRec := range exploded {
