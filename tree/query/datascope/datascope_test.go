@@ -1,7 +1,10 @@
 package datascope
 
 import (
+	"gwcli/clilog"
+	activesearchlock "gwcli/tree/query/datascope/ActiveSearchLock"
 	"gwcli/utilities/uniques"
+	"os"
 	"testing"
 	"time"
 
@@ -26,7 +29,13 @@ func TestKeepAlive(t *testing.T) {
 		panic(err)
 	}
 
-	const minDuration = 3 * time.Minute
+	// initialize the log
+	if err := clilog.Init("test_log.txt", "DEBUG"); err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { os.Remove("test_log.txt") })
+
+	const minDuration = 4 * time.Minute
 	// skip this test if we do not have a long enough timeout
 	if deadline, unset := t.Deadline(); !unset || !deadline.After(time.Now().Add(minDuration)) {
 		t.Skip("this test requires a -timeout of at least ", minDuration)
@@ -41,6 +50,14 @@ func TestKeepAlive(t *testing.T) {
 	// spawn keepalive on it
 	go keepAlive(&s)
 
+	// update the timestamp every 30 seconds, endlessly
+	go func() {
+		for {
+			time.Sleep(30 * time.Second)
+			activesearchlock.UpdateTS()
+		}
+	}()
+
 	// pull results from the query every so often
 	for i := 0; i < 3; i++ { // run for 3 minutes
 		time.Sleep(time.Minute)
@@ -53,9 +70,14 @@ func TestKeepAlive(t *testing.T) {
 	}
 
 	// change the sid
-	// TODO
+	activesearchlock.SetSearchID("different string")
 
 	// confirm that keepalive is dead by repulling results and expecting a 404
-	// TODO
+	time.Sleep(30 * time.Second)
+	if _, err := testclient.DownloadSearch(s.ID,
+		types.TimeRange{},
+		uniques.SearchTimeFormat); err == nil {
+		t.Fatalf("downloaded search; expected 404:")
+	}
 
 }
