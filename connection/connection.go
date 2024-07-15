@@ -261,7 +261,7 @@ func CreateScheduledSearch(name, desc, freq, qry string, dur time.Duration) (
 	if inv := invalidCronWord(exploded[3], "fourth", 1, 12); inv != "" {
 		return id, inv, nil
 	}
-	if inv := invalidCronWord(exploded[4], "fifth", 0, 7); inv != "" {
+	if inv := invalidCronWord(exploded[4], "fifth", 0, 6); inv != "" {
 		return id, inv, nil
 	}
 
