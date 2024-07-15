@@ -58,8 +58,9 @@ func initScheduleTab() scheduleTab {
 		}
 
 		// check that the latest input is a digit or space
-		if char := runes[len(runes)-1]; !unicode.IsSpace(char) && !unicode.IsDigit(rune(char)) {
-			return errors.New("frequency can contain only digits")
+		if char := runes[len(runes)-1]; !unicode.IsSpace(char) &&
+			!unicode.IsDigit(rune(char)) && char != '*' {
+			return errors.New("frequency can contain only digits or '*'")
 		}
 
 		// check that we do not have too many values
@@ -207,7 +208,7 @@ func viewSchedule(s *DataScope) string {
 			tabDesc,
 			composed,
 			"",
-			submitString(s.schedule.inputErrorString, s.schedule.resultString),
+			submitString(s.schedule.inputErrorString, s.schedule.resultString, s.vp.Width),
 		),
 	)
 }
