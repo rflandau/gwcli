@@ -96,10 +96,10 @@ func updateDownload(s *DataScope, msg tea.Msg) tea.Cmd {
 		switch msg.Type {
 		case tea.KeyUp:
 			cycleUp(&s.download)
-			return nil
+			return textinput.Blink
 		case tea.KeyDown:
 			cycleDown(&s.download)
-			return nil
+			return textinput.Blink
 		case tea.KeySpace, tea.KeyEnter:
 			if msg.Alt && msg.Type == tea.KeyEnter { // only accept alt+enter
 				// gather and validate selections
