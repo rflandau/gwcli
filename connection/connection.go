@@ -280,7 +280,11 @@ func CreateScheduledSearch(name, desc, freq, qry string, dur time.Duration) (
 // entryNumber is the order of this word ("first", "second", "third", ...).
 func invalidCronWord(word, entryNumber string, lowBound, highBound int) (invalid string) {
 	if i, err := strconv.Atoi(word); err != nil {
-		return err.Error() // return as input error
+		// check for astrisk
+		if runes := []rune(word); len(runes) == 1 && runes[0] == '*' {
+			return ""
+		}
+		return "failed to parse " + word
 	} else if i < lowBound || i > highBound {
 		return fmt.Sprintf("%s value must be between %d and %d, inclusively",
 			entryNumber, lowBound, highBound)
