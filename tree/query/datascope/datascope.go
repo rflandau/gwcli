@@ -14,14 +14,11 @@ package datascope
 
 import (
 	"errors"
-	"fmt"
 	"gwcli/clilog"
 	"gwcli/stylesheet"
 	activesearchlock "gwcli/tree/query/datascope/ActiveSearchLock"
 	"gwcli/utilities/killer"
 	"os"
-	"strconv"
-	"strings"
 	"time"
 
 	"github.com/charmbracelet/bubbles/key"
@@ -290,32 +287,6 @@ func CobraNew(data []string, search *grav.Search, outfn string,
 // )
 func wrap(width int, s string) string {
 	return lipgloss.NewStyle().Width(width).Render(s)
-}
-
-var compiledShortHelp = stylesheet.GreyedOutStyle.Render(
-	fmt.Sprintf("%v page • %v scroll • tab: cycle • esc: quit",
-		stylesheet.LeftRight, stylesheet.UpDown),
-)
-
-// generates a renderFooter with the box+line and help keys
-func (s *DataScope) renderFooter(width int) string {
-	percent := fmt.Sprintf("%3.f%%", s.vp.ScrollPercent()*100)
-	line := "\n" + lipgloss.NewStyle().Foreground(stylesheet.PrimaryColor).Render(
-		strings.Repeat("─", max(0, width-lipgloss.Width(percent))),
-	)
-
-	lineHelp := lipgloss.JoinVertical(lipgloss.Center, line, compiledShortHelp)
-
-	pgr := fmt.Sprintf("%s %s",
-		lipgloss.NewStyle().Foreground(stylesheet.FocusedColor).Width(3).Render(
-			strconv.Itoa(s.pager.Page)),
-		s.pager.View(),
-	)
-
-	return lipgloss.JoinVertical(lipgloss.Center,
-		lipgloss.JoinHorizontal(lipgloss.Center, lineHelp, percent),
-		pgr,
-	)
 }
 
 // Sets the height of the viewport, using s.rawHeight minus the height of non-data segments

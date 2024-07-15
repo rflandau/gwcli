@@ -6,10 +6,12 @@ package datascope
 
 import (
 	"fmt"
+	"gwcli/stylesheet"
 	"strconv"
 	"strings"
 
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/charmbracelet/lipgloss"
 )
 
 func updateResults(s *DataScope, msg tea.Msg) tea.Cmd {
@@ -58,4 +60,35 @@ func (s *DataScope) setResultsDisplayed() {
 		trueIndex += 1
 	}
 	s.vp.SetContent(wrap(s.vp.Width, bldr.String()))
+}
+
+var compiledShortHelp = stylesheet.GreyedOutStyle.Render(
+	fmt.Sprintf("%v page • %v scroll • tab: cycle • esc: quit",
+		stylesheet.LeftRight, stylesheet.UpDown),
+)
+
+// generates a renderFooter with the box+line and help keys
+func (s *DataScope) renderFooter(width int) string {
+	// set up each element
+	pageNumber := lipgloss.NewStyle().Foreground(stylesheet.FocusedColor).
+		Render(strconv.Itoa(s.pager.Page)) + " "
+	scrollPercent := fmt.Sprintf("%3.f%%", s.vp.ScrollPercent()*100)
+	line := lipgloss.NewStyle().
+		Foreground(stylesheet.PrimaryColor).
+		Render(
+			strings.Repeat("─",
+				max(0, width-
+					lipgloss.Width(pageNumber)-
+					lipgloss.Width(scrollPercent))),
+		)
+
+	composedLine := fmt.Sprintf("%s%s%s", pageNumber, line, scrollPercent)
+
+	pager := lipgloss.NewStyle().Width(s.vp.Width).AlignHorizontal(lipgloss.Center).Render(s.pager.View())
+
+	return lipgloss.JoinVertical(lipgloss.Center,
+		composedLine,
+		pager,
+		wrap(s.vp.Width, compiledShortHelp),
+	)
 }
