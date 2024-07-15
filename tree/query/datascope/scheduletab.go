@@ -40,9 +40,9 @@ type scheduleTab struct {
 
 func initScheduleTab() scheduleTab {
 	sch := scheduleTab{
-		cronfreqTI: stylesheet.NewTI(""),
-		nameTI:     stylesheet.NewTI(""),
-		descTI:     stylesheet.NewTI(""),
+		cronfreqTI: stylesheet.NewTI("", false),
+		nameTI:     stylesheet.NewTI("", false),
+		descTI:     stylesheet.NewTI("", false),
 	}
 
 	// set TI-specific options

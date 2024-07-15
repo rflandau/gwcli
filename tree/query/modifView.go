@@ -58,7 +58,7 @@ func initialModifView(height, width uint) modifView {
 	}
 
 	// build duration ti
-	mv.durationTI = stylesheet.NewTI(defaultDuration.String())
+	mv.durationTI = stylesheet.NewTI(defaultDuration.String(), false)
 	mv.durationTI.Placeholder = "1h00m00s00ms00us00ns"
 	mv.durationTI.Validate = func(s string) error {
 		// checks that the string is composed of valid characters for duration parsing

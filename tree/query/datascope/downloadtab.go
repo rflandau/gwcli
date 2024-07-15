@@ -55,10 +55,8 @@ type downloadTab struct {
 // ! JSON and CSV should not both be true. However, they can both be false.
 // Setting both to true is undefined behavior.
 func initDownloadTab(outfn string, append, json, csv bool) downloadTab {
-	width := 20
-
 	d := downloadTab{
-		outfileTI: textinput.New(),
+		outfileTI: stylesheet.NewTI(outfn, false),
 		append:    append,
 		format: struct {
 			enabled bool
@@ -66,7 +64,7 @@ func initDownloadTab(outfn string, append, json, csv bool) downloadTab {
 			csv     bool
 			raw     bool
 		}{enabled: true, json: json, csv: csv, raw: false},
-		recordsTI: textinput.New(), // TODO use stylesheet.NewTI()
+		recordsTI: stylesheet.NewTI("", true),
 		selected:  dloutfile,
 	}
 
@@ -75,18 +73,10 @@ func initDownloadTab(outfn string, append, json, csv bool) downloadTab {
 		d.format.raw = true
 	}
 
-	// initialize outfileTI
-	d.outfileTI.Prompt = ""
-	d.outfileTI.Width = width
-	d.outfileTI.Placeholder = ""
+	// focus outfileTI
 	d.outfileTI.Focus()
-	d.outfileTI.SetValue(outfn)
 
-	// initialize recordsTI
-	d.recordsTI.Prompt = ""
-	d.recordsTI.Width = width
-	d.recordsTI.Placeholder = "1,4,740"
-	d.recordsTI.Blur()
+	// add validator to recordsTI
 	d.recordsTI.Validate = func(s string) error {
 		for _, r := range s {
 			if r == ',' || unicode.IsNumber(r) {
@@ -409,9 +399,9 @@ func recordSegment(titleSty, lcolAligner, rcolAligner lipgloss.Style,
 	selected downloadCursor, dl *downloadTab) string {
 	// grey-out records if the TI is empty
 	recSty := titleSty
-	if strings.TrimSpace(dl.recordsTI.Value()) == "" {
+	/*if strings.TrimSpace(dl.recordsTI.Value()) == "" {
 		recSty = stylesheet.GreyedOutStyle
-	}
+	}*/
 
 	recs := lipgloss.JoinHorizontal(lipgloss.Center,
 		lcolAligner.Render(fmt.Sprintf("%s%s",
@@ -419,12 +409,15 @@ func recordSegment(titleSty, lcolAligner, rcolAligner lipgloss.Style,
 		rcolAligner.Render(dl.recordsTI.View()),
 	)
 
-	recordsDesc := lipgloss.NewStyle().Width(40).AlignHorizontal(lipgloss.Center).Italic(true).
-		Render("OPTIONAL:\n" + "Enter a comma-seperated list of records to download just those records," +
+	recordsDesc := lipgloss.NewStyle().
+		Width(lipgloss.Width(recs)).
+		AlignHorizontal(lipgloss.Left).
+		Italic(true).
+		Render("Enter a comma-seperated list of records to download just those records," +
 			" instead of the whole file.")
 	return lipgloss.JoinVertical(lipgloss.Center,
-		recordsDesc,
-		recs)
+		recs,
+		recordsDesc)
 }
 
 //#endregion
