@@ -13,5 +13,7 @@ func NewTI(defVal string) textinput.Model {
 	ti.Width = 20
 	ti.Blur()
 	ti.SetValue(defVal)
+	ti.KeyMap.WordForward.SetKeys("ctrl+right", "alt+right", "alt+f")
+	ti.KeyMap.WordBackward.SetKeys("ctrl+left", "alt+left", "alt+b")
 	return ti
 }
