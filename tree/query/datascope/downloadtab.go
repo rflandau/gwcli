@@ -397,11 +397,12 @@ func outputFormatSegment(titleSty, subtitleSty, lcolAligner, rcolAligner lipglos
 
 func recordSegment(titleSty, lcolAligner, rcolAligner lipgloss.Style,
 	selected downloadCursor, dl *downloadTab) string {
-	// grey-out records if the TI is empty
+	// grey-out tooltip if the TI is empty
 	recSty := titleSty
-	/*if strings.TrimSpace(dl.recordsTI.Value()) == "" {
-		recSty = stylesheet.GreyedOutStyle
-	}*/
+	tooltipSty := lipgloss.NewStyle()
+	if strings.TrimSpace(dl.recordsTI.Value()) == "" {
+		tooltipSty = stylesheet.GreyedOutStyle
+	}
 
 	recs := lipgloss.JoinHorizontal(lipgloss.Center,
 		lcolAligner.Render(fmt.Sprintf("%s%s",
@@ -412,9 +413,10 @@ func recordSegment(titleSty, lcolAligner, rcolAligner lipgloss.Style,
 	recordsDesc := lipgloss.NewStyle().
 		Render("Enter a comma-seperated list of records to download just those records,") + "\n"
 	recordsDesc += lipgloss.NewStyle().Bold(true).Render("instead of the whole file.")
-	recordsDescFormatted := lipgloss.NewStyle().
+	recordsDescFormatted := tooltipSty.
 		Width(lipgloss.Width(recs)).
-		AlignHorizontal(lipgloss.Center).Render(recordsDesc)
+		AlignHorizontal(lipgloss.Center).
+		Render(recordsDesc)
 	return lipgloss.JoinVertical(lipgloss.Center,
 		recs,
 		recordsDescFormatted)
