@@ -69,6 +69,7 @@ var compiledShortHelp = stylesheet.GreyedOutStyle.Render(
 
 // generates a renderFooter with the box+line and help keys
 func (s *DataScope) renderFooter(width int) string {
+	var alignerSty = lipgloss.NewStyle().Width(s.vp.Width).AlignHorizontal(lipgloss.Center)
 	// set up each element
 	pageNumber := lipgloss.NewStyle().Foreground(stylesheet.FocusedColor).
 		Render(strconv.Itoa(s.pager.Page)) + " "
@@ -84,11 +85,9 @@ func (s *DataScope) renderFooter(width int) string {
 
 	composedLine := fmt.Sprintf("%s%s%s", pageNumber, line, scrollPercent)
 
-	pager := lipgloss.NewStyle().Width(s.vp.Width).AlignHorizontal(lipgloss.Center).Render(s.pager.View())
-
 	return lipgloss.JoinVertical(lipgloss.Center,
 		composedLine,
-		pager,
-		wrap(s.vp.Width, compiledShortHelp),
+		alignerSty.Render(s.pager.View()),
+		alignerSty.Render(compiledShortHelp),
 	)
 }
