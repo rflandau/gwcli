@@ -41,8 +41,6 @@
 
 - support RecordsPerPage flag/option in datascope
 
-- BUG: suggestions strangely overlap when history is keyed through on Mother's prompt
-
 - implement macro edit action
 
 - add debouncer to DS to reduce lag when holding a key
