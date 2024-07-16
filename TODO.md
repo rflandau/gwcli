@@ -5,8 +5,6 @@
 
 - [ ] query editor syntax highlighting
 
-- [x] Add datascope support and keys for downloading all data or just the current page of data
-
 - [ ] Store help strings within mother somewhere so we can lazy-compile them rather than regenerating each call
 
 - [ ] confirm the status of the no-color flag
@@ -45,10 +43,12 @@
 
 - BUG: suggestions strangely overlap when history is keyed through on Mother's prompt
 
-- add auto-schedule when a schedule is given to DS
-
-- implement scheduled search management
-    - list
-    - delete
-
 - implement macro edit action
+
+- add debouncer to DS to reduce lag when holding a key
+
+- support table results in query and DS
+
+- create scheduled search `create` function
+
+- create generic `create` scaffold
