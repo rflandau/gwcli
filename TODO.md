@@ -5,7 +5,7 @@
 
 - [ ] query editor syntax highlighting
 
-- [ ] Add datascope support and keys for downloading all data or just the current page of data
+- [x] Add datascope support and keys for downloading all data or just the current page of data
 
 - [ ] Store help strings within mother somewhere so we can lazy-compile them rather than regenerating each call
 
@@ -37,8 +37,18 @@
 - [ ] search around for a BubbleTea rendering fix for window size messages in non-altmode.
     - currently, get artefacting above most recent draw
 
-- query's modifView.go has a lot of repeated code for each bool and each textinput
-    - [ ] genericize and consoliate the repeated code
+- BUG: DS's results lose the alternating color if the start of the entry is cut off (aka: the termainl escape characters get cut off at the start)
 
-- [ ] require name, desc, and schedule in query, if scheduled is checked
-    - should error if any are unset
+- support X-Y notation in records downloading via DS
+
+- support RecordsPerPage flag/option in datascope
+
+- BUG: suggestions strangely overlap when history is keyed through on Mother's prompt
+
+- add auto-schedule when a schedule is given to DS
+
+- implement scheduled search management
+    - list
+    - delete
+
+- implement macro edit action
