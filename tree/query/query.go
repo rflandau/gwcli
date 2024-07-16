@@ -121,6 +121,22 @@ func runNonInteractive(cmd *cobra.Command, flags queryflags, qry string) {
 	var err error
 
 	if flags.schedule.cronfreq != "" { // check if it is a scheduled query
+		// warn about ignored flags
+		if clilog.Active(clilog.WARN) { // only warn if WARN level is enabled
+			if flags.outfn != "" {
+				fmt.Fprint(cmd.ErrOrStderr(), uniques.WarnFlagIgnore("output", "schedule"))
+			}
+			if flags.append {
+				fmt.Fprint(cmd.ErrOrStderr(), uniques.WarnFlagIgnore("append", "schedule"))
+			}
+			if flags.json {
+				fmt.Fprint(cmd.ErrOrStderr(), uniques.WarnFlagIgnore("json", "schedule"))
+			}
+			if flags.csv {
+				fmt.Fprint(cmd.ErrOrStderr(), uniques.WarnFlagIgnore("csv", "schedule"))
+			}
+		}
+
 		// if a name was not given, populate a default name
 		if flags.schedule.name == "" {
 			flags.schedule.name = "cli_" + time.Now().Format(uniques.SearchTimeFormat)
@@ -213,7 +229,6 @@ func runNonInteractive(cmd *cobra.Command, flags queryflags, qry string) {
 // run function without --script given, making it acceptable to rely on user input
 // NOTE: download and schedule flags are handled inside of datascope
 func runInteractive(cmd *cobra.Command, flags queryflags, qry string) {
-
 	// submit the immediate query
 	var search grav.Search
 	if s, err := connection.StartQuery(qry, -flags.duration); err != nil {
