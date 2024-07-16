@@ -204,13 +204,11 @@ func (m Mother) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.ti.SetValue(m.history.getOlderRecord())
 			// update cursor position
 			m.ti.CursorEnd()
-			return m, nil
 		}
 		if msg.Type == tea.KeyDown { // history
 			m.ti.SetValue(m.history.getNewerRecord())
 			// update cursor position
 			m.ti.CursorEnd()
-			return m, nil
 		}
 		if msg.Type == tea.KeyEnter { // submit
 			m.history.unsetFetch()
