@@ -38,11 +38,11 @@ type scheduleTab struct {
 	descTI     textinput.Model
 }
 
-func initScheduleTab() scheduleTab {
+func initScheduleTab(cronfreq, name, desc string) scheduleTab {
 	sch := scheduleTab{
 		cronfreqTI: stylesheet.NewTI("", false),
-		nameTI:     stylesheet.NewTI("", false),
-		descTI:     stylesheet.NewTI("", false),
+		nameTI:     stylesheet.NewTI(name, false),
+		descTI:     stylesheet.NewTI(desc, false),
 	}
 
 	// set TI-specific options
@@ -82,6 +82,7 @@ func initScheduleTab() scheduleTab {
 	}
 
 	// focus frequency by default
+	sch.cronfreqTI.SetValue(cronfreq)
 	sch.cronfreqTI.Focus()
 	sch.selected = schcronfreq
 

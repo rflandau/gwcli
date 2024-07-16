@@ -159,8 +159,15 @@ func (q *query) Update(msg tea.Msg) tea.Cmd {
 				// JSON,CSV,outfn,append are user-editable in the DataScope; these just set initial
 				// values
 				q.scope, cmd, err = datascope.NewDataScope(data, true, q.curSearch,
-					q.flagModifiers.outfn, q.flagModifiers.append,
-					q.flagModifiers.json, q.flagModifiers.csv)
+					datascope.WithAutoDownload(
+						q.flagModifiers.outfn,
+						q.flagModifiers.append,
+						q.flagModifiers.json,
+						q.flagModifiers.csv),
+					datascope.WithSchedule(
+						q.flagModifiers.schedule.cronfreq,
+						q.flagModifiers.schedule.name,
+						q.flagModifiers.schedule.desc))
 				if err != nil {
 					clilog.Writer.Errorf("failed to create DataScope: %v", err)
 					q.mode = quitting

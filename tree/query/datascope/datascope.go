@@ -124,19 +124,18 @@ type DataScope struct {
 	schedule scheduleTab
 }
 
+type DataScopeOption func(*DataScope) error
+
 // Returns a new DataScope instance based on the given data array. If mother is running,
 // this subroutine will launch her into the alt screen buffer and query the terminal for its size.
 // outfn and append are optional; if outfn is given, the data will immediately be downloaded.
-func NewDataScope(data []string, motherRunning bool, search *grav.Search, outfn string, append, json, csv bool) (DataScope, tea.Cmd, error) {
+func NewDataScope(data []string, motherRunning bool, search *grav.Search, opt ...DataScopeOption) (DataScope, tea.Cmd, error) {
 	// sanity check arguments
 	if search == nil {
 		return DataScope{}, nil, errors.New("search cannot be nil")
 	}
 	if len(data) == 0 {
 		return DataScope{}, nil, errors.New("no data to display")
-	}
-	if json && csv {
-		return DataScope{}, nil, errors.New("output format cannot be both JSON and CSV")
 	}
 
 	// set up backend paginator
@@ -152,8 +151,8 @@ func NewDataScope(data []string, motherRunning bool, search *grav.Search, outfn 
 		ready:         false,
 		data:          data,
 		motherRunning: motherRunning,
-		download:      initDownloadTab(outfn, append, json, csv),
-		schedule:      initScheduleTab(),
+		download:      initDownloadTab("", false, false, false),
+		schedule:      initScheduleTab("", "", ""),
 	}
 
 	// set up tabs
@@ -164,22 +163,16 @@ func NewDataScope(data []string, motherRunning bool, search *grav.Search, outfn 
 	// save search
 	s.search = search
 
-	// if outfile was given, attempt automatic download
-	if outfn != "" {
-		res, success := s.dl(outfn)
-		s.download.resultString = res
-		if !success {
-			clilog.Writer.Error(res)
-		} else {
-			clilog.Writer.Info(res)
-		}
-	}
-
 	// store data for keepAlive
 	activesearchlock.SetSearchID(search.ID)
 	activesearchlock.UpdateTS()
 	// launch heartbeat gorotuine
 	go keepAlive(search)
+
+	// apply options
+	for _, o := range opt {
+		o(&s)
+	}
 
 	// mother does not start in alt screen, and thus requires manual measurements
 	if motherRunning {
@@ -194,6 +187,38 @@ func NewDataScope(data []string, motherRunning bool, search *grav.Search, outfn 
 
 	return s, nil, nil
 }
+
+//#region constructor options
+
+func WithAutoDownload(outfn string, append, json, csv bool) DataScopeOption {
+	return func(ds *DataScope) error {
+		if json && csv {
+			return errors.New("output format cannot be both JSON and CSV")
+		}
+
+		ds.download = initDownloadTab(outfn, append, json, csv)
+		if outfn != "" {
+			res, success := ds.dl(outfn)
+			ds.download.resultString = res
+			if !success {
+				clilog.Writer.Error(res)
+			} else {
+				clilog.Writer.Info(res)
+			}
+		}
+		return nil
+	}
+}
+
+func WithSchedule(cronfreq, name, desc string) DataScopeOption {
+	return func(ds *DataScope) error {
+		ds.schedule = initScheduleTab(cronfreq, name, desc)
+		return nil
+	}
+
+}
+
+//#endergion
 
 func (s DataScope) Init() tea.Cmd {
 	return nil
@@ -270,8 +295,11 @@ func (s DataScope) View() string {
 // For use from Cobra.Run() subroutines.
 // Start the returned program via .Run().
 func CobraNew(data []string, search *grav.Search, outfn string,
-	append, json, csv bool) (p *tea.Program, err error) {
-	ds, _, err := NewDataScope(data, false, search, outfn, append, json, csv)
+	append, json, csv bool, cronfreq, name, desc string,
+) (p *tea.Program, err error) {
+	ds, _, err := NewDataScope(data, false, search,
+		WithAutoDownload(outfn, append, json, csv),
+		WithSchedule(cronfreq, name, desc))
 	if err != nil {
 		return nil, err
 	}

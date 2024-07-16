@@ -13,6 +13,7 @@ import (
 	"gwcli/stylesheet"
 	"gwcli/tree/query/datascope"
 	"gwcli/treeutils"
+	"io"
 	"os"
 	"strings"
 	"time"
@@ -106,10 +107,24 @@ func run(cmd *cobra.Command, args []string) {
 		return
 	}
 
-	// check if it is a scheduled query
-	if flags.schedule.cronfreq != "" {
-		id, invalid, err := connection.CreateScheduledSearch(flags.schedule.name, flags.schedule.desc,
-			flags.schedule.cronfreq, qry, flags.duration)
+	// branch on script mode
+	if flags.script {
+		runNonInteractive(cmd, flags, qry)
+		return
+	}
+	runInteractive(cmd, flags, qry)
+}
+
+// run function with --script given, making it entirely independent of user input
+func runNonInteractive(cmd *cobra.Command, flags queryflags, qry string) {
+	var err error
+
+	if flags.schedule.cronfreq != "" { // check if it is a scheduled query
+		id, invalid, err := connection.CreateScheduledSearch(
+			flags.schedule.name, flags.schedule.desc,
+			flags.schedule.cronfreq, qry,
+			flags.duration,
+		)
 		if invalid != "" { // bad parameters
 			clilog.Tee(clilog.INFO, cmd.OutOrStdout(), invalid)
 			return
@@ -120,6 +135,7 @@ func run(cmd *cobra.Command, args []string) {
 			fmt.Sprintf("Successfully scheduled query (ID: %v)", id))
 		return
 	}
+
 	// submit the immediate query
 	var search grav.Search
 	if s, err := connection.StartQuery(qry, -flags.duration); err != nil {
@@ -130,14 +146,31 @@ func run(cmd *cobra.Command, args []string) {
 	}
 
 	// wait for query to complete
-	if err := waitForSearch(search, flags.script); err != nil {
+	if err := waitForSearch(search, true); err != nil {
 		clilog.Tee(clilog.ERROR, cmd.ErrOrStderr(), err.Error())
 		return
 	}
 
-	// if an output file was given and we are in script mode, stream the results into it
-	// if we are not in script mode, DS will automatically download results for us
-	if flags.outfn != "" && flags.script {
+	// fetch the data from the search
+	var format string
+	if format, err = connection.RenderToDownload(search.RenderMod, flags.csv, flags.json); err != nil {
+		clilog.Tee(clilog.ERROR, cmd.ErrOrStderr(), err.Error())
+		return
+	}
+	clilog.Writer.Debugf("output file, renderer '%s' -> '%s'", search.RenderMod, format)
+	var results io.ReadCloser
+	if results, err = connection.Client.DownloadSearch(
+		search.ID, types.TimeRange{}, format,
+	); err != nil {
+		clilog.Writer.Errorf("DownloadSearch for ID '%v', format '%v' failed: %v",
+			search.ID, format, err) // log extra data
+		clilog.Tee(clilog.ERROR, cmd.ErrOrStderr(), err.Error())
+		return
+	}
+	defer results.Close()
+
+	// if an output file was given, stream the results into it
+	if flags.outfn != "" {
 		// open the file
 		var of *os.File
 		if of, err = openFile(flags.outfn, flags.append); err != nil {
@@ -145,27 +178,53 @@ func run(cmd *cobra.Command, args []string) {
 			return
 		}
 		defer of.Close()
-		if err := connection.DownloadResults(&search, of, flags.json, flags.csv); err != nil {
+
+		if b, err := of.ReadFrom(results); err != nil {
 			clilog.Tee(clilog.ERROR, cmd.ErrOrStderr(), err.Error())
+			return
 		} else {
-			fmt.Fprintln(cmd.OutOrStdout(),
-				connection.DownloadQuerySuccessfulString(of.Name(), flags.append))
+			clilog.Writer.Infof("Streamed %d bytes into %s", b, of.Name())
 		}
 		return
 	}
 
+	// no output file was given, dump the data to standard out
+	if r, err := io.ReadAll(results); err != nil {
+		clilog.Tee(clilog.ERROR, cmd.ErrOrStderr(), err.Error())
+		return
+	} else {
+		if len(r) == 0 {
+			fmt.Fprintln(cmd.OutOrStdout(), "no results to display")
+		} else {
+			fmt.Fprintln(cmd.OutOrStdout(), r)
+		}
+	}
+}
+
+// run function without --script given, making it acceptable to rely on user input
+// NOTE: download and schedule flags are handled inside of datascope
+func runInteractive(cmd *cobra.Command, flags queryflags, qry string) {
+
+	// submit the immediate query
+	var search grav.Search
+	if s, err := connection.StartQuery(qry, -flags.duration); err != nil {
+		clilog.Tee(clilog.ERROR, cmd.ErrOrStderr(), err.Error())
+		return
+	} else {
+		search = s
+	}
+
+	// wait for query to complete
+	if err := waitForSearch(search, false); err != nil {
+		clilog.Tee(clilog.ERROR, cmd.ErrOrStderr(), err.Error())
+		return
+	}
+
+	// get results to pass to data scope
 	if results, err := fetchTextResults(search); err != nil {
 		clilog.Tee(clilog.ERROR, cmd.ErrOrStderr(), err.Error())
 		return
 	} else if len(results) > 0 {
-		// if script mode, spew the result to stdout and quit
-		if flags.script {
-			for _, r := range results {
-				fmt.Fprintf(cmd.OutOrStdout(), "%s\n", r.Data)
-			}
-			return
-		}
-
 		// if interactive mode, feed the results to datascope for user control
 		var strs []string = make([]string, len(results))
 		for i, r := range results {
@@ -174,7 +233,9 @@ func run(cmd *cobra.Command, args []string) {
 
 		// spin up a scrolling pager to display
 		if p, err := datascope.CobraNew(
-			strs, &search, flags.outfn, flags.append, flags.json, flags.csv,
+			strs, &search,
+			flags.outfn, flags.append, flags.json, flags.csv,
+			flags.schedule.cronfreq, flags.schedule.name, flags.schedule.desc,
 		); err != nil {
 			clilog.Tee(clilog.ERROR, cmd.ErrOrStderr(), err.Error())
 			return
@@ -187,7 +248,6 @@ func run(cmd *cobra.Command, args []string) {
 	} else { // no results to display
 		fmt.Fprintln(cmd.OutOrStdout(), NoResultsText)
 	}
-
 }
 
 // Stops execution and waits for the given search to complete.
