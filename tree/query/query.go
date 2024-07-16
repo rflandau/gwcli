@@ -13,6 +13,7 @@ import (
 	"gwcli/stylesheet"
 	"gwcli/tree/query/datascope"
 	"gwcli/treeutils"
+	"gwcli/utilities/uniques"
 	"io"
 	"os"
 	"strings"
@@ -120,6 +121,15 @@ func runNonInteractive(cmd *cobra.Command, flags queryflags, qry string) {
 	var err error
 
 	if flags.schedule.cronfreq != "" { // check if it is a scheduled query
+		// if a name was not given, populate a default name
+		if flags.schedule.name == "" {
+			flags.schedule.name = "cli_" + time.Now().Format(uniques.SearchTimeFormat)
+		}
+		// if a description was not given, populate a default description
+		if flags.schedule.desc == "" {
+			flags.schedule.desc = "generated in gwcli @" + time.Now().Format(uniques.SearchTimeFormat)
+		}
+
 		id, invalid, err := connection.CreateScheduledSearch(
 			flags.schedule.name, flags.schedule.desc,
 			flags.schedule.cronfreq, qry,
