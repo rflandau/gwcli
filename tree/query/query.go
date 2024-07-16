@@ -229,7 +229,9 @@ func runNonInteractive(cmd *cobra.Command, flags queryflags, qry string) {
 		return
 	} else if format == types.DownloadArchive { // check for binary output
 		fmt.Fprintf(cmd.OutOrStdout(), "refusing to dump binary blob (format %v) to stdout.\n"+
-			"If this is intentional, re-run with -o <FILENAME>.\n", format)
+			"If this is intentional, re-run with -o <FILENAME>.\n"+
+			"If it was not, re-run with --csv or --json to download in a more appropriate format.",
+			format)
 	} else { // text results, stdout
 		if r, err := io.ReadAll(results); err != nil {
 			clilog.Tee(clilog.ERROR, cmd.ErrOrStderr(), err.Error())
@@ -271,9 +273,10 @@ func runInteractive(cmd *cobra.Command, flags queryflags, qry string) {
 			clilog.Tee(clilog.ERROR, cmd.ErrOrStderr(), err.Error())
 			return
 		} else if len(rows) != 0 {
-			// format the table datascope
+			// format the table for datascope
+			// basically a csv
 			results = make([]string, len(rows)+1)
-			results[0] = strings.Join(columns, ",")
+			results[0] = strings.Join(columns, ",") // first entry is the header
 			for i, row := range rows {
 				results[i+1] = strings.Join(row.Row, ",")
 			}
