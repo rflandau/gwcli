@@ -139,6 +139,10 @@ func NewDataScope(data []string, motherRunning bool, search *grav.Search, opt ..
 	}
 
 	// set up backend paginator
+	paginator.DefaultKeyMap = paginator.KeyMap{ // do not use pgup/pgdn
+		PrevPage: key.NewBinding(key.WithKeys("left", "h")),
+		NextPage: key.NewBinding(key.WithKeys("right", "l")),
+	}
 	p := paginator.New()
 	p.Type = paginator.Dots
 	p.PerPage = 25
@@ -276,13 +280,7 @@ func (s DataScope) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		s.rawWidth = msg.Width
 
 		if !s.ready { // if we are not ready, use these dimensions to become ready
-			s.vp = viewport.New(s.rawWidth, msg.Height)
-			s.vp = viewport.Model{
-				Width: s.rawWidth,
-			}
-			s.setViewportHeight(s.rawWidth)
-			s.vp.MouseWheelDelta = 1
-			s.vp.HighPerformanceRendering = false
+			s.initViewport(s.rawWidth, s.rawHeight)
 			s.ready = true
 		} else { // just an update
 			s.vp.Width = s.rawWidth

@@ -10,26 +10,79 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/charmbracelet/bubbles/key"
+	"github.com/charmbracelet/bubbles/viewport"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 )
+
+func (s *DataScope) initViewport(width, height int) {
+	s.vp = viewport.Model{
+		Width: width,
+	}
+	s.setViewportHeight(height)
+	s.vp.MouseWheelDelta = 1
+	s.vp.HighPerformanceRendering = false
+	// set up keybinds directly supported by viewport
+	// other keybinds are managed by the results tab()
+	s.vp.KeyMap = viewport.KeyMap{
+		PageDown: key.NewBinding(
+			key.WithKeys("pgdown", " ", "f"),
+			key.WithHelp("f/pgdn", "page down"),
+		),
+		PageUp: key.NewBinding(
+			key.WithKeys("pgup", "b"),
+			key.WithHelp("b/pgup", "page up"),
+		),
+		HalfPageUp: key.NewBinding(
+			key.WithKeys("u", "ctrl+u"),
+			key.WithHelp("u", "½ page up"),
+		),
+		HalfPageDown: key.NewBinding(
+			key.WithKeys("d", "ctrl+d"),
+			key.WithHelp("d", "½ page down"),
+		),
+		Up: key.NewBinding(
+			key.WithKeys("up", "k"),
+			key.WithHelp("↑/k", "up"),
+		),
+		Down: key.NewBinding(
+			key.WithKeys("down", "j"),
+			key.WithHelp("↓/j", "down"),
+		),
+	}
+}
 
 func updateResults(s *DataScope, msg tea.Msg) tea.Cmd {
 	var (
 		cmd  tea.Cmd
 		cmds []tea.Cmd
 	)
+
+	// handle pager modifications first
 	prevPage := s.pager.Page
 	s.pager, cmd = s.pager.Update(msg)
 	cmds = append(cmds, cmd)
 
-	s.setResultsDisplayed() // pass the new content to the view
-
-	s.vp, cmd = s.vp.Update(msg)
-	cmds = append(cmds, cmd)
+	s.setResultsDisplayed()       // pass the new content to the view
 	if prevPage != s.pager.Page { // if page changed, reset to top of view
 		s.vp.GotoTop()
 	}
+
+	// check for keybinds not directly supported by the viewport
+	if msg, ok := msg.(tea.KeyMsg); ok {
+		switch msg.Type {
+		case tea.KeyHome:
+			s.vp.GotoTop()
+			return cmds[0]
+		case tea.KeyEnd:
+			s.vp.GotoBottom()
+			return cmds[0]
+		}
+	}
+
+	s.vp, cmd = s.vp.Update(msg)
+	cmds = append(cmds, cmd)
 	return tea.Sequence(cmds...)
 }
 
@@ -63,7 +116,8 @@ func (s *DataScope) setResultsDisplayed() {
 }
 
 var compiledShortHelp = stylesheet.GreyedOutStyle.Render(
-	fmt.Sprintf("%v page • %v scroll • tab: cycle • esc: quit",
+	fmt.Sprintf("%v page • %v scroll • Home: Jump Top • End: Jump Bottom\n"+
+		"tab: cycle • esc: quit",
 		stylesheet.LeftRight, stylesheet.UpDown),
 )
 
@@ -72,7 +126,7 @@ func (s *DataScope) renderFooter(width int) string {
 	var alignerSty = lipgloss.NewStyle().Width(s.vp.Width).AlignHorizontal(lipgloss.Center)
 	// set up each element
 	pageNumber := lipgloss.NewStyle().Foreground(stylesheet.FocusedColor).
-		Render(strconv.Itoa(s.pager.Page)) + " "
+		Render(strconv.Itoa(s.pager.Page+1)) + " "
 	scrollPercent := fmt.Sprintf("%3.f%%", s.vp.ScrollPercent()*100)
 	line := lipgloss.NewStyle().
 		Foreground(stylesheet.PrimaryColor).
