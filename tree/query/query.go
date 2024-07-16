@@ -19,7 +19,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/google/uuid"
 	grav "github.com/gravwell/gravwell/v3/client"
 	"github.com/gravwell/gravwell/v3/client/types"
 	"github.com/spf13/cobra"
@@ -167,7 +166,7 @@ func runNonInteractive(cmd *cobra.Command, flags queryflags, qry string) {
 			flags.duration,
 		)
 		if invalid != "" { // bad parameters
-			clilog.Tee(clilog.INFO, cmd.OutOrStdout(), invalid)
+			clilog.Tee(clilog.INFO, cmd.ErrOrStderr(), invalid)
 			return
 		} else if err != nil {
 			clilog.Tee(clilog.ERROR, cmd.ErrOrStderr(), err.Error())
@@ -193,23 +192,21 @@ func runNonInteractive(cmd *cobra.Command, flags queryflags, qry string) {
 	}
 
 	// fetch the data from the search
-	var format string
-	if format, err = connection.RenderToDownload(search.RenderMod, flags.csv, flags.json); err != nil {
-		clilog.Tee(clilog.ERROR, cmd.ErrOrStderr(), err.Error())
-		return
-	}
-	clilog.Writer.Debugf("renderer '%s' -> '%s'", search.RenderMod, format)
-	var results io.ReadCloser
-	if results, err = connection.Client.DownloadSearch(
-		search.ID, types.TimeRange{}, format,
+	var (
+		results io.ReadCloser
+		format  string
+	)
+	if results, format, err = connection.DownloadSearch(
+		&search, types.TimeRange{}, flags.csv, flags.json,
 	); err != nil {
 		clilog.Tee(clilog.ERROR, cmd.ErrOrStderr(),
-			fmt.Sprintf("failed to retrieve results from search %s (format: %s): %v", search.ID, format, err.Error()))
+			fmt.Sprintf("failed to retrieve results from search %s (format %v): %v",
+				search.ID, format, err.Error()))
 		return
 	}
 	defer results.Close()
 
-	// if an output file was given, stream the results into it
+	// if an output file was given, write results into it
 	if flags.outfn != "" {
 		// open the file
 		var of *os.File
@@ -219,17 +216,21 @@ func runNonInteractive(cmd *cobra.Command, flags queryflags, qry string) {
 		}
 		defer of.Close()
 
+		// consumes the results and spit them into the open file
 		if b, err := of.ReadFrom(results); err != nil {
 			clilog.Tee(clilog.ERROR, cmd.ErrOrStderr(), err.Error())
 			return
 		} else {
-			clilog.Writer.Infof("Streamed %d bytes into %s", b, of.Name())
+			clilog.Writer.Infof("Streamed %d bytes (format %v) into %s", b, format, of.Name())
 		}
+		// stdout output is acceptible as the user is redirecting actual results to a file.
+		fmt.Fprintln(cmd.OutOrStdout(),
+			connection.DownloadQuerySuccessfulString(of.Name(), flags.append, format))
 		return
-	} else if format == types.DownloadArchive {
-		fmt.Fprintln(cmd.OutOrStdout(), "refusing to dump binary blob to stdout.\n"+
-			"If this is intentional, re-run with -o <FILENAME>")
-	} else {
+	} else if format == types.DownloadArchive { // check for binary output
+		fmt.Fprintf(cmd.OutOrStdout(), "refusing to dump binary blob (format %v) to stdout.\n"+
+			"If this is intentional, re-run with -o <FILENAME>.\n", format)
+	} else { // text results, stdout
 		if r, err := io.ReadAll(results); err != nil {
 			clilog.Tee(clilog.ERROR, cmd.ErrOrStderr(), err.Error())
 			return
@@ -318,30 +319,6 @@ func waitForSearch(s grav.Search, scriptMode bool) error {
 }
 
 //#endregion
-
-// Pulls a query from args or a reference uuid, depending on if the latter is given.
-// Does not consider an empty query to be an error.
-func fetchQueryString(fs *pflag.FlagSet, args []string) (query string, err error) {
-	var ref string // query library uuid
-	if ref, err = fs.GetString("reference"); err != nil {
-		return "", err
-	} else if strings.TrimSpace(ref) != "" {
-		if err := uuid.Validate(ref); err != nil {
-			return "", err
-		}
-		uuid, err := uuid.Parse(ref)
-		if err != nil {
-			return "", err
-		}
-		sl, err := connection.Client.GetSearchLibrary(uuid)
-		if err != nil {
-			return "", err
-		}
-		return sl.Query, nil
-	}
-
-	return strings.TrimSpace(strings.Join(args, " ")), nil
-}
 
 // just enough information to schedule a given query
 type schedule struct {

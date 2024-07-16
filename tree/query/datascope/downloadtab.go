@@ -252,13 +252,12 @@ func (s *DataScope) dl(fn string) (result string, success bool) {
 		format string
 		rc     io.ReadCloser
 	)
-	if format, err = connection.RenderToDownload(
-		s.search.RenderMod, s.download.format.csv, s.download.format.json,
+	if rc, format, err = connection.DownloadSearch(
+		s.search,
+		types.TimeRange{},
+		s.download.format.csv,
+		s.download.format.json,
 	); err != nil {
-		return baseErrorResultString + err.Error(), false
-	}
-	clilog.Writer.Debugf("output file, renderer '%s' -> '%s'", s.search.RenderMod, format)
-	if rc, err = connection.Client.DownloadSearch(s.search.ID, types.TimeRange{}, format); err != nil {
 		clilog.Writer.Errorf("DownloadSearch for ID '%v', format '%v' failed: %v",
 			s.search.ID, format, err) // log extra data
 		// check specifically for a 404 error
@@ -275,7 +274,7 @@ func (s *DataScope) dl(fn string) (result string, success bool) {
 	} else {
 		clilog.Writer.Infof("Streamed %d bytes into %s", b, f.Name())
 	}
-	return connection.DownloadQuerySuccessfulString(f.Name(), s.download.append), true
+	return connection.DownloadQuerySuccessfulString(f.Name(), s.download.append, format), true
 }
 
 // helper record for dl.

@@ -320,14 +320,10 @@ func TestNonInteractive(t *testing.T) {
 			t.Errorf("non-zero error code: %v", errCode)
 		}
 
-		results := <-stdoutData
+		<-stdoutData
 		resultsErr := <-stderrData
 		if resultsErr != "" {
 			t.Errorf("non-empty stderr:\n(%v)", resultsErr)
-		}
-		// check that no data was output to stdout in script and -o mode
-		if results != "" {
-			t.Errorf("output mismatch\n expected no data output to stdout. got:\n(%v)\n", results)
 		}
 
 		// slurp the file, check for valid JSON

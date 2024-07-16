@@ -19,79 +19,81 @@ const (
 	pass   = "changeme"
 )
 
+/*
 // UUIDs are not seeded, so make sure the uuid1str const actually exists on the gravwell server.
 // Unsetting the constant skips tests that require it
-func TestGenerateQueryString(t *testing.T) {
-	// initialize clilogger
-	var logFile = path.Join(os.TempDir(), "gwcli.Test_GenerateQueryString.log")
-	clilog.Init(logFile, "DEBUG")
 
-	const uuid1str = "" // ex: 52985695-ae81-4e82-ba1d-bce54f96def7
+	func TestGenerateQueryString(t *testing.T) {
+		// initialize clilogger
+		var logFile = path.Join(os.TempDir(), "gwcli.Test_GenerateQueryString.log")
+		clilog.Init(logFile, "DEBUG")
 
-	var restLogFile = path.Join(os.TempDir(), "gwcli.Test_GenerateQueryString.rest.log")
+		const uuid1str = "" // ex: 52985695-ae81-4e82-ba1d-bce54f96def7
 
-	if err := connection.Initialize(server, false, true, restLogFile); err != nil {
-		panic(err)
+		var restLogFile = path.Join(os.TempDir(), "gwcli.Test_GenerateQueryString.rest.log")
+
+		if err := connection.Initialize(server, false, true, restLogFile); err != nil {
+			panic(err)
+		}
+		if err := connection.Login(connection.Credentials{Username: user, Password: pass}, true); err != nil {
+			panic(err)
+		}
+
+		type args struct {
+			// args managed by the cobra.Command, such as flags
+			// global flags are assumed to be managed (per the constant above)
+			flagArgs []string
+			args     []string // leftover, positional arguments cobra would pass here after parsing
+		}
+		tests := []struct {
+			name      string
+			args      args
+			wantQuery string
+			wantErr   bool
+			skip      bool
+		}{
+			{
+				name:      "basic argument query",
+				args:      args{[]string{}, []string{"tag=gravwell"}},
+				wantQuery: "tag=gravwell", wantErr: false,
+			},
+			{
+				name:      "basic multiword argument query",
+				args:      args{[]string{}, []string{"tag=dpkg words status"}},
+				wantQuery: "tag=dpkg words status", wantErr: false,
+			},
+			{
+				name:      "uuid " + uuid1str,
+				args:      args{[]string{"-r", uuid1str}, []string{}},
+				wantQuery: "tag=gravwell", wantErr: false,
+				skip: uuid1str == "", // skip if constant is unset
+			},
+			{
+				name:      "invalid uuid 'all-hail-the-gopher'",
+				args:      args{[]string{"-r", "all-hail-the-gopher"}, []string{}},
+				wantQuery: "", wantErr: true,
+				skip: uuid1str == "", // skip if constant is unset
+			},
+		}
+		for _, tt := range tests {
+			t.Run(tt.name, func(t *testing.T) {
+				if tt.skip {
+					t.SkipNow()
+				}
+				cmd := generateCobraCommand(tt.args.flagArgs)
+
+				gotQuery, err := fetchQueryString(cmd.Flags(), tt.args.args)
+				if (err != nil) != tt.wantErr {
+					t.Errorf("GenerateQueryString() error = %v, wantErr %v", err, tt.wantErr)
+					return
+				}
+				if gotQuery != tt.wantQuery {
+					t.Errorf("GenerateQueryString() = %v, want %v", gotQuery, tt.wantQuery)
+				}
+			})
+		}
 	}
-	if err := connection.Login(connection.Credentials{Username: user, Password: pass}, true); err != nil {
-		panic(err)
-	}
-
-	type args struct {
-		// args managed by the cobra.Command, such as flags
-		// global flags are assumed to be managed (per the constant above)
-		flagArgs []string
-		args     []string // leftover, positional arguments cobra would pass here after parsing
-	}
-	tests := []struct {
-		name      string
-		args      args
-		wantQuery string
-		wantErr   bool
-		skip      bool
-	}{
-		{
-			name:      "basic argument query",
-			args:      args{[]string{}, []string{"tag=gravwell"}},
-			wantQuery: "tag=gravwell", wantErr: false,
-		},
-		{
-			name:      "basic multiword argument query",
-			args:      args{[]string{}, []string{"tag=dpkg words status"}},
-			wantQuery: "tag=dpkg words status", wantErr: false,
-		},
-		{
-			name:      "uuid " + uuid1str,
-			args:      args{[]string{"-r", uuid1str}, []string{}},
-			wantQuery: "tag=gravwell", wantErr: false,
-			skip: uuid1str == "", // skip if constant is unset
-		},
-		{
-			name:      "invalid uuid 'all-hail-the-gopher'",
-			args:      args{[]string{"-r", "all-hail-the-gopher"}, []string{}},
-			wantQuery: "", wantErr: true,
-			skip: uuid1str == "", // skip if constant is unset
-		},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			if tt.skip {
-				t.SkipNow()
-			}
-			cmd := generateCobraCommand(tt.args.flagArgs)
-
-			gotQuery, err := fetchQueryString(cmd.Flags(), tt.args.args)
-			if (err != nil) != tt.wantErr {
-				t.Errorf("GenerateQueryString() error = %v, wantErr %v", err, tt.wantErr)
-				return
-			}
-			if gotQuery != tt.wantQuery {
-				t.Errorf("GenerateQueryString() = %v, want %v", gotQuery, tt.wantQuery)
-			}
-		})
-	}
-}
-
+*/
 func Test_tryQuery(t *testing.T) {
 	var (
 		logFile     = path.Join(os.TempDir(), "gwcli.Test_tryQuery.log")
