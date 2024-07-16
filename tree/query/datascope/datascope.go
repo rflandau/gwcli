@@ -220,6 +220,9 @@ func WithAutoDownload(outfn string, append, json, csv bool) DataScopeOption {
 func WithSchedule(cronfreq, name, desc string) DataScopeOption {
 	return func(ds *DataScope) error {
 		ds.schedule = initScheduleTab(cronfreq, name, desc)
+		if cronfreq == "" && name == "" && desc == "" {
+			return nil
+		}
 		ds.sch()
 		return nil
 	}
