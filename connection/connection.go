@@ -334,7 +334,7 @@ func DownloadResults(s *grav.Search, f *os.File, json, csv bool) error {
 		format string
 		rc     io.ReadCloser
 	)
-	if format, err = renderToDownload(s.RenderMod, csv, json); err != nil {
+	if format, err = RenderToDownload(s.RenderMod, csv, json); err != nil {
 		return err
 	}
 	clilog.Writer.Debugf("output file, renderer '%s' -> '%s'", s.RenderMod, format)
@@ -354,7 +354,7 @@ func DownloadResults(s *grav.Search, f *os.File, json, csv bool) error {
 
 // Maps Render module and csv/json flag state to a string usable with DownloadSearch().
 // JSON, then CSV, take precidence over a direct render -> format map
-func renderToDownload(rndr string, csv, json bool) (string, error) {
+func RenderToDownload(rndr string, csv, json bool) (string, error) {
 	if json {
 		return types.DownloadJSON, nil
 	}
