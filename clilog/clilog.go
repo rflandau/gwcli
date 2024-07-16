@@ -75,3 +75,7 @@ func Tee(lvl Level, alt io.Writer, str string) {
 		Writer.Fatal(str)
 	}
 }
+
+func Active(lvl Level) bool {
+	return Writer.GetLevel() <= log.Level(lvl)
+}
