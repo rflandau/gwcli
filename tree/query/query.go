@@ -264,33 +264,57 @@ func runInteractive(cmd *cobra.Command, flags queryflags, qry string) {
 	}
 
 	// get results to pass to data scope
-	if results, err := fetchTextResults(search); err != nil {
-		clilog.Tee(clilog.ERROR, cmd.ErrOrStderr(), err.Error())
-		return
-	} else if len(results) > 0 {
-		// if interactive mode, feed the results to datascope for user control
-		var strs []string = make([]string, len(results))
-		for i, r := range results {
-			strs[i] = string(r.Data)
-		}
-
-		// spin up a scrolling pager to display
-		if p, err := datascope.CobraNew(
-			strs, &search,
-			flags.outfn, flags.append, flags.json, flags.csv,
-			flags.schedule.cronfreq, flags.schedule.name, flags.schedule.desc,
-		); err != nil {
+	var results []string
+	switch search.RenderMod {
+	case types.RenderNameTable:
+		if columns, rows, err := fetchTableResults(search); err != nil {
 			clilog.Tee(clilog.ERROR, cmd.ErrOrStderr(), err.Error())
 			return
-		} else {
-			if _, err := p.Run(); err != nil {
-				clilog.Tee(clilog.ERROR, cmd.ErrOrStderr(), err.Error())
-				return
+		} else if len(rows) != 0 {
+			// format the table datascope
+			results = make([]string, len(rows)+1)
+			results[0] = strings.Join(columns, ",")
+			for i, row := range rows {
+				results[i+1] = strings.Join(row.Row, ",")
 			}
 		}
-	} else { // no results to display
-		fmt.Fprintln(cmd.OutOrStdout(), NoResultsText)
+	case types.RenderNameRaw, types.RenderNameText, types.RenderNameHex:
+		if rawResults, err := fetchTextResults(search); err != nil {
+			clilog.Tee(clilog.ERROR, cmd.ErrOrStderr(), err.Error())
+			return
+		} else if len(rawResults) != 0 {
+			// format the data for datascope
+			results = make([]string, len(rawResults))
+			for i, r := range rawResults {
+				results[i] = string(r.Data)
+			}
+		}
+	default:
+		fmt.Fprintf(cmd.OutOrStdout(), "Unable to display results of type %v.\n",
+			search.RenderMod)
+		return
 	}
+	if results == nil {
+		fmt.Fprintln(cmd.OutOrStdout(), NoResultsText)
+		return
+	}
+
+	// pass results into datascope
+	// spin up a scrolling pager to display
+	if p, err := datascope.CobraNew(
+		results, &search,
+		flags.outfn, flags.append, flags.json, flags.csv,
+		flags.schedule.cronfreq, flags.schedule.name, flags.schedule.desc,
+	); err != nil {
+		clilog.Tee(clilog.ERROR, cmd.ErrOrStderr(), err.Error())
+		return
+	} else {
+		if _, err := p.Run(); err != nil {
+			clilog.Tee(clilog.ERROR, cmd.ErrOrStderr(), err.Error())
+			return
+		}
+	}
+
 }
 
 // Stops execution and waits for the given search to complete.
@@ -380,4 +404,38 @@ func fetchTextResults(s grav.Search) ([]types.SearchEntry, error) {
 	clilog.Writer.Infof("%d results obtained", len(results))
 
 	return results, nil
+}
+
+// Sister subroutine to fetchTextResults()
+func fetchTableResults(s grav.Search) (
+	columns []string, rows []types.TableRow, err error,
+) {
+	// return results for output to terminal
+	// batch results until we have the last of them
+	var (
+		low  uint64 = 0
+		high uint64 = pageSize
+		r    types.TableResponse
+	)
+	rows = make([]types.TableRow, 0, pageSize)
+	for { // accumulate the row results
+		r, err = connection.Client.GetTableResults(s, low, high)
+		if err != nil {
+			return nil, nil, err
+		}
+		rows = append(rows, r.Entries.Rows...)
+		if !r.AdditionalEntries { // all records obtained
+			break
+		}
+		// ! Get*Results is half-open [)
+		low = high
+		high = high + pageSize
+	}
+
+	// save off columns
+	columns = r.Entries.Columns
+
+	clilog.Writer.Infof("%d results obtained", len(rows))
+
+	return
 }
