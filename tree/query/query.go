@@ -167,14 +167,13 @@ func runNonInteractive(cmd *cobra.Command, flags queryflags, qry string) {
 		clilog.Tee(clilog.ERROR, cmd.ErrOrStderr(), err.Error())
 		return
 	}
-	clilog.Writer.Debugf("output file, renderer '%s' -> '%s'", search.RenderMod, format)
+	clilog.Writer.Debugf("renderer '%s' -> '%s'", search.RenderMod, format)
 	var results io.ReadCloser
 	if results, err = connection.Client.DownloadSearch(
 		search.ID, types.TimeRange{}, format,
 	); err != nil {
-		clilog.Writer.Errorf("DownloadSearch for ID '%v', format '%v' failed: %v",
-			search.ID, format, err) // log extra data
-		clilog.Tee(clilog.ERROR, cmd.ErrOrStderr(), err.Error())
+		clilog.Tee(clilog.ERROR, cmd.ErrOrStderr(),
+			fmt.Sprintf("failed to retrieve results from search %s (format: %s): %v", search.ID, format, err.Error()))
 		return
 	}
 	defer results.Close()
@@ -206,7 +205,7 @@ func runNonInteractive(cmd *cobra.Command, flags queryflags, qry string) {
 		if len(r) == 0 {
 			fmt.Fprintln(cmd.OutOrStdout(), "no results to display")
 		} else {
-			fmt.Fprintln(cmd.OutOrStdout(), r)
+			fmt.Fprintf(cmd.OutOrStdout(), "%s", r)
 		}
 	}
 }
