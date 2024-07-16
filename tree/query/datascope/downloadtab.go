@@ -7,6 +7,7 @@ import (
 	"gwcli/connection"
 	"gwcli/stylesheet"
 	"gwcli/stylesheet/colorizer"
+	"io"
 	"os"
 	"strconv"
 	"strings"
@@ -15,6 +16,7 @@ import (
 	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
+	"github.com/gravwell/gravwell/v3/client/types"
 )
 
 //#region download tab
@@ -246,8 +248,18 @@ func (s *DataScope) dl(fn string) (result string, success bool) {
 		return fmt.Sprintf("%v entries %v to %v", word, records, f.Name()), true
 	}
 	// whole file
-	if err := connection.DownloadResults(s.search, f,
-		s.download.format.json, s.download.format.csv); err != nil {
+	var (
+		format string
+		rc     io.ReadCloser
+	)
+	if format, err = connection.RenderToDownload(
+		s.search.RenderMod, s.download.format.csv, s.download.format.json,
+	); err != nil {
+		return baseErrorResultString + err.Error(), false
+	}
+	clilog.Writer.Debugf("output file, renderer '%s' -> '%s'", s.search.RenderMod, format)
+	if rc, err = connection.Client.DownloadSearch(s.search.ID, types.TimeRange{}, format); err != nil {
+		clilog.Writer.Errorf("DownloadSearch for ID '%v', format '%v' failed: %v", s.search.ID, format, err) // log extra data
 		// check specifically for a 404 error
 		if strings.Contains(err.Error(), "404") {
 			return baseErrorResultString + "search aged out due to inactivity. Please re-run it.",
@@ -255,7 +267,13 @@ func (s *DataScope) dl(fn string) (result string, success bool) {
 		}
 		return baseErrorResultString + err.Error(), false
 	}
+	defer rc.Close()
 
+	if b, err := f.ReadFrom(rc); err != nil {
+		return baseErrorResultString + err.Error(), false
+	} else {
+		clilog.Writer.Infof("Streamed %d bytes into %s", b, f.Name())
+	}
 	return connection.DownloadQuerySuccessfulString(f.Name(), s.download.append), true
 }
 

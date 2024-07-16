@@ -13,7 +13,6 @@ import (
 	"gwcli/clilog"
 	"gwcli/utilities/cfgdir"
 	"gwcli/utilities/uniques"
-	"io"
 	"os"
 	"strconv"
 	"strings"
@@ -324,32 +323,6 @@ func StartQuery(qry string, durFromNow time.Duration) (grav.Search, error) {
 	s, err := Client.StartSearchEx(sreq)
 	return s, err
 
-}
-
-// Given a search, a file to write to, and the format to download in, DownloadResults fetches and
-// writes the data resulting from the search.
-func DownloadResults(s *grav.Search, f *os.File, json, csv bool) error {
-	var (
-		err    error
-		format string
-		rc     io.ReadCloser
-	)
-	if format, err = RenderToDownload(s.RenderMod, csv, json); err != nil {
-		return err
-	}
-	clilog.Writer.Debugf("output file, renderer '%s' -> '%s'", s.RenderMod, format)
-	if rc, err = Client.DownloadSearch(s.ID, types.TimeRange{}, format); err != nil {
-		clilog.Writer.Errorf("DownloadSearch for ID '%v', format '%v' failed: %v", s.ID, format, err) // log extra data
-		return err
-	}
-	defer rc.Close()
-
-	if b, err := f.ReadFrom(rc); err != nil {
-		return err
-	} else {
-		clilog.Writer.Infof("Streamed %d bytes into %s", b, f.Name())
-	}
-	return nil
 }
 
 // Maps Render module and csv/json flag state to a string usable with DownloadSearch().
