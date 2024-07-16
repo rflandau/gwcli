@@ -124,16 +124,16 @@ func runNonInteractive(cmd *cobra.Command, flags queryflags, qry string) {
 		// warn about ignored flags
 		if clilog.Active(clilog.WARN) { // only warn if WARN level is enabled
 			if flags.outfn != "" {
-				fmt.Fprint(cmd.ErrOrStderr(), uniques.WarnFlagIgnore("output", "schedule"))
+				fmt.Fprint(cmd.ErrOrStderr(), uniques.WarnFlagIgnore("output", "schedule")+"\n")
 			}
 			if flags.append {
-				fmt.Fprint(cmd.ErrOrStderr(), uniques.WarnFlagIgnore("append", "schedule"))
+				fmt.Fprint(cmd.ErrOrStderr(), uniques.WarnFlagIgnore("append", "schedule")+"\n")
 			}
 			if flags.json {
-				fmt.Fprint(cmd.ErrOrStderr(), uniques.WarnFlagIgnore("json", "schedule"))
+				fmt.Fprint(cmd.ErrOrStderr(), uniques.WarnFlagIgnore("json", "schedule")+"\n")
 			}
 			if flags.csv {
-				fmt.Fprint(cmd.ErrOrStderr(), uniques.WarnFlagIgnore("csv", "schedule"))
+				fmt.Fprint(cmd.ErrOrStderr(), uniques.WarnFlagIgnore("csv", "schedule")+"\n")
 			}
 		}
 
