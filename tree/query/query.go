@@ -158,7 +158,7 @@ func runNonInteractive(cmd *cobra.Command, flags queryflags, qry string) {
 			clilog.Tee(clilog.ERROR, cmd.ErrOrStderr(), err.Error())
 		}
 		clilog.Tee(clilog.INFO, cmd.OutOrStdout(),
-			fmt.Sprintf("Successfully scheduled query (ID: %v)", id))
+			fmt.Sprintf("Successfully scheduled query '%v' (ID: %v)", flags.schedule.name, id))
 		return
 	}
 
