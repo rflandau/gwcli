@@ -109,38 +109,7 @@ func updateSchedule(s *DataScope, msg tea.Msg) tea.Cmd {
 			return textinput.Blink
 		case tea.KeyEnter:
 			if msg.Alt { // only accept alt+enter
-				// gather and validate selections
-				var (
-					n   = strings.TrimSpace(s.schedule.nameTI.Value())
-					d   = strings.TrimSpace(s.schedule.descTI.Value())
-					cf  = strings.TrimSpace(s.schedule.cronfreqTI.Value())
-					qry = s.search.SearchString
-				)
-				// fetch the duration from the search struct
-				start, err := time.Parse(uniques.SearchTimeFormat, s.search.SearchStart)
-				if err != nil {
-					s.schedule.resultString = "failed to read duration start time: " + err.Error()
-					clilog.Writer.Error(s.schedule.resultString)
-					return nil
-				}
-				end, err := time.Parse(uniques.SearchTimeFormat, s.search.SearchEnd)
-				if err != nil {
-					s.schedule.resultString = "failed to read duration end time: " + err.Error()
-					clilog.Writer.Error(s.schedule.resultString)
-					return nil
-				}
-
-				id, invalid, err := connection.CreateScheduledSearch(n, d, cf, qry, end.Sub(start))
-				if invalid != "" { // bad parameters
-					s.schedule.inputErrorString = invalid
-					clilog.Writer.Debug(s.schedule.inputErrorString)
-				} else if err != nil {
-					s.schedule.resultString = err.Error()
-					clilog.Writer.Error(err.Error())
-				} else {
-					s.schedule.resultString = fmt.Sprintf("successfully scheduled query (ID: %v)", id)
-					clilog.Writer.Info(s.schedule.resultString)
-				}
+				s.sch()
 				return nil
 			}
 		}
@@ -212,6 +181,41 @@ func viewSchedule(s *DataScope) string {
 			submitString(s.schedule.inputErrorString, s.schedule.resultString, s.vp.Width),
 		),
 	)
+}
+
+// The actual scheduling driver that consumes the user inputs and attempts to schedule a new search.
+// Sets resultString, inputErrorString and prints to clilog automatically.
+func (s *DataScope) sch() {
+	// gather and validate selections
+	var (
+		n   = strings.TrimSpace(s.schedule.nameTI.Value())
+		d   = strings.TrimSpace(s.schedule.descTI.Value())
+		cf  = strings.TrimSpace(s.schedule.cronfreqTI.Value())
+		qry = s.search.SearchString
+	)
+	// fetch the duration from the search struct
+	start, err := time.Parse(uniques.SearchTimeFormat, s.search.SearchStart)
+	if err != nil {
+		s.schedule.resultString = "failed to read duration start time: " + err.Error()
+		clilog.Writer.Error(s.schedule.resultString)
+	}
+	end, err := time.Parse(uniques.SearchTimeFormat, s.search.SearchEnd)
+	if err != nil {
+		s.schedule.resultString = "failed to read duration end time: " + err.Error()
+		clilog.Writer.Error(s.schedule.resultString)
+	}
+
+	id, invalid, err := connection.CreateScheduledSearch(n, d, cf, qry, end.Sub(start))
+	if invalid != "" { // bad parameters
+		s.schedule.inputErrorString = invalid
+		clilog.Writer.Debug(s.schedule.inputErrorString)
+	} else if err != nil {
+		s.schedule.resultString = err.Error()
+		clilog.Writer.Error(err.Error())
+	} else {
+		s.schedule.resultString = fmt.Sprintf("successfully scheduled query (ID: %v)", id)
+		clilog.Writer.Info(s.schedule.resultString)
+	}
 }
 
 // Focuses the TI corresponding to sch.selected and blurs all others.
