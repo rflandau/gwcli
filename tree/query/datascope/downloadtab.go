@@ -259,7 +259,8 @@ func (s *DataScope) dl(fn string) (result string, success bool) {
 	}
 	clilog.Writer.Debugf("output file, renderer '%s' -> '%s'", s.search.RenderMod, format)
 	if rc, err = connection.Client.DownloadSearch(s.search.ID, types.TimeRange{}, format); err != nil {
-		clilog.Writer.Errorf("DownloadSearch for ID '%v', format '%v' failed: %v", s.search.ID, format, err) // log extra data
+		clilog.Writer.Errorf("DownloadSearch for ID '%v', format '%v' failed: %v",
+			s.search.ID, format, err) // log extra data
 		// check specifically for a 404 error
 		if strings.Contains(err.Error(), "404") {
 			return baseErrorResultString + "search aged out due to inactivity. Please re-run it.",

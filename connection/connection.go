@@ -340,8 +340,9 @@ func RenderToDownload(rndr string, csv, json bool) (string, error) {
 	case types.RenderNamePcap:
 		return types.DownloadPCAP, nil
 	default:
-		return "", errors.New("Unable to retrieve " + rndr + " results via the cli." +
-			" Please use the web interface.")
+		return types.DownloadArchive, nil
+		/*return "", errors.New("Unable to retrieve " + rndr + " results via the cli." +
+		" Please use the web interface.")*/
 	}
 }
 

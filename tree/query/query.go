@@ -32,6 +32,20 @@ const (
 	pageSize = 500 // fetch results page by page
 
 	NoResultsText = "No results found for given query"
+
+	helpDesc = "Generate and send a query to the remote server either by arguments or " +
+		"the interactive query builder.\n" +
+		"All bare arguments after `query` will be passed to the instance as the query string.\n" +
+		"\n" +
+		"Omitting --script will open the results in an interactive viewing pane with additional" +
+		"functionality for downloading the results to a file or scheduling this query to run in " +
+		"the future" +
+		"\n" +
+		"If --json or --csv is not given when outputting to a file (`-o`), the results will be " +
+		"text (if able) or an archive binary blob (if unable), depending on the query's render " +
+		"module.\n" +
+		"gwcli will not dump binary to terminal; you must supply -o if the results are a binary " +
+		"blob (aka: your query uses a chart-style renderer)."
 )
 
 var (
@@ -44,12 +58,12 @@ var localFS pflag.FlagSet
 
 func NewQueryAction() action.Pair {
 	cmd := treeutils.NewActionCommand("query", "submit a query",
-		"Generate and send a query to the remote server either by arguments or the interactive query builder.\n"+
-			"All bare arguments after `query` will be passed to the instance as the query string.", []string{"q", "search"}, run)
+		helpDesc,
+		[]string{"q", "search"}, run)
 
 	localFS = initialLocalFlagSet()
 
-	cmd.Example = "./gwcli query tag=gravwell"
+	cmd.Example = "./gwcli query \"tag=gravwell\""
 
 	cmd.Flags().AddFlagSet(&localFS)
 
@@ -116,7 +130,8 @@ func run(cmd *cobra.Command, args []string) {
 	runInteractive(cmd, flags, qry)
 }
 
-// run function with --script given, making it entirely independent of user input
+// run function with --script given, making it entirely independent of user input.
+// Results will be output to a file (if given) or dumped into stdout.
 func runNonInteractive(cmd *cobra.Command, flags queryflags, qry string) {
 	var err error
 
@@ -211,19 +226,22 @@ func runNonInteractive(cmd *cobra.Command, flags queryflags, qry string) {
 			clilog.Writer.Infof("Streamed %d bytes into %s", b, of.Name())
 		}
 		return
-	}
-
-	// no output file was given, dump the data to standard out
-	if r, err := io.ReadAll(results); err != nil {
-		clilog.Tee(clilog.ERROR, cmd.ErrOrStderr(), err.Error())
-		return
+	} else if format == types.DownloadArchive {
+		fmt.Fprintln(cmd.OutOrStdout(), "refusing to dump binary blob to stdout.\n"+
+			"If this is intentional, re-run with -o <FILENAME>")
 	} else {
-		if len(r) == 0 {
-			fmt.Fprintln(cmd.OutOrStdout(), "no results to display")
+		if r, err := io.ReadAll(results); err != nil {
+			clilog.Tee(clilog.ERROR, cmd.ErrOrStderr(), err.Error())
+			return
 		} else {
-			fmt.Fprintf(cmd.OutOrStdout(), "%s", r)
+			if len(r) == 0 {
+				fmt.Fprintln(cmd.OutOrStdout(), "no results to display")
+			} else {
+				fmt.Fprintf(cmd.OutOrStdout(), "%s", r)
+			}
 		}
 	}
+
 }
 
 // run function without --script given, making it acceptable to rely on user input
