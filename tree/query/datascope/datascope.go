@@ -190,6 +190,8 @@ func NewDataScope(data []string, motherRunning bool, search *grav.Search, opt ..
 
 //#region constructor options
 
+// Prep-populate the download tab's values and, if able, automatically download the results in the
+// given format.
 func WithAutoDownload(outfn string, append, json, csv bool) DataScopeOption {
 	return func(ds *DataScope) error {
 		if json && csv {
@@ -210,15 +212,24 @@ func WithAutoDownload(outfn string, append, json, csv bool) DataScopeOption {
 	}
 }
 
+// Pre-populate the schedule tab's values and, if able, automatically schedule the query.
 func WithSchedule(cronfreq, name, desc string) DataScopeOption {
 	return func(ds *DataScope) error {
 		ds.schedule = initScheduleTab(cronfreq, name, desc)
+		// TODO auto-schedule
 		return nil
 	}
-
 }
 
-//#endergion
+// Set the number of records to display on each page
+func WithRecordsPerPage(n int) DataScopeOption {
+	return func(ds *DataScope) error {
+		ds.pager.PerPage = n
+		return nil
+	}
+}
+
+//#endregion
 
 func (s DataScope) Init() tea.Cmd {
 	return nil
