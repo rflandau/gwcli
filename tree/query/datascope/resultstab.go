@@ -114,7 +114,7 @@ func viewResults(s *DataScope) string {
 	if !s.results.ready {
 		return "\nInitializing..."
 	}
-	return fmt.Sprintf("%s\n%s", s.results.vp.View(), s.renderFooter(s.results.vp.Width))
+	return fmt.Sprintf("%s\n%s", s.results.vp.View(), s.results.renderFooter(s.results.vp.Width))
 }
 
 // Determines and sets the the content currently visible in the results viewport.
@@ -145,26 +145,17 @@ var compiledShortHelp = stylesheet.GreyedOutStyle.Render(
 )
 
 // generates a renderFooter with the box+line and help keys
-func (s *DataScope) renderFooter(width int) string {
-	var alignerSty = lipgloss.NewStyle().Width(s.results.vp.Width).AlignHorizontal(lipgloss.Center)
+func (rt *resultsTab) renderFooter(width int) string {
+	var alignerSty = lipgloss.NewStyle().Width(rt.vp.Width).AlignHorizontal(lipgloss.Center)
 	// set up each element
-	pageNumber := lipgloss.NewStyle().Foreground(stylesheet.FocusedColor).
-		Render(strconv.Itoa(s.results.pager.Page+1)) + " "
-	scrollPercent := fmt.Sprintf("%3.f%%", s.results.vp.ScrollPercent()*100)
-	line := lipgloss.NewStyle().
-		Foreground(stylesheet.PrimaryColor).
-		Render(
-			strings.Repeat("─",
-				max(0, width-
-					lipgloss.Width(pageNumber)-
-					lipgloss.Width(scrollPercent))),
-		)
-
-	composedLine := fmt.Sprintf("%s%s%s", pageNumber, line, scrollPercent)
+	pageNumber := lipgloss.NewStyle().
+		Foreground(stylesheet.FocusedColor).
+		Render(strconv.Itoa(rt.pager.Page+1)) + " "
+	spl := scrollPercentLine(width-lipgloss.Width(pageNumber), rt.vp.ScrollPercent())
 
 	return lipgloss.JoinVertical(lipgloss.Center,
-		composedLine,
-		alignerSty.Render(s.results.pager.View()),
+		pageNumber+spl,
+		alignerSty.Render(rt.pager.View()),
 		alignerSty.Render(compiledShortHelp),
 	)
 }
@@ -172,7 +163,7 @@ func (s *DataScope) renderFooter(width int) string {
 // recalculate the dimensions of the results tab, factoring in results-specific margins.
 // The clipped height is the height available to the results tab (height - tabs height).
 func (s *DataScope) recalculateSize(rawWidth, clippedHeight int) {
-	s.results.vp.Height = clippedHeight - lipgloss.Height(s.renderFooter(rawWidth))
+	s.results.vp.Height = clippedHeight - lipgloss.Height(s.results.renderFooter(rawWidth))
 	s.results.vp.Width = rawWidth
 	s.results.ready = true
 }
