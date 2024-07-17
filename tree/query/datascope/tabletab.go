@@ -7,6 +7,7 @@ package datascope
 
 import (
 	"gwcli/clilog"
+	"gwcli/stylesheet"
 	"strconv"
 	"strings"
 
@@ -101,7 +102,10 @@ func initTableTab(data []string) tableTab {
 				return evenEntryStyle
 			}
 			return oddEntryStyle
-		}).WithBaseStyle(lipgloss.NewStyle().AlignHorizontal(lipgloss.Center))
+		}).
+		HeaderStyle(stylesheet.Tbl.HeaderCells)
+		// NOTE: As of evertras-table v0.16.1,
+		// the borders cannot be styled (only their runes changed.)
 
 	// display the table within the viewport
 	vp.SetContent(tbl.View())
