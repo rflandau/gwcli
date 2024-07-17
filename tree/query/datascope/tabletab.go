@@ -1,11 +1,13 @@
 package datascope
 
 import (
+	"gwcli/clilog"
+	"strconv"
 	"strings"
 
-	"github.com/charmbracelet/bubbles/table"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
+	"github.com/evertras/bubble-table/table"
 )
 
 type tableTab struct {
@@ -20,17 +22,28 @@ func initTableTab(data []string) tableTab {
 	colCount := len(strcols)
 	var columns []table.Column = make([]table.Column, colCount)
 	for i, c := range strcols {
-		columns[i] = table.Column{Title: c, Width: lipgloss.Width(c)}
+		// columns display the given column name, but are mapped by number
+		columns[i] = table.NewFlexColumn(strconv.Itoa(i), c, 1)
+		clilog.Writer.Debugf("Added column %v (key: %v)", columns[i].Title(), columns[i].Key())
 	}
 	// build rows list
 	var rows []table.Row = make([]table.Row, len(data)-1)
 	for i, r := range data[1:] {
-		rows[i] = strings.Split(r, ",")
+		cells := strings.Split(r, ",")
+		// map each row cell to its column
+		rd := table.RowData{}
+		for j, c := range cells {
+			rd[strconv.Itoa(j)] = c
+		}
+		// add the completed row to the list of rows
+		clilog.Writer.Debugf("Adding row %v", rd)
+		rows[i] = table.NewRow(rd)
 	}
 
-	tbl := table.New(table.WithColumns(columns),
-		table.WithRows(rows))
-	tbl.Focus()
+	tbl := table.New(columns).
+		WithRows(rows).
+		Focused(true).
+		WithMultiline(true).WithStaticFooter("footer")
 
 	return tableTab{
 		columns: columns,
@@ -54,18 +67,9 @@ func viewTable(s *DataScope) string {
 // recalculate and update the size parameters of the table.
 // The clipped height is the height available to the table tab (height - tabs height).
 func (tt *tableTab) recalculateSize(rawWidth, clippedHeight int) {
-	// TODO calculate footer height
-	tt.tbl.SetHeight(clippedHeight)
-	tt.tbl.SetWidth(rawWidth)
-	// re-size columns
-	colWidth := rawWidth / len(tt.columns)
-
-	for i := range tt.columns {
-		tt.columns[i].Width = colWidth
-	}
-
-	tt.tbl.SetColumns(tt.columns)
-
+	tt.tbl = tt.tbl.WithMaxTotalWidth(rawWidth).
+		WithTargetWidth(rawWidth).
+		WithPageSize(clippedHeight - 8) // 8 is extra padding due to the margins of the table itself
 	tt.ready = true
 }
 

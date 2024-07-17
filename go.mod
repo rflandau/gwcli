@@ -22,6 +22,7 @@ require (
 	github.com/charmbracelet/x/windows v0.1.0 // indirect
 	github.com/crewjam/rfc5424 v0.1.0 // indirect
 	github.com/erikgeiser/coninput v0.0.0-20211004153227-1c3628e74d0f // indirect
+	github.com/evertras/bubble-table v0.16.1 // indirect
 	github.com/go-ole/go-ole v1.3.0 // indirect
 	github.com/gobwas/glob v0.2.3 // indirect
 	github.com/gofrs/flock v0.8.1 // indirect
