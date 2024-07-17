@@ -141,48 +141,39 @@ func (q *query) Update(msg tea.Msg) tea.Cmd {
 				return cmd
 			}
 
-			// TODO collect using table results if appropriate
-			// collect the results
-			if results, err := fetchTextResults(*q.curSearch); err != nil {
+			results, tableMode, err := fetchResults(q.curSearch)
+			if err != nil {
 				q.editor.err = err.Error()
 				q.mode = prompting
 				var cmd tea.Cmd
 				q.editor.ta, cmd = q.editor.ta.Update(msg)
 				return cmd
-			} else if len(results) > 0 {
-				// feed the results to datascope and hand over control
-				var data []string = make([]string, len(results))
-				for i, r := range results {
-					data[i] = string(r.Data)
-				}
-
-				var cmd tea.Cmd
-				// JSON,CSV,outfn,append are user-editable in the DataScope; these just set initial
-				// values
-				q.scope, cmd, err = datascope.NewDataScope(data, true, q.curSearch, false,
-					datascope.WithAutoDownload(
-						q.flagModifiers.outfn,
-						q.flagModifiers.append,
-						q.flagModifiers.json,
-						q.flagModifiers.csv),
-					datascope.WithSchedule(
-						q.flagModifiers.schedule.cronfreq,
-						q.flagModifiers.schedule.name,
-						q.flagModifiers.schedule.desc))
-				if err != nil {
-					clilog.Writer.Errorf("failed to create DataScope: %v", err)
-					q.mode = quitting
-					return tea.Println(err.Error())
-				}
-
-				q.mode = displaying
-				return cmd
+			} else if len(results) == 0 {
+				q.mode = quitting
+				return tea.Println(NoResultsText)
 			}
 
-			// no results were found
-			q.mode = quitting
-			return tea.Println(NoResultsText)
+			var cmd tea.Cmd
+			// JSON,CSV,outfn,append are user-editable in the DataScope; these just set initial
+			// values
+			q.scope, cmd, err = datascope.NewDataScope(results, true, q.curSearch, tableMode,
+				datascope.WithAutoDownload(
+					q.flagModifiers.outfn,
+					q.flagModifiers.append,
+					q.flagModifiers.json,
+					q.flagModifiers.csv),
+				datascope.WithSchedule(
+					q.flagModifiers.schedule.cronfreq,
+					q.flagModifiers.schedule.name,
+					q.flagModifiers.schedule.desc))
+			if err != nil {
+				clilog.Writer.Errorf("failed to create DataScope: %v", err)
+				q.mode = quitting
+				return tea.Println(err.Error())
+			}
 
+			q.mode = displaying
+			return cmd
 		}
 		// still waiting
 		var cmd tea.Cmd

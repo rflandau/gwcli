@@ -283,39 +283,11 @@ func runInteractive(cmd *cobra.Command, flags queryflags, qry string) {
 		results   []string
 		tableMode bool
 	)
-	clilog.Writer.Infof("fetching results of type %v", search.RenderMod)
-	switch search.RenderMod {
-	case types.RenderNameTable:
-		if columns, rows, err := fetchTableResults(search); err != nil {
-			clilog.Tee(clilog.ERROR, cmd.ErrOrStderr(), err.Error())
-			return
-		} else if len(rows) != 0 {
-			tableMode = true
-			// format the table for datascope
-			// basically a csv
-			results = make([]string, len(rows)+1)
-			results[0] = strings.Join(columns, ",") // first entry is the header
-			for i, row := range rows {
-				results[i+1] = strings.Join(row.Row, ",")
-			}
-		}
-	case types.RenderNameRaw, types.RenderNameText, types.RenderNameHex:
-		if rawResults, err := fetchTextResults(search); err != nil {
-			clilog.Tee(clilog.ERROR, cmd.ErrOrStderr(), err.Error())
-			return
-		} else if len(rawResults) != 0 {
-			// format the data for datascope
-			results = make([]string, len(rawResults))
-			for i, r := range rawResults {
-				results[i] = string(r.Data)
-			}
-		}
-	default:
-		fmt.Fprintf(cmd.OutOrStdout(), "Unable to display results of type %v.\n",
-			search.RenderMod)
+	results, tableMode, err := fetchResults(&search)
+	if err != nil {
+		clilog.Tee(clilog.ERROR, cmd.ErrOrStderr(), err.Error())
 		return
-	}
-	if results == nil {
+	} else if results == nil {
 		fmt.Fprintln(cmd.OutOrStdout(), NoResultsText)
 		return
 	}
@@ -398,9 +370,49 @@ func openFile(path string, append bool) (*os.File, error) {
 	return f, nil
 }
 
+// Given an active search handle associated to a completed search,
+// fetchResults pulls back all available results, using the appropriate Get function based on the
+// search's renderer
+func fetchResults(search *grav.Search) (results []string, tableMode bool, err error) {
+	clilog.Writer.Infof("fetching results of type %v", search.RenderMod)
+	switch search.RenderMod {
+	case types.RenderNameTable:
+		if columns, rows, err := fetchTableResults(search); err != nil {
+			return nil, false, err
+		} else if len(rows) != 0 {
+			// format the table for datascope
+			// basically a csv
+			results = make([]string, len(rows)+1)
+			results[0] = strings.Join(columns, ",") // first entry is the header
+			for i, row := range rows {
+				results[i+1] = strings.Join(row.Row, ",")
+			}
+			return results, true, nil
+		}
+		// no results
+		return nil, true, nil
+	case types.RenderNameRaw, types.RenderNameText, types.RenderNameHex:
+		if rawResults, err := fetchTextResults(search); err != nil {
+			return nil, false, err
+		} else if len(rawResults) != 0 {
+			// format the data for datascope
+			results = make([]string, len(rawResults))
+			for i, r := range rawResults {
+				results[i] = string(r.Data)
+			}
+			return results, false, nil
+		}
+		// no results
+		return nil, false, nil
+	}
+
+	// did not manage to complete results earlier; fail out
+	return nil, false, fmt.Errorf("unable to display results of type %v.", search.RenderMod)
+}
+
 // Fetches all text results related to the given search by continually re-fetching until no more
 // results remain
-func fetchTextResults(s grav.Search) ([]types.SearchEntry, error) {
+func fetchTextResults(s *grav.Search) ([]types.SearchEntry, error) {
 	// return results for output to terminal
 	// batch results until we have the last of them
 	var (
@@ -409,7 +421,7 @@ func fetchTextResults(s grav.Search) ([]types.SearchEntry, error) {
 		high    uint64              = pageSize
 	)
 	for { // accumulate the results
-		r, err := connection.Client.GetTextResults(s, low, high)
+		r, err := connection.Client.GetTextResults(*s, low, high)
 		if err != nil {
 			return nil, err
 		}
@@ -428,7 +440,7 @@ func fetchTextResults(s grav.Search) ([]types.SearchEntry, error) {
 }
 
 // Sister subroutine to fetchTextResults()
-func fetchTableResults(s grav.Search) (
+func fetchTableResults(s *grav.Search) (
 	columns []string, rows []types.TableRow, err error,
 ) {
 	// return results for output to terminal
@@ -440,7 +452,7 @@ func fetchTableResults(s grav.Search) (
 	)
 	rows = make([]types.TableRow, 0, pageSize)
 	for { // accumulate the row results
-		r, err = connection.Client.GetTableResults(s, low, high)
+		r, err = connection.Client.GetTableResults(*s, low, high)
 		if err != nil {
 			return nil, nil, err
 		}
