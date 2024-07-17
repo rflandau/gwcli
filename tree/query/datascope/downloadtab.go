@@ -24,8 +24,6 @@ import (
 	"github.com/gravwell/gravwell/v3/client/types"
 )
 
-//#region download tab
-
 type downloadCursor = uint // current active item
 
 const (
@@ -39,7 +37,7 @@ const (
 	dlhighBound
 )
 
-const outFilePerm = 0644
+const outFilePerm = 0644 // permissions of the file to write to
 
 type downloadTab struct {
 	outfileTI textinput.Model // user input file to write to
@@ -97,6 +95,8 @@ func initDownloadTab(outfn string, append, json, csv bool) downloadTab {
 	return d
 }
 
+// Update handles moving the cursor, submitting the download request, and passing messages to the
+// fields. It also disables the format section if recordsTI is populated.
 func updateDownload(s *DataScope, msg tea.Msg) tea.Cmd {
 	if msg, ok := msg.(tea.KeyMsg); ok {
 		s.download.inputErrorString = "" // clear input error on newest key message
@@ -418,6 +418,8 @@ func outputFormatSegment(titleSty, subtitleSty, lcolAligner, rcolAligner lipglos
 		formatSeg)
 }
 
+// helper subroutine for viewDownload.
+// Generates the visual pieces associated to individual record selection.
 func recordSegment(titleSty, lcolAligner, rcolAligner lipgloss.Style,
 	selected downloadCursor, dl *downloadTab) string {
 	// grey-out tooltip if the TI is empty
@@ -444,5 +446,3 @@ func recordSegment(titleSty, lcolAligner, rcolAligner lipgloss.Style,
 		recs,
 		recordsDescFormatted)
 }
-
-//#endregion
