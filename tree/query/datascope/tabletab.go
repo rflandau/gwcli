@@ -99,7 +99,6 @@ func updateTable(s *DataScope, msg tea.Msg) tea.Cmd {
 
 	// check for column resize keys
 	if msg, ok := msg.(tea.KeyMsg); ok { // only care if alt was held
-		clilog.Writer.Debugf("Key match: %v", msg)
 		switch msg.String() {
 		// size increases
 		case "alt+1":
@@ -182,7 +181,6 @@ func (tt *tableTab) alterColumnSize(numKey uint, increase bool) {
 			tt.columns[col].Title(), newFF)
 		tt.tbl = tt.tbl.WithColumns(tt.columns)
 		tt.vp.SetContent(tt.tbl.View())
-		clilog.Writer.Debugf("installed new columns with an increased size")
 	}
 }
 
