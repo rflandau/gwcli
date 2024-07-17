@@ -1,5 +1,10 @@
 package datascope
 
+/**
+ * The Table Tab is able to properly represent tabular data that the results tab would jumble.
+ * Meant to represent results returned from GetTableResults (per the table renderer).
+ */
+
 import (
 	"gwcli/clilog"
 	"strconv"
@@ -19,6 +24,9 @@ type tableTab struct {
 	ready   bool
 }
 
+// Initializes the table tab, setting up the viewport and tabulating the data.
+//
+// ! Assumes data[0] is the columns headers
 func initTableTab(data []string) tableTab {
 	// spawn the vp wrapper of the table
 	// set up viewport
@@ -96,6 +104,7 @@ func initTableTab(data []string) tableTab {
 	}
 }
 
+// Pass messages to the viewport. The underlying table does not get updated.
 func updateTable(s *DataScope, msg tea.Msg) tea.Cmd {
 	var cmd tea.Cmd
 	s.table.vp, cmd = s.table.vp.Update(msg)
@@ -121,6 +130,7 @@ func (tt *tableTab) recalculateSize(rawWidth, clippedHeight int) {
 	tt.ready = true
 }
 
+// Draw and return a footer for the viewport
 func (tt *tableTab) renderFooter() string {
 	return scrollPercentLine(tt.vp.Width, tt.vp.ScrollPercent())
 }
