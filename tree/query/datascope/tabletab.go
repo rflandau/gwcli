@@ -6,6 +6,7 @@ package datascope
  */
 
 import (
+	"fmt"
 	"gwcli/clilog"
 	"gwcli/stylesheet"
 	"strconv"
@@ -96,9 +97,90 @@ func updateTable(s *DataScope, msg tea.Msg) tea.Cmd {
 		return nil
 	}
 
+	// check for column resize keys
+	if msg, ok := msg.(tea.KeyMsg); ok { // only care if alt was held
+		clilog.Writer.Debugf("Key match: %v", msg)
+		switch msg.String() {
+		// size increases
+		case "alt+1":
+			s.table.alterColumnSize(1, true)
+		case "alt+2":
+			s.table.alterColumnSize(2, true)
+		case "alt+3":
+			s.table.alterColumnSize(3, true)
+		case "alt+4":
+			s.table.alterColumnSize(4, true)
+		case "alt+5":
+			s.table.alterColumnSize(5, true)
+		case "alt+6":
+			s.table.alterColumnSize(6, true)
+		case "alt+7":
+			s.table.alterColumnSize(7, true)
+		case "alt+8":
+			s.table.alterColumnSize(8, true)
+		case "alt+9":
+			s.table.alterColumnSize(9, true)
+		case "alt+0":
+			s.table.alterColumnSize(0, true)
+
+		// size decreases
+		case "alt+!":
+			s.table.alterColumnSize(1, false)
+		case "alt+@":
+			s.table.alterColumnSize(2, false)
+		case "alt+#":
+			s.table.alterColumnSize(3, false)
+		case "alt+$":
+			s.table.alterColumnSize(4, false)
+		case "alt+%":
+			s.table.alterColumnSize(5, false)
+		case "alt+^":
+			s.table.alterColumnSize(6, false)
+		case "alt+&":
+			s.table.alterColumnSize(7, false)
+		case "alt+*":
+			s.table.alterColumnSize(8, false)
+		case "alt+(":
+			s.table.alterColumnSize(9, false)
+		case "alt+)":
+			s.table.alterColumnSize(0, false)
+		}
+	}
+
 	s.table.vp, cmd = s.table.vp.Update(msg)
 
 	return cmd
+}
+
+// alters the flex factor of the columns corresponding to the given number key.
+// Treats a 0 as a ten.
+func (tt *tableTab) alterColumnSize(numKey uint, increase bool) {
+	var colCount uint = uint(len(tt.columns))
+	// treat 0 as 10
+	if numKey == 0 {
+		numKey = 10
+	}
+
+	// only increase the size of a column that exists
+	if colCount > numKey {
+		var newFF int = tt.columns[numKey-1].FlexFactor()
+		if increase {
+			newFF += 1
+		} else {
+			newFF -= 1
+			if newFF < 0 {
+				newFF = 0
+			}
+		}
+
+		tt.columns[numKey-1] = table.NewFlexColumn(
+			tt.columns[numKey-1].Key(),
+			tt.columns[numKey-1].Title(),
+			newFF)
+		tt.tbl = tt.tbl.WithColumns(tt.columns)
+		tt.vp.SetContent(tt.tbl.View())
+		clilog.Writer.Debugf("installed new columns with an increased size")
+	}
 }
 
 func viewTable(s *DataScope) string {
@@ -119,7 +201,16 @@ func (tt *tableTab) recalculateSize(rawWidth, clippedHeight int) {
 	tt.ready = true
 }
 
+var tableShortHelp = stylesheet.GreyedOutStyle.Render(
+	fmt.Sprintf("%v scroll • home: jump top • end: jump bottom\n"+
+		"alt+[1-9]: increase column size • shift+alt+[1-9]: decrease column size\n"+
+		"tab: cycle • esc: quit", stylesheet.UpDown),
+)
+
 // Draw and return a footer for the viewport
 func (tt *tableTab) renderFooter() string {
-	return scrollPercentLine(tt.vp.Width, tt.vp.ScrollPercent())
+	var alignerSty = lipgloss.NewStyle().Width(tt.vp.Width).AlignHorizontal(lipgloss.Center)
+	return lipgloss.JoinVertical(lipgloss.Center,
+		scrollPercentLine(tt.vp.Width, tt.vp.ScrollPercent()),
+		alignerSty.Render(tableShortHelp))
 }
