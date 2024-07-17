@@ -104,8 +104,8 @@ func (s *DataScope) setResultsDisplayed() {
 	s.results.vp.SetContent(wrap(s.results.vp.Width, bldr.String()))
 }
 
-var compiledShortHelp = stylesheet.GreyedOutStyle.Render(
-	fmt.Sprintf("%v page • %v scroll • Home: Jump Top • End: Jump Bottom\n"+
+var resultShortHelp = stylesheet.GreyedOutStyle.Render(
+	fmt.Sprintf("%v page • %v scroll • home: jump top • end: jump bottom\n"+
 		"tab: cycle • esc: quit",
 		stylesheet.LeftRight, stylesheet.UpDown),
 )
@@ -122,7 +122,7 @@ func (rt *resultsTab) renderFooter(width int) string {
 	return lipgloss.JoinVertical(lipgloss.Center,
 		pageNumber+spl,
 		alignerSty.Render(rt.pager.View()),
-		alignerSty.Render(compiledShortHelp),
+		alignerSty.Render(resultShortHelp),
 	)
 }
 
