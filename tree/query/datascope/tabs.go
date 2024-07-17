@@ -11,6 +11,8 @@ import (
 	"gwcli/stylesheet"
 	"strings"
 
+	"github.com/charmbracelet/bubbles/key"
+	"github.com/charmbracelet/bubbles/viewport"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/charmbracelet/lipgloss/table"
@@ -67,6 +69,55 @@ func scrollPercentLine(width int, rawPercent float64) string {
 		)
 
 	return fmt.Sprintf("%s%s", line, scrollPercent)
+}
+
+// Returns a modified viewport, for consistency between text and table results
+func NewViewport() viewport.Model {
+	vp := viewport.Model{
+		// width/height are set later
+		// when received in a windowSize message
+	}
+	vp.MouseWheelDelta = 1
+	vp.HighPerformanceRendering = false
+	// set up keybinds directly supported by viewport
+	// other keybinds are managed by the results tab()
+	vp.KeyMap = viewport.KeyMap{
+		PageDown: key.NewBinding(
+			key.WithKeys("pgdown", " ", "f"),
+		),
+		PageUp: key.NewBinding(
+			key.WithKeys("pgup", "b"),
+		),
+		HalfPageUp: key.NewBinding(
+			key.WithKeys("u", "ctrl+u"),
+		),
+		HalfPageDown: key.NewBinding(
+			key.WithKeys("d", "ctrl+d"),
+		),
+		Up: key.NewBinding(
+			key.WithKeys("up", "k"),
+		),
+		Down: key.NewBinding(
+			key.WithKeys("down", "j"),
+		),
+	}
+	return vp
+}
+
+// Handling of additional keys that the viewport bubble does not natively support.
+// Returns true iff a key matched.
+func viewportAddtlKeys(msg tea.Msg, vp *viewport.Model) (match bool) {
+	if msg, ok := msg.(tea.KeyMsg); ok {
+		switch msg.Type {
+		case tea.KeyHome:
+			vp.GotoTop()
+			return true
+		case tea.KeyEnd:
+			vp.GotoBottom()
+			return true
+		}
+	}
+	return false
 }
 
 //#endregion

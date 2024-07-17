@@ -11,7 +11,6 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/charmbracelet/bubbles/key"
 	"github.com/charmbracelet/bubbles/viewport"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
@@ -34,36 +33,7 @@ type tableTab struct {
 //
 // ! Assumes data[0] is the columns headers
 func initTableTab(data []string) tableTab {
-	// spawn the vp wrapper of the table
-	// set up viewport
-	vp := viewport.Model{
-		// width/height are set later
-		// when received in a windowSize message
-	}
-	vp.MouseWheelDelta = 1
-	vp.HighPerformanceRendering = false
-	// set up keybinds directly supported by viewport
-	// other keybinds are managed by the results tab()
-	vp.KeyMap = viewport.KeyMap{
-		PageDown: key.NewBinding(
-			key.WithKeys("pgdown", " ", "f"),
-		),
-		PageUp: key.NewBinding(
-			key.WithKeys("pgup", "b"),
-		),
-		HalfPageUp: key.NewBinding(
-			key.WithKeys("u", "ctrl+u"),
-		),
-		HalfPageDown: key.NewBinding(
-			key.WithKeys("d", "ctrl+d"),
-		),
-		Up: key.NewBinding(
-			key.WithKeys("up", "k"),
-		),
-		Down: key.NewBinding(
-			key.WithKeys("down", "j"),
-		),
-	}
+	vp := NewViewport() // spawn the vp wrapper of the table
 
 	// build columns list, with the index column prefixed
 	strcols := strings.Split(data[0], sep)
@@ -121,6 +91,12 @@ func initTableTab(data []string) tableTab {
 // Pass messages to the viewport. The underlying table does not get updated.
 func updateTable(s *DataScope, msg tea.Msg) tea.Cmd {
 	var cmd tea.Cmd
+
+	// check for keybinds not directly supported by the viewport
+	if viewportAddtlKeys(msg, &s.table.vp) {
+		return nil
+	}
+
 	s.table.vp, cmd = s.table.vp.Update(msg)
 
 	return cmd

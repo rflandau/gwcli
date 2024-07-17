@@ -38,34 +38,7 @@ func initResultsTab(data []string) resultsTab {
 	p.SetTotalPages(len(data))
 
 	// set up viewport
-	vp := viewport.Model{
-		// width/height are set later
-		// when received in a windowSize message
-	}
-	vp.MouseWheelDelta = 1
-	vp.HighPerformanceRendering = false
-	// set up keybinds directly supported by viewport
-	// other keybinds are managed by the results tab()
-	vp.KeyMap = viewport.KeyMap{
-		PageDown: key.NewBinding(
-			key.WithKeys("pgdown", " ", "f"),
-		),
-		PageUp: key.NewBinding(
-			key.WithKeys("pgup", "b"),
-		),
-		HalfPageUp: key.NewBinding(
-			key.WithKeys("u", "ctrl+u"),
-		),
-		HalfPageDown: key.NewBinding(
-			key.WithKeys("d", "ctrl+d"),
-		),
-		Up: key.NewBinding(
-			key.WithKeys("up", "k"),
-		),
-		Down: key.NewBinding(
-			key.WithKeys("down", "j"),
-		),
-	}
+	vp := NewViewport()
 
 	r := resultsTab{
 		vp:    vp,
@@ -93,15 +66,8 @@ func updateResults(s *DataScope, msg tea.Msg) tea.Cmd {
 	}
 
 	// check for keybinds not directly supported by the viewport
-	if msg, ok := msg.(tea.KeyMsg); ok {
-		switch msg.Type {
-		case tea.KeyHome:
-			s.results.vp.GotoTop()
-			return cmds[0]
-		case tea.KeyEnd:
-			s.results.vp.GotoBottom()
-			return cmds[0]
-		}
+	if viewportAddtlKeys(msg, &s.results.vp) {
+		return cmds[0]
 	}
 
 	s.results.vp, cmd = s.results.vp.Update(msg)
