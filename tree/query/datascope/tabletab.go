@@ -53,7 +53,7 @@ func initTableTab(data []string) tableTab {
 		// map each row cell to its column
 		rd := table.RowData{}
 		// prepend the index column
-		rd["index"] = i + 1
+		rd["index"] = indexStyle.Render(strconv.Itoa(i + 1))
 		for j, c := range cells {
 			rd[strconv.Itoa(j+1)] = c
 		}
