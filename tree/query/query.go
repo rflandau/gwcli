@@ -3,6 +3,19 @@
 // central module entrypoint
 package query
 
+/**
+ * When working on the query system, keep in mind that it functionally has three entry points:
+ * 1. Cobra non-interactive (from cli, with --script)
+ * 2. Cobra interactive (from cli, omitting --script)
+ * 3. Mother
+ * All efforts have been made to consolidate the code for these entry points and provide a
+ * consistent flow. That being said, you have to make sure that changes get reflected across each.
+ * Entry points 2 and 3 will boot DataScope, meaning they must fetch results via
+ * grav.Get*Results menthods, implemented locally by the fetch*Results.
+ * Entry point 1 only uses grav.DownloadSearch, but keep in mind that DataScope's Download tab also
+ * relies on grav.DownloadSearch() and these outcomes should be identical.
+ */
+
 import (
 	"fmt"
 	"gwcli/action"
@@ -270,6 +283,7 @@ func runInteractive(cmd *cobra.Command, flags queryflags, qry string) {
 		results   []string
 		tableMode bool
 	)
+	clilog.Writer.Infof("fetching results of type %v", search.RenderMod)
 	switch search.RenderMod {
 	case types.RenderNameTable:
 		if columns, rows, err := fetchTableResults(search); err != nil {
