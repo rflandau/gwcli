@@ -22,9 +22,7 @@ import (
 	"time"
 
 	"github.com/charmbracelet/bubbles/key"
-	"github.com/charmbracelet/bubbles/paginator"
 	"github.com/charmbracelet/bubbles/textinput"
-	"github.com/charmbracelet/bubbles/viewport"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/charmbracelet/x/term"
@@ -105,11 +103,7 @@ func keepAlive(search *grav.Search) {
 //#endregion
 
 type DataScope struct {
-	vp            viewport.Model
-	pager         paginator.Model
-	ready         bool
-	data          []string // complete set of data to be paged
-	motherRunning bool     // without Mother's support, we need to handle killkeys and death alone
+	motherRunning bool // without Mother's support, we need to handle killkeys and death alone
 
 	rawHeight int // usable height, as reported by the tty
 	rawWidth  int // usabe width, as reported by the tty
@@ -122,14 +116,24 @@ type DataScope struct {
 
 	download downloadTab
 	schedule scheduleTab
+
+	tableMode bool
+	table     tableTab
+	results   resultsTab
 }
 
 type DataScopeOption func(*DataScope) error
 
-// Returns a new DataScope instance based on the given data array. If mother is running,
-// this subroutine will launch her into the alt screen buffer and query the terminal for its size.
-// outfn and append are optional; if outfn is given, the data will immediately be downloaded.
-func NewDataScope(data []string, motherRunning bool, search *grav.Search, opt ...DataScopeOption) (DataScope, tea.Cmd, error) {
+// Returns a new DataScope instance based on the given data array.
+// If mother is running, this subroutine will launch her into the alt screen buffer and query the
+// terminal for its size.
+// Table mode indicates if the results should be displayed in a tabular method, replacing the normal
+// display method/struct.
+func NewDataScope(data []string, motherRunning bool,
+	search *grav.Search, table bool, opt ...DataScopeOption,
+) (
+	DataScope, tea.Cmd, error,
+) {
 	// sanity check arguments
 	if search == nil {
 		return DataScope{}, nil, errors.New("search cannot be nil")
@@ -138,22 +142,8 @@ func NewDataScope(data []string, motherRunning bool, search *grav.Search, opt ..
 		return DataScope{}, nil, errors.New("no data to display")
 	}
 
-	// set up backend paginator
-	paginator.DefaultKeyMap = paginator.KeyMap{ // do not use pgup/pgdn
-		PrevPage: key.NewBinding(key.WithKeys("left", "h")),
-		NextPage: key.NewBinding(key.WithKeys("right", "l")),
-	}
-	p := paginator.New()
-	p.Type = paginator.Dots
-	p.PerPage = 25
-	p.ActiveDot = lipgloss.NewStyle().Foreground(stylesheet.FocusedColor).Render("•")
-	p.InactiveDot = lipgloss.NewStyle().Foreground(stylesheet.UnfocusedColor).Render("•")
-	p.SetTotalPages(len(data))
-
 	s := DataScope{
-		pager:         p,
-		ready:         false,
-		data:          data,
+		tableMode:     table,
 		motherRunning: motherRunning,
 		download:      initDownloadTab("", false, false, false),
 		schedule:      initScheduleTab("", "", ""),
@@ -167,6 +157,17 @@ func NewDataScope(data []string, motherRunning bool, search *grav.Search, opt ..
 	// save search
 	s.search = search
 
+	// set up normal results or table, depending on mode
+	if s.tableMode {
+		// replace tabs[results] subroutines
+		s.tabs[results].name = "table"
+		s.tabs[results].updateFunc = updateTable
+		s.tabs[results].viewFunc = viewTable
+		s.table = initTableTab()
+	} else {
+		s.results = initResultsTab(data)
+	}
+
 	// store data for keepAlive
 	activesearchlock.SetSearchID(search.ID)
 	activesearchlock.UpdateTS()
@@ -175,7 +176,9 @@ func NewDataScope(data []string, motherRunning bool, search *grav.Search, opt ..
 
 	// apply options
 	for _, o := range opt {
-		o(&s)
+		if err := o(&s); err != nil {
+			return DataScope{}, nil, err
+		}
 	}
 
 	// mother does not start in alt screen, and thus requires manual measurements
@@ -228,14 +231,6 @@ func WithSchedule(cronfreq, name, desc string) DataScopeOption {
 	}
 }
 
-// Set the number of records to display on each page
-func WithRecordsPerPage(n int) DataScopeOption {
-	return func(ds *DataScope) error {
-		ds.pager.PerPage = n
-		return nil
-	}
-}
-
 //#endregion
 
 func (s DataScope) Init() tea.Cmd {
@@ -260,7 +255,7 @@ func (s DataScope) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case key.Matches(msg, keys.showTabs):
 			s.showTabs = !s.showTabs
 			// recalculate height and update display
-			s.setViewportHeight(s.rawWidth)
+			s.recalculateWindowMargins(s.rawWidth, s.rawHeight)
 			return s, textinput.Blink
 		case key.Matches(msg, keys.cycleTabs):
 			s.activeTab += 1
@@ -281,14 +276,7 @@ func (s DataScope) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.WindowSizeMsg:
 		s.rawHeight = msg.Height
 		s.rawWidth = msg.Width
-
-		if !s.ready { // if we are not ready, use these dimensions to become ready
-			s.initViewport(s.rawWidth, s.rawHeight)
-			s.ready = true
-		} else { // just an update
-			s.vp.Width = s.rawWidth
-			s.setViewportHeight(msg.Width)
-		}
+		s.recalculateWindowMargins(msg.Width, msg.Height)
 
 		recompileHelp(&s)
 	}
@@ -298,7 +286,7 @@ func (s DataScope) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 func (s DataScope) View() string {
 	if s.showTabs {
-		return s.renderTabs(s.vp.Width) + "\n" + s.tabs[s.activeTab].viewFunc(&s)
+		return s.renderTabs(s.rawWidth) + "\n" + s.tabs[s.activeTab].viewFunc(&s)
 	}
 	return s.tabs[s.activeTab].viewFunc(&s)
 }
@@ -306,12 +294,9 @@ func (s DataScope) View() string {
 // Creates a new bubble tea program, in alt buffer mode, running only the DataScope.
 // For use from Cobra.Run() subroutines.
 // Start the returned program via .Run().
-func CobraNew(data []string, search *grav.Search, outfn string,
-	append, json, csv bool, cronfreq, name, desc string,
+func CobraNew(data []string, search *grav.Search, table bool, opts ...DataScopeOption,
 ) (p *tea.Program, err error) {
-	ds, _, err := NewDataScope(data, false, search,
-		WithAutoDownload(outfn, append, json, csv),
-		WithSchedule(cronfreq, name, desc))
+	ds, _, err := NewDataScope(data, false, search, table, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -329,17 +314,38 @@ func wrap(width int, s string) string {
 	return lipgloss.NewStyle().Width(width).Render(s)
 }
 
-// Sets the height of the viewport, using s.rawHeight minus the height of non-data segments
-// (ex: the footer and tabs).
-// Should be called after any changes to rawHeight, the tab header, or the footer.
-func (s *DataScope) setViewportHeight(width int) {
-	var tabHeight int
-	if s.showTabs {
-		tabHeight = lipgloss.Height(s.renderTabs(width))
-	}
-	footerHeight := lipgloss.Height(s.renderFooter(width))
-	s.vp.Height = s.rawHeight - (tabHeight + footerHeight)
+// Updates the dimensions of datascope and recalculate usable spaces, considering margins.
+// (ex: the tabs and a footer (if associated to the results/table tab)).
+// Should be called after any changes to raw height or raw width.
+func (s *DataScope) recalculateWindowMargins(rawWidth, rawHeight int) {
+	// save the heights
+	s.rawWidth, s.rawHeight = rawWidth, rawHeight
 
+	var clippedHeight int = rawHeight
+	if s.showTabs {
+		clippedHeight -= lipgloss.Height(s.renderTabs(s.rawWidth))
+	}
+	// inform the appropriate tab of the size change
+	if s.tableMode {
+		s.table.recalculateSize(rawWidth, clippedHeight)
+	} else {
+		s.recalculateSize(rawWidth, clippedHeight)
+	}
+}
+
+// Returns the width of the terminal available for tabs to use, minus any margins reserved by the
+// parent.
+func (s *DataScope) usableWidth() int {
+	return s.rawWidth
+}
+
+// Returns the height of the terminal available for tabs to use, minus any margins reserved by the
+// parent (ex: the tab display)
+func (s *DataScope) usableHeight() int {
+	if s.showTabs {
+		return s.rawHeight - lipgloss.Height(s.renderTabs(s.rawWidth))
+	}
+	return s.rawHeight
 }
 
 // #region styling

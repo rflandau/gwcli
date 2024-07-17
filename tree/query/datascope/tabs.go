@@ -110,8 +110,8 @@ func recompileHelp(s *DataScope) {
 	// Doing the reverse would cause long cells to truncate instead of wrap.
 	// This method does *not* prevent truncation if the terminal is too small
 	keyColumnStyle := lipgloss.NewStyle().Foreground(stylesheet.AccentColor1).
-		MaxWidth(s.vp.Width / 2).Width(cellWidth)
-	valueColumnStyle := lipgloss.NewStyle().MaxWidth(s.vp.Width / 2).Width(cellWidth)
+		MaxWidth(s.usableWidth() / 2).Width(cellWidth)
+	valueColumnStyle := lipgloss.NewStyle().MaxWidth(s.usableWidth() / 2).Width(cellWidth)
 
 	joinChar := ","
 
@@ -138,7 +138,7 @@ func recompileHelp(s *DataScope) {
 		}...)
 
 	// 'place' the table in the center of the *viewport*, horizontally and vertically
-	compiledHelpString = lipgloss.Place(s.vp.Width, s.vp.Height,
+	compiledHelpString = lipgloss.Place(s.usableWidth(), s.usableHeight(),
 		lipgloss.Center, lipgloss.Center, tbl.String())
 }
 

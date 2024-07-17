@@ -148,7 +148,7 @@ func viewSchedule(s *DataScope) string {
 				PaddingRight(1)
 	)
 
-	tabDesc := tabDescStyle(s.vp.Width).Render("Schedule this search to be rerun at" +
+	tabDesc := tabDescStyle(s.usableWidth()).Render("Schedule this search to be rerun at" +
 		" consistent intervals." + "\nQuery: " + stylesheet.Header2Style.Render(s.search.SearchString))
 
 	// build the field names column
@@ -172,13 +172,13 @@ func viewSchedule(s *DataScope) string {
 		fields,
 		TIs)
 
-	return lipgloss.Place(s.vp.Width, s.vp.Height,
+	return lipgloss.Place(s.usableWidth(), s.usableHeight(),
 		lipgloss.Center, verticalPlace,
 		lipgloss.JoinVertical(lipgloss.Center,
 			tabDesc,
 			composed,
 			"",
-			submitString(s.schedule.inputErrorString, s.schedule.resultString, s.vp.Width),
+			submitString(s.schedule.inputErrorString, s.schedule.resultString, s.usableWidth()),
 		),
 	)
 }

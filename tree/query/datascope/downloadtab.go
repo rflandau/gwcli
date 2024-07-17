@@ -237,7 +237,7 @@ func (s *DataScope) dl(fn string) (result string, success bool) {
 	// branch on records-only or full download
 	if strRecords := strings.TrimSpace(s.download.recordsTI.Value()); strRecords != "" {
 		// specific records
-		records, err := dlrecordsOnly(f, strRecords, s.data)
+		records, err := dlrecordsOnly(f, strRecords, s.results.data)
 		if err != nil {
 			return baseErrorResultString + err.Error(), false
 		}
@@ -324,14 +324,14 @@ func viewDownload(s *DataScope) string {
 		rcolAligner lipgloss.Style = lipgloss.NewStyle().Width(width).AlignHorizontal(lipgloss.Left)
 	)
 
-	tabDesc := tabDescStyle(s.vp.Width).Render("Download all data in your preferred format or" +
+	tabDesc := tabDescStyle(s.usableWidth()).Render("Download all data in your preferred format or" +
 		" cherry-pick specific records by their index.")
 
 	prime := outputFormatSegment(titleSty, subtitleSty, lcolAligner, rcolAligner, sel, &s.download)
 
 	recs := recordSegment(titleSty, lcolAligner, rcolAligner, sel, &s.download)
 
-	return lipgloss.Place(s.vp.Width, s.vp.Height,
+	return lipgloss.Place(s.usableWidth(), s.usableHeight(),
 		lipgloss.Center, verticalPlace,
 		lipgloss.JoinVertical(lipgloss.Center,
 			tabDesc,
@@ -339,7 +339,7 @@ func viewDownload(s *DataScope) string {
 			"",
 			recs,
 			"",
-			submitString(s.download.inputErrorString, s.download.resultString, s.vp.Width),
+			submitString(s.download.inputErrorString, s.download.resultString, s.usableWidth()),
 		),
 	)
 }

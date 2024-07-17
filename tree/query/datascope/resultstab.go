@@ -11,21 +11,42 @@ import (
 	"strings"
 
 	"github.com/charmbracelet/bubbles/key"
+	"github.com/charmbracelet/bubbles/paginator"
 	"github.com/charmbracelet/bubbles/viewport"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 )
 
-func (s *DataScope) initViewport(width, height int) {
-	s.vp = viewport.Model{
-		Width: width,
+type resultsTab struct {
+	vp    viewport.Model
+	pager paginator.Model
+	data  []string // complete set of data to be paged
+	ready bool
+}
+
+func initResultsTab(data []string) resultsTab {
+	// set up backend paginator
+	paginator.DefaultKeyMap = paginator.KeyMap{ // do not use pgup/pgdn
+		PrevPage: key.NewBinding(key.WithKeys("left", "h")),
+		NextPage: key.NewBinding(key.WithKeys("right", "l")),
 	}
-	s.setViewportHeight(height)
-	s.vp.MouseWheelDelta = 1
-	s.vp.HighPerformanceRendering = false
+	p := paginator.New()
+	p.Type = paginator.Dots
+	p.PerPage = 25
+	p.ActiveDot = lipgloss.NewStyle().Foreground(stylesheet.FocusedColor).Render("•")
+	p.InactiveDot = lipgloss.NewStyle().Foreground(stylesheet.UnfocusedColor).Render("•")
+	p.SetTotalPages(len(data))
+
+	// set up viewport
+	vp := viewport.Model{
+		// width/height are set later
+		// when received in a windowSize message
+	}
+	vp.MouseWheelDelta = 1
+	vp.HighPerformanceRendering = false
 	// set up keybinds directly supported by viewport
 	// other keybinds are managed by the results tab()
-	s.vp.KeyMap = viewport.KeyMap{
+	vp.KeyMap = viewport.KeyMap{
 		PageDown: key.NewBinding(
 			key.WithKeys("pgdown", " ", "f"),
 		),
@@ -45,6 +66,14 @@ func (s *DataScope) initViewport(width, height int) {
 			key.WithKeys("down", "j"),
 		),
 	}
+
+	r := resultsTab{
+		vp:    vp,
+		pager: p,
+		data:  data,
+	}
+
+	return r
 }
 
 func updateResults(s *DataScope, msg tea.Msg) tea.Cmd {
@@ -54,44 +83,44 @@ func updateResults(s *DataScope, msg tea.Msg) tea.Cmd {
 	)
 
 	// handle pager modifications first
-	prevPage := s.pager.Page
-	s.pager, cmd = s.pager.Update(msg)
+	prevPage := s.results.pager.Page
+	s.results.pager, cmd = s.results.pager.Update(msg)
 	cmds = append(cmds, cmd)
 
-	s.setResultsDisplayed()       // pass the new content to the view
-	if prevPage != s.pager.Page { // if page changed, reset to top of view
-		s.vp.GotoTop()
+	s.setResultsDisplayed()               // pass the new content to the view
+	if prevPage != s.results.pager.Page { // if page changed, reset to top of view
+		s.results.vp.GotoTop()
 	}
 
 	// check for keybinds not directly supported by the viewport
 	if msg, ok := msg.(tea.KeyMsg); ok {
 		switch msg.Type {
 		case tea.KeyHome:
-			s.vp.GotoTop()
+			s.results.vp.GotoTop()
 			return cmds[0]
 		case tea.KeyEnd:
-			s.vp.GotoBottom()
+			s.results.vp.GotoBottom()
 			return cmds[0]
 		}
 	}
 
-	s.vp, cmd = s.vp.Update(msg)
+	s.results.vp, cmd = s.results.vp.Update(msg)
 	cmds = append(cmds, cmd)
 	return tea.Sequence(cmds...)
 }
 
 // view when 'results' tab is active
 func viewResults(s *DataScope) string {
-	if !s.ready {
+	if !s.results.ready {
 		return "\nInitializing..."
 	}
-	return fmt.Sprintf("%s\n%s", s.vp.View(), s.renderFooter(s.vp.Width))
+	return fmt.Sprintf("%s\n%s", s.results.vp.View(), s.renderFooter(s.results.vp.Width))
 }
 
 // Determines and sets the the content currently visible in the results viewport.
 func (s *DataScope) setResultsDisplayed() {
-	start, end := s.pager.GetSliceBounds(len(s.data))
-	data := s.data[start:end]
+	start, end := s.results.pager.GetSliceBounds(len(s.results.data))
+	data := s.results.data[start:end]
 
 	// apply alterating color scheme
 	var bldr strings.Builder
@@ -106,7 +135,7 @@ func (s *DataScope) setResultsDisplayed() {
 		bldr.WriteRune('\n')
 		trueIndex += 1
 	}
-	s.vp.SetContent(wrap(s.vp.Width, bldr.String()))
+	s.results.vp.SetContent(wrap(s.results.vp.Width, bldr.String()))
 }
 
 var compiledShortHelp = stylesheet.GreyedOutStyle.Render(
@@ -117,11 +146,11 @@ var compiledShortHelp = stylesheet.GreyedOutStyle.Render(
 
 // generates a renderFooter with the box+line and help keys
 func (s *DataScope) renderFooter(width int) string {
-	var alignerSty = lipgloss.NewStyle().Width(s.vp.Width).AlignHorizontal(lipgloss.Center)
+	var alignerSty = lipgloss.NewStyle().Width(s.results.vp.Width).AlignHorizontal(lipgloss.Center)
 	// set up each element
 	pageNumber := lipgloss.NewStyle().Foreground(stylesheet.FocusedColor).
-		Render(strconv.Itoa(s.pager.Page+1)) + " "
-	scrollPercent := fmt.Sprintf("%3.f%%", s.vp.ScrollPercent()*100)
+		Render(strconv.Itoa(s.results.pager.Page+1)) + " "
+	scrollPercent := fmt.Sprintf("%3.f%%", s.results.vp.ScrollPercent()*100)
 	line := lipgloss.NewStyle().
 		Foreground(stylesheet.PrimaryColor).
 		Render(
@@ -135,7 +164,15 @@ func (s *DataScope) renderFooter(width int) string {
 
 	return lipgloss.JoinVertical(lipgloss.Center,
 		composedLine,
-		alignerSty.Render(s.pager.View()),
+		alignerSty.Render(s.results.pager.View()),
 		alignerSty.Render(compiledShortHelp),
 	)
+}
+
+// recalculate the dimensions of the results tab, factoring in results-specific margins.
+// The clipped height is the height available to the results tab (height - tabs height).
+func (s *DataScope) recalculateSize(rawWidth, clippedHeight int) {
+	s.results.vp.Height = clippedHeight - lipgloss.Height(s.renderFooter(rawWidth))
+	s.results.vp.Width = rawWidth
+	s.results.ready = true
 }

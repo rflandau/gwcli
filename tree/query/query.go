@@ -266,13 +266,17 @@ func runInteractive(cmd *cobra.Command, flags queryflags, qry string) {
 	}
 
 	// get results to pass to data scope
-	var results []string
+	var (
+		results   []string
+		tableMode bool
+	)
 	switch search.RenderMod {
 	case types.RenderNameTable:
 		if columns, rows, err := fetchTableResults(search); err != nil {
 			clilog.Tee(clilog.ERROR, cmd.ErrOrStderr(), err.Error())
 			return
 		} else if len(rows) != 0 {
+			tableMode = true
 			// format the table for datascope
 			// basically a csv
 			results = make([]string, len(rows)+1)
@@ -305,9 +309,9 @@ func runInteractive(cmd *cobra.Command, flags queryflags, qry string) {
 	// pass results into datascope
 	// spin up a scrolling pager to display
 	if p, err := datascope.CobraNew(
-		results, &search,
-		flags.outfn, flags.append, flags.json, flags.csv,
-		flags.schedule.cronfreq, flags.schedule.name, flags.schedule.desc,
+		results, &search, tableMode,
+		datascope.WithAutoDownload(flags.outfn, flags.append, flags.json, flags.csv),
+		datascope.WithSchedule(flags.schedule.cronfreq, flags.schedule.name, flags.schedule.desc),
 	); err != nil {
 		clilog.Tee(clilog.ERROR, cmd.ErrOrStderr(), err.Error())
 		return

@@ -141,6 +141,7 @@ func (q *query) Update(msg tea.Msg) tea.Cmd {
 				return cmd
 			}
 
+			// TODO collect using table results if appropriate
 			// collect the results
 			if results, err := fetchTextResults(*q.curSearch); err != nil {
 				q.editor.err = err.Error()
@@ -158,7 +159,7 @@ func (q *query) Update(msg tea.Msg) tea.Cmd {
 				var cmd tea.Cmd
 				// JSON,CSV,outfn,append are user-editable in the DataScope; these just set initial
 				// values
-				q.scope, cmd, err = datascope.NewDataScope(data, true, q.curSearch,
+				q.scope, cmd, err = datascope.NewDataScope(data, true, q.curSearch, false,
 					datascope.WithAutoDownload(
 						q.flagModifiers.outfn,
 						q.flagModifiers.append,
