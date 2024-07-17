@@ -328,7 +328,7 @@ func (s *DataScope) recalculateWindowMargins(rawWidth, rawHeight int) {
 	if s.tableMode {
 		s.table.recalculateSize(rawWidth, clippedHeight)
 	} else {
-		s.recalculateSize(rawWidth, clippedHeight)
+		s.results.recalculateSize(rawWidth, clippedHeight)
 	}
 }
 

@@ -162,8 +162,8 @@ func (rt *resultsTab) renderFooter(width int) string {
 
 // recalculate the dimensions of the results tab, factoring in results-specific margins.
 // The clipped height is the height available to the results tab (height - tabs height).
-func (s *DataScope) recalculateSize(rawWidth, clippedHeight int) {
-	s.results.vp.Height = clippedHeight - lipgloss.Height(s.results.renderFooter(rawWidth))
-	s.results.vp.Width = rawWidth
-	s.results.ready = true
+func (rt *resultsTab) recalculateSize(rawWidth, clippedHeight int) {
+	rt.vp.Height = clippedHeight - lipgloss.Height(rt.renderFooter(rawWidth))
+	rt.vp.Width = rawWidth
+	rt.ready = true
 }
