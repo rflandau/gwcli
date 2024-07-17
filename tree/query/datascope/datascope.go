@@ -163,7 +163,7 @@ func NewDataScope(data []string, motherRunning bool,
 		s.tabs[results].name = "table"
 		s.tabs[results].updateFunc = updateTable
 		s.tabs[results].viewFunc = viewTable
-		s.table = initTableTab()
+		s.table = initTableTab(data)
 	} else {
 		s.results = initResultsTab(data)
 	}
