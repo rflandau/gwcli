@@ -156,14 +156,15 @@ func updateTable(s *DataScope, msg tea.Msg) tea.Cmd {
 // Treats a 0 as a ten.
 func (tt *tableTab) alterColumnSize(numKey uint, increase bool) {
 	var colCount uint = uint(len(tt.columns))
+	var col uint = numKey - 1 // actual column index
 	// treat 0 as 10
 	if numKey == 0 {
 		numKey = 10
 	}
 
 	// only increase the size of a column that exists
-	if colCount > numKey {
-		var newFF int = tt.columns[numKey-1].FlexFactor()
+	if colCount > col {
+		var newFF int = tt.columns[col].FlexFactor()
 		if increase {
 			newFF += 1
 		} else {
@@ -173,10 +174,12 @@ func (tt *tableTab) alterColumnSize(numKey uint, increase bool) {
 			}
 		}
 
-		tt.columns[numKey-1] = table.NewFlexColumn(
-			tt.columns[numKey-1].Key(),
-			tt.columns[numKey-1].Title(),
+		tt.columns[col] = table.NewFlexColumn(
+			tt.columns[col].Key(),
+			tt.columns[col].Title(),
 			newFF)
+		clilog.Writer.Debugf("targetting column title %v, new flex factor of %v",
+			tt.columns[col].Title(), newFF)
 		tt.tbl = tt.tbl.WithColumns(tt.columns)
 		tt.vp.SetContent(tt.tbl.View())
 		clilog.Writer.Debugf("installed new columns with an increased size")
