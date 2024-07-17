@@ -1,5 +1,10 @@
 package datascope
 
+/**
+ * The download tab provides controls for the user to download the data preview-able in DS.
+ * Whole-file or single-record downloads are available.
+ */
+
 import (
 	"errors"
 	"fmt"
