@@ -242,7 +242,13 @@ func (s *DataScope) dl(fn string) (result string, success bool) {
 	// branch on records-only or full download
 	if strRecords := strings.TrimSpace(s.download.recordsTI.Value()); strRecords != "" {
 		// specific records
-		records, err := dlrecordsOnly(f, strRecords, s.results.data)
+		var data []string
+		if s.tableMode {
+			data = s.table.rows
+		} else {
+			data = s.results.data
+		}
+		records, err := dlrecordsOnly(f, strRecords, data)
 		if err != nil {
 			return baseErrorResultString + err.Error(), false
 		}

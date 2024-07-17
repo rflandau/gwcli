@@ -24,6 +24,7 @@ var sep = ","
 type tableTab struct {
 	vp      viewport.Model
 	columns []table.Column // once installed, tbl.columns is not externally accessible
+	rows    []string       // save off data minus header for easy access by dl tab
 	tbl     table.Model
 	ready   bool
 }
@@ -107,6 +108,7 @@ func initTableTab(data []string) tableTab {
 
 	return tableTab{
 		vp:      vp,
+		rows:    data[1:],
 		columns: columns,
 		tbl:     tbl,
 	}
