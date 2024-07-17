@@ -1,5 +1,10 @@
 package datascope
 
+/**
+ * The schedule tab is where a user can schedule the query that proc'd this DS session.
+ * Really just some TIs with mild input validation.
+ */
+
 import (
 	"errors"
 	"fmt"
@@ -18,7 +23,7 @@ import (
 	"github.com/charmbracelet/lipgloss"
 )
 
-type scheduleCursor = uint
+type scheduleCursor = uint // current active item
 
 const (
 	schlowBound scheduleCursor = iota
@@ -38,6 +43,7 @@ type scheduleTab struct {
 	descTI     textinput.Model
 }
 
+// Initializes and returns a ScheduleTab struct suitable for representing the schedule options.
 func initScheduleTab(cronfreq, name, desc string) scheduleTab {
 	sch := scheduleTab{
 		cronfreqTI: stylesheet.NewTI("", false),
@@ -89,6 +95,7 @@ func initScheduleTab(cronfreq, name, desc string) scheduleTab {
 	return sch
 }
 
+// Update handles moving the cursor and passing messages to all 3 TIs.
 func updateSchedule(s *DataScope, msg tea.Msg) tea.Cmd {
 	if msg, ok := msg.(tea.KeyMsg); ok {
 		s.schedule.inputErrorString = ""
