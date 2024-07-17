@@ -58,7 +58,6 @@ func initTableTab(data []string) tableTab {
 			rd[strconv.Itoa(j+1)] = c
 		}
 		// add the completed row to the list of rows
-		clilog.Writer.Debugf("Adding row %v", rd)
 		rows[i] = table.NewRow(rd)
 	}
 
