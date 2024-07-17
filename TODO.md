@@ -45,8 +45,13 @@
 
 - add debouncer to DS to reduce lag when holding a key
 
-- support table results in query and DS
-
 - create scheduled search `create` function
 
 - create generic `create` scaffold
+
+- utilize DataScope's table's native filtering
+    - provide keybind and external ("API") filter TI
+        - place in footer? hide/show header?
+    - will require utilizing the table's update method, which is currently not called
+        - somewhat conflicts with the viewport wrapper
+        - remember to disable the table's keybinds, other than filtering
