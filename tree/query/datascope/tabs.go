@@ -7,6 +7,7 @@ package datascope
  */
 
 import (
+	"fmt"
 	"gwcli/stylesheet"
 	"strings"
 
@@ -21,9 +22,11 @@ const (
 	verticalPlace = 0.7 // vertical offset for lipgloss.Place for tabs to use in their view()
 )
 
-var tabDescStyle = func(width int) lipgloss.Style {
-	return lipgloss.NewStyle().Width(width).PaddingBottom(1).AlignHorizontal(lipgloss.Center)
-}
+var (
+	tabDescStyle = func(width int) lipgloss.Style {
+		return lipgloss.NewStyle().Width(width).PaddingBottom(1).AlignHorizontal(lipgloss.Center)
+	}
+)
 
 // Displays either the key-bind to submit the action on the current tab or the input error,
 // if one exists, as well as the result string, beneath the submit-string/input-error
@@ -45,6 +48,22 @@ func submitString(inputErr, result string, width int) string {
 		alignerSty.Foreground(inputErrOrAltEnterColor).Render(inputErrOrAltEnterText),
 		alignerSty.Foreground(stylesheet.SecondaryColor).Render(result),
 	)
+}
+
+// Returns a line, right-suffixed with the given percent*100.
+// Width should be the target total width of this string.
+// If you want to add other items horizontally, make sure to subtract their width from the width
+// given to this subroutine.
+func scrollPercentLine(width int, rawPercent float64) string {
+	scrollPercent := fmt.Sprintf("%3.f%%", rawPercent*100)
+	line := lipgloss.NewStyle().
+		Foreground(stylesheet.PrimaryColor).
+		Render(
+			strings.Repeat("─",
+				max(0, width-lipgloss.Width(scrollPercent))),
+		)
+
+	return fmt.Sprintf("%s%s", line, scrollPercent)
 }
 
 //#endregion

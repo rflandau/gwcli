@@ -77,7 +77,8 @@ func initTableTab(data []string) tableTab {
 	tbl := table.New(columns).
 		WithRows(rows).
 		Focused(true).
-		WithMultiline(true).WithStaticFooter("footer")
+		WithMultiline(true).
+		WithStaticFooter("END OF DATA")
 
 	// display the table within the viewport
 	vp.SetContent(tbl.View())
@@ -102,8 +103,7 @@ func viewTable(s *DataScope) string {
 	if !s.table.ready {
 		return "\nInitializing..."
 	}
-	//return baseStyle.Render(s.table.tbl.View())
-	return s.table.vp.View()
+	return s.table.vp.View() + "\n" + s.table.renderFooter()
 }
 
 // recalculate and update the size parameters of the table.
@@ -111,10 +111,14 @@ func viewTable(s *DataScope) string {
 func (tt *tableTab) recalculateSize(rawWidth, clippedHeight int) {
 	tt.tbl = tt.tbl.WithMaxTotalWidth(rawWidth).
 		WithTargetWidth(rawWidth) //.WithPageSize(clippedHeight - 13) // 8 is extra padding due to the margins of the table itself
-	tt.vp.Height = clippedHeight - 1
 	tt.vp.Width = rawWidth
+	tt.vp.Height = clippedHeight - lipgloss.Height(tt.renderFooter())
 	tt.vp.SetContent(tt.tbl.View())
 	tt.ready = true
+}
+
+func (tt *tableTab) renderFooter() string {
+	return scrollPercentLine(tt.vp.Width, tt.vp.ScrollPercent())
 }
 
 var baseStyle = lipgloss.NewStyle().
