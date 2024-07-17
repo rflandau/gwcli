@@ -78,7 +78,13 @@ func initTableTab(data []string) tableTab {
 		WithRows(rows).
 		Focused(true).
 		WithMultiline(true).
-		WithStaticFooter("END OF DATA")
+		WithStaticFooter("END OF DATA").
+		WithRowStyleFunc(func(rsfi table.RowStyleFuncInput) lipgloss.Style {
+			if rsfi.Index%2 == 0 {
+				return evenEntryStyle
+			}
+			return oddEntryStyle
+		})
 
 	// display the table within the viewport
 	vp.SetContent(tbl.View())
@@ -92,8 +98,6 @@ func initTableTab(data []string) tableTab {
 
 func updateTable(s *DataScope, msg tea.Msg) tea.Cmd {
 	var cmd tea.Cmd
-	//s.table.tbl, cmd = s.table.tbl.Update(msg)
-
 	s.table.vp, cmd = s.table.vp.Update(msg)
 
 	return cmd
@@ -120,7 +124,3 @@ func (tt *tableTab) recalculateSize(rawWidth, clippedHeight int) {
 func (tt *tableTab) renderFooter() string {
 	return scrollPercentLine(tt.vp.Width, tt.vp.ScrollPercent())
 }
-
-var baseStyle = lipgloss.NewStyle().
-	BorderStyle(lipgloss.NormalBorder()).
-	BorderForeground(lipgloss.Color("240"))
