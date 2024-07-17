@@ -15,7 +15,6 @@ package datascope
 import (
 	"errors"
 	"gwcli/clilog"
-	"gwcli/stylesheet"
 	activesearchlock "gwcli/tree/query/datascope/ActiveSearchLock"
 	"gwcli/utilities/killer"
 	"os"
@@ -347,10 +346,3 @@ func (s *DataScope) usableHeight() int {
 	}
 	return s.rawHeight
 }
-
-// #region styling
-var evenEntryStyle = lipgloss.NewStyle()
-var oddEntryStyle = lipgloss.NewStyle().Foreground(stylesheet.SecondaryColor)
-var indexStyle = lipgloss.NewStyle().Foreground(stylesheet.AccentColor1)
-
-//#endregion

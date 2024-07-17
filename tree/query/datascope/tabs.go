@@ -16,7 +16,7 @@ import (
 	"github.com/charmbracelet/lipgloss/table"
 )
 
-//#region variables for enforcing consistent appearances across tabs
+//#region consistent styling
 
 const (
 	verticalPlace = 0.7 // vertical offset for lipgloss.Place for tabs to use in their view()
@@ -26,6 +26,9 @@ var (
 	tabDescStyle = func(width int) lipgloss.Style {
 		return lipgloss.NewStyle().Width(width).PaddingBottom(1).AlignHorizontal(lipgloss.Center)
 	}
+	evenEntryStyle = lipgloss.NewStyle()
+	oddEntryStyle  = lipgloss.NewStyle().Foreground(stylesheet.SecondaryColor)
+	indexStyle     = lipgloss.NewStyle().Foreground(stylesheet.AccentColor1)
 )
 
 // Displays either the key-bind to submit the action on the current tab or the input error,
