@@ -17,6 +17,10 @@ import (
 	"github.com/evertras/bubble-table/table"
 )
 
+const flexFactor = 5 // target ratio: other column width : index column width (1)
+
+var sep = ","
+
 type tableTab struct {
 	vp      viewport.Model
 	columns []table.Column // once installed, tbl.columns is not externally accessible
@@ -59,23 +63,27 @@ func initTableTab(data []string) tableTab {
 		),
 	}
 
-	// build columns list
-	strcols := strings.Split(data[0], ",")
-	colCount := len(strcols)
+	// build columns list, with the index column prefixed
+	strcols := strings.Split(data[0], sep)
+	colCount := len(strcols) + 1
 	var columns []table.Column = make([]table.Column, colCount)
+	// set index column
+	columns[0] = table.NewFlexColumn("index", "#", 1)
 	for i, c := range strcols {
 		// columns display the given column name, but are mapped by number
-		columns[i] = table.NewFlexColumn(strconv.Itoa(i), c, 1)
+		columns[i+1] = table.NewFlexColumn(strconv.Itoa(i+1), c, flexFactor)
 		clilog.Writer.Debugf("Added column %v (key: %v)", columns[i].Title(), columns[i].Key())
 	}
 	// build rows list
 	var rows []table.Row = make([]table.Row, len(data)-1)
 	for i, r := range data[1:] {
-		cells := strings.Split(r, ",")
+		cells := strings.Split(r, sep)
 		// map each row cell to its column
 		rd := table.RowData{}
+		// prepend the index column
+		rd["index"] = i + 1
 		for j, c := range cells {
-			rd[strconv.Itoa(j)] = c
+			rd[strconv.Itoa(j+1)] = c
 		}
 		// add the completed row to the list of rows
 		clilog.Writer.Debugf("Adding row %v", rd)
@@ -92,7 +100,7 @@ func initTableTab(data []string) tableTab {
 				return evenEntryStyle
 			}
 			return oddEntryStyle
-		})
+		}).WithBaseStyle(lipgloss.NewStyle().AlignHorizontal(lipgloss.Center))
 
 	// display the table within the viewport
 	vp.SetContent(tbl.View())
