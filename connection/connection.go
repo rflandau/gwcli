@@ -238,8 +238,8 @@ func CreateScheduledSearch(name, desc, freq, qry string, dur time.Duration) (
 	// validate parameters
 	if qry == "" {
 		return id, "cannot schedule an empty query", nil
-	} else if name == "" || desc == "" || freq == "" {
-		return id, "name, description, and frequency are required", nil
+	} else if name == "" || freq == "" {
+		return id, "name and frequency are required", nil
 	} else if dur < 0 {
 		return id, fmt.Sprintf("duration must be positive (given:%v)", dur), nil
 	}
