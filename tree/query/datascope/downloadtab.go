@@ -251,6 +251,8 @@ func (s *DataScope) dl(fn string) (result string, success bool) {
 		records, err := dlrecordsOnly(f, strRecords, data)
 		if err != nil {
 			return baseErrorResultString + err.Error(), false
+		} else if len(records) == 0 {
+			return baseErrorResultString + "no entries selected", false
 		}
 		var word string = "Wrote"
 		if s.download.append {
@@ -293,8 +295,7 @@ func (s *DataScope) dl(fn string) (result string, success bool) {
 // Returns the list of record numbers whose values were written or an error
 func dlrecordsOnly(f *os.File, strRecordsTI string, data []string) ([]uint32, error) {
 	exploded := strings.Split(strRecordsTI, ",")
-	var writtenRecords []uint32 = make([]uint32, len(exploded))
-	var i int = 0
+	var writtenRecords []uint32
 	for _, strRec := range exploded {
 		// sanity check record
 		if strings.TrimSpace(strRec) == "" {
@@ -316,8 +317,7 @@ func dlrecordsOnly(f *os.File, strRecordsTI string, data []string) ([]uint32, er
 
 		// requested number is in good condition; write is data to the file
 		f.WriteString(data[rec-1] + "\n") // user sees indices from 1, not 0
-		writtenRecords[i] = rec
-		i++
+		writtenRecords = append(writtenRecords, rec)
 	}
 
 	return writtenRecords, nil
