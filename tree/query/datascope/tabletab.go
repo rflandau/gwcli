@@ -6,7 +6,6 @@ package datascope
  */
 
 import (
-	"fmt"
 	"gwcli/clilog"
 	"gwcli/stylesheet"
 	"strconv"
@@ -202,16 +201,14 @@ func (tt *tableTab) recalculateSize(rawWidth, clippedHeight int) {
 	tt.ready = true
 }
 
-var tableShortHelp = stylesheet.GreyedOutStyle.Render(
-	fmt.Sprintf("%v scroll • home: jump top • end: jump bottom\n"+
-		"alt+[1-9]: increase column size • shift+alt+[1-9]: decrease column size\n"+
-		"tab: cycle • esc: quit", stylesheet.UpDown),
-)
-
 // Draw and return a footer for the viewport
 func (tt *tableTab) renderFooter() string {
-	var alignerSty = lipgloss.NewStyle().Width(tt.vp.Width).AlignHorizontal(lipgloss.Center)
+	var helpSty = stylesheet.GreyedOutStyle.Width(tt.vp.Width).AlignHorizontal(lipgloss.Center)
 	return lipgloss.JoinVertical(lipgloss.Center,
 		scrollPercentLine(tt.vp.Width, tt.vp.ScrollPercent()),
-		alignerSty.Render(tableShortHelp))
+		lipgloss.JoinVertical(lipgloss.Center,
+			helpSty.Render(stylesheet.UpDown+" scroll • home: jump top • end: jump bottom"),
+			helpSty.Render("alt+[1-9]: increase column size • shift+alt+[1-9]: decrease column size"),
+			helpSty.Render("tab: cycle • esc: quit"),
+		))
 }
