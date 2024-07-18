@@ -104,7 +104,7 @@ func run(cmd *cobra.Command, s []string) {
 		// spin up mother
 		if err := mother.Spawn(cmd.Root(), cmd, s); err != nil {
 			clilog.Tee(clilog.CRITICAL, cmd.ErrOrStderr(),
-				"failed to spawn a mother instance: "+err.Error())
+				"failed to spawn a mother instance: "+err.Error()+"\n")
 		}
 		return
 	}
@@ -200,19 +200,19 @@ func (c *create) Update(msg tea.Msg) tea.Cmd {
 	case tea.KeyMsg: // only KeyMsg could require special handling
 		switch {
 		case msg.Type == tea.KeyEnter:
-			clilog.Writer.Debugf("Create.Update received enter %v", msg.String())
-			if c.focusedInput == value &&
-				c.ti[name].Value() != "" &&
-				c.ti[desc].Value() != "" &&
-				c.ti[value].Value() != "" { // if last input and inputs are populated, attempt to create the macros
+			// enter submits if on expression or if alt was held
+			if (c.focusedInput == value || msg.Alt) &&
+				c.ti[name].Value() != "" && c.ti[value].Value() != "" {
+				// if value is focused and inputs are populated, attempt to create the macros
 				if id, err := createMacro(c.ti[name].Value(), c.ti[desc].Value(), c.ti[value].Value()); err != nil {
 					c.Reset()
-					return tea.Printf("Failed to create macro %v (ID: %v):%v\n", name, id, err)
+					return tea.Printf("Failed to create macro %v (ID: %v):%v\n",
+						c.ti[name].Value(), id, err)
 				} else {
 					c.done = true
-					return tea.Printf("Successfully created macro %v (ID: %v)\n", name, id)
+					return tea.Printf("Successfully created macro %v (ID: %v)\n",
+						c.ti[name].Value(), id)
 				}
-
 			} else {
 				c.focusNext()
 			}
