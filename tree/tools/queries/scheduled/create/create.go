@@ -30,7 +30,8 @@ func NewQueriesScheduledCreateAction() action.Pair {
 
 	// assign validator functions
 	durField := scaffoldcreate.NewField(true, "duration")
-	durField.TIValidator = uniques.CronRuneValidator
+	durField.TI.Validator = uniques.CronRuneValidator
+	durField.TI.Placeholder = "* * * * *"
 	fields[kdur] = durField
 
 	return scaffoldcreate.NewCreateAction(aliases,
