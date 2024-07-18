@@ -100,6 +100,9 @@ func Test_tryQuery(t *testing.T) {
 		restLogFile = path.Join(os.TempDir(), "gwcli.Test_tryQuery.rest.log")
 	)
 
+	// establish cli writer
+	clilog.Init(logFile, "DEBUG")
+
 	// establish connection
 	if err := connection.Initialize(server, false, true, restLogFile); err != nil {
 		panic(err)
@@ -107,8 +110,6 @@ func Test_tryQuery(t *testing.T) {
 	if err := connection.Login(connection.Credentials{Username: user, Password: pass}, true); err != nil {
 		panic(err)
 	}
-	// establish cli writer
-	clilog.Init(logFile, "DEBUG")
 
 	type args struct {
 		qry      string
