@@ -87,8 +87,9 @@ func NewQueryAction() action.Pair {
 func initialLocalFlagSet() pflag.FlagSet {
 	fs := pflag.FlagSet{}
 
-	fs.DurationP("duration", "t", time.Hour*1, "the historical timeframe (now minus duration) the query should pour over.\nEx: the past hour")
-	//fs.StringP("reference", "r", "", "a reference to a query library item to execute instead of a provided query.")
+	fs.DurationP("duration", "t", time.Hour*1,
+		"the historical timeframe (now minus duration) the query should pour over.\n"+
+			"Ex: the past hour")
 	fs.StringP("output", "o", "", stylesheet.FlagOutputDesc)
 	fs.Bool("append", false, stylesheet.FlagAppendDesc)
 	fs.Bool("json", false, stylesheet.FlagJSONDesc)
@@ -112,7 +113,7 @@ func run(cmd *cobra.Command, args []string) {
 	// fetch flags
 	flags, err := transmogrifyFlags(cmd.Flags())
 	if err != nil {
-		clilog.Tee(clilog.ERROR, cmd.ErrOrStderr(), err.Error())
+		clilog.Tee(clilog.ERROR, cmd.ErrOrStderr(), err.Error()+"\n")
 		return
 	}
 
@@ -122,14 +123,14 @@ func run(cmd *cobra.Command, args []string) {
 
 	if qry == "" { // superfluous query
 		if flags.script { // fail out
-			clilog.Tee(clilog.INFO, cmd.OutOrStdout(), "query is empty. Exitting...")
+			clilog.Tee(clilog.INFO, cmd.OutOrStdout(), "query is empty. Exitting...\n")
 			return
 		}
 
 		// spawn mother
 		if err := mother.Spawn(cmd.Root(), cmd, args); err != nil {
 			clilog.Tee(clilog.CRITICAL, cmd.ErrOrStderr(),
-				"failed to spawn a mother instance: "+err.Error())
+				"failed to spawn a mother instance: "+err.Error()+"\n")
 		}
 		return
 	}
@@ -182,17 +183,17 @@ func runNonInteractive(cmd *cobra.Command, flags queryflags, qry string) {
 			clilog.Tee(clilog.INFO, cmd.ErrOrStderr(), invalid)
 			return
 		} else if err != nil {
-			clilog.Tee(clilog.ERROR, cmd.ErrOrStderr(), err.Error())
+			clilog.Tee(clilog.ERROR, cmd.ErrOrStderr(), err.Error()+"\n")
 		}
 		clilog.Tee(clilog.INFO, cmd.OutOrStdout(),
-			fmt.Sprintf("Successfully scheduled query '%v' (ID: %v)", flags.schedule.name, id))
+			fmt.Sprintf("Successfully scheduled query '%v' (ID: %v)\n", flags.schedule.name, id))
 		return
 	}
 
 	// submit the immediate query
 	var search grav.Search
 	if s, err := connection.StartQuery(qry, -flags.duration); err != nil {
-		clilog.Tee(clilog.ERROR, cmd.ErrOrStderr(), err.Error())
+		clilog.Tee(clilog.ERROR, cmd.ErrOrStderr(), err.Error()+"\n")
 		return
 	} else {
 		search = s
@@ -200,7 +201,7 @@ func runNonInteractive(cmd *cobra.Command, flags queryflags, qry string) {
 
 	// wait for query to complete
 	if err := waitForSearch(search, true); err != nil {
-		clilog.Tee(clilog.ERROR, cmd.ErrOrStderr(), err.Error())
+		clilog.Tee(clilog.ERROR, cmd.ErrOrStderr(), err.Error()+"\n")
 		return
 	}
 
@@ -213,7 +214,7 @@ func runNonInteractive(cmd *cobra.Command, flags queryflags, qry string) {
 		&search, types.TimeRange{}, flags.csv, flags.json,
 	); err != nil {
 		clilog.Tee(clilog.ERROR, cmd.ErrOrStderr(),
-			fmt.Sprintf("failed to retrieve results from search %s (format %v): %v",
+			fmt.Sprintf("failed to retrieve results from search %s (format %v): %v\n",
 				search.ID, format, err.Error()))
 		return
 	}
@@ -224,14 +225,14 @@ func runNonInteractive(cmd *cobra.Command, flags queryflags, qry string) {
 		// open the file
 		var of *os.File
 		if of, err = openFile(flags.outfn, flags.append); err != nil {
-			clilog.Tee(clilog.ERROR, cmd.ErrOrStderr(), err.Error())
+			clilog.Tee(clilog.ERROR, cmd.ErrOrStderr(), err.Error()+"\n")
 			return
 		}
 		defer of.Close()
 
 		// consumes the results and spit them into the open file
 		if b, err := of.ReadFrom(results); err != nil {
-			clilog.Tee(clilog.ERROR, cmd.ErrOrStderr(), err.Error())
+			clilog.Tee(clilog.ERROR, cmd.ErrOrStderr(), err.Error()+"\n")
 			return
 		} else {
 			clilog.Writer.Infof("Streamed %d bytes (format %v) into %s", b, format, of.Name())
@@ -247,7 +248,7 @@ func runNonInteractive(cmd *cobra.Command, flags queryflags, qry string) {
 			format)
 	} else { // text results, stdout
 		if r, err := io.ReadAll(results); err != nil {
-			clilog.Tee(clilog.ERROR, cmd.ErrOrStderr(), err.Error())
+			clilog.Tee(clilog.ERROR, cmd.ErrOrStderr(), err.Error()+"\n")
 			return
 		} else {
 			if len(r) == 0 {
@@ -266,7 +267,7 @@ func runInteractive(cmd *cobra.Command, flags queryflags, qry string) {
 	// submit the immediate query
 	var search grav.Search
 	if s, err := connection.StartQuery(qry, -flags.duration); err != nil {
-		clilog.Tee(clilog.ERROR, cmd.ErrOrStderr(), err.Error())
+		clilog.Tee(clilog.ERROR, cmd.ErrOrStderr(), err.Error()+"\n")
 		return
 	} else {
 		search = s
@@ -274,7 +275,7 @@ func runInteractive(cmd *cobra.Command, flags queryflags, qry string) {
 
 	// wait for query to complete
 	if err := waitForSearch(search, false); err != nil {
-		clilog.Tee(clilog.ERROR, cmd.ErrOrStderr(), err.Error())
+		clilog.Tee(clilog.ERROR, cmd.ErrOrStderr(), err.Error()+"\n")
 		return
 	}
 
@@ -285,7 +286,7 @@ func runInteractive(cmd *cobra.Command, flags queryflags, qry string) {
 	)
 	results, tableMode, err := fetchResults(&search)
 	if err != nil {
-		clilog.Tee(clilog.ERROR, cmd.ErrOrStderr(), err.Error())
+		clilog.Tee(clilog.ERROR, cmd.ErrOrStderr(), err.Error()+"\n")
 		return
 	} else if results == nil {
 		fmt.Fprintln(cmd.OutOrStdout(), NoResultsText)
