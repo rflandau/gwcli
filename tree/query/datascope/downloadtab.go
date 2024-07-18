@@ -306,18 +306,17 @@ func dlrecordsOnly(f *os.File, strRecordsTI string, data []string) ([]uint32, er
 		} else {
 			rec = (uint32(n))
 		}
-		rec -= 1 // decrement, as the user sees records starting at 1, instead of 0
 
 		totalRecords := uint32(len(data))
-		if rec > totalRecords {
+		if rec > totalRecords || rec == 0 {
 			return nil, fmt.Errorf(
-				"record %v is outside the set of available records [0-%v]",
+				"record %v is outside the set of available records [1-%v]",
 				rec, totalRecords)
 		}
 
 		// requested number is in good condition; write is data to the file
-		f.WriteString(data[rec] + "\n")
-		writtenRecords[i] = rec + 1 // increment back to the user-displayed record #
+		f.WriteString(data[rec-1] + "\n") // user sees indices from 1, not 0
+		writtenRecords[i] = rec
 		i++
 	}
 
