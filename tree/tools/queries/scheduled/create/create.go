@@ -4,6 +4,7 @@ import (
 	"gwcli/action"
 	"gwcli/connection"
 	"gwcli/utilities/scaffold/scaffoldcreate"
+	"gwcli/utilities/uniques"
 	"time"
 )
 
@@ -29,6 +30,7 @@ func NewQueriesScheduledCreateAction() action.Pair {
 
 	// assign validator functions
 	durField := scaffoldcreate.NewField(true, "duration")
+	durField.TIValidator = uniques.CronRuneValidator
 	fields[kdur] = durField
 
 	return scaffoldcreate.NewCreateAction(aliases,

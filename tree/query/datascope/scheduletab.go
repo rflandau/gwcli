@@ -6,7 +6,6 @@ package datascope
  */
 
 import (
-	"errors"
 	"fmt"
 	"gwcli/clilog"
 	"gwcli/connection"
@@ -16,7 +15,6 @@ import (
 	"strings"
 	"sync"
 	"time"
-	"unicode"
 
 	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
@@ -53,39 +51,7 @@ func initScheduleTab(cronfreq, name, desc string) scheduleTab {
 
 	// set TI-specific options
 	sch.cronfreqTI.Placeholder = "* * * * *"
-	sch.cronfreqTI.Validate = func(s string) error {
-		// check for an empty TI
-		if strings.TrimSpace(s) == "" {
-			return nil
-		}
-		runes := []rune(s)
-		if len(runes) < 1 {
-			return nil
-		}
-
-		// check that the latest input is a digit or space
-		if char := runes[len(runes)-1]; !unicode.IsSpace(char) &&
-			!unicode.IsDigit(rune(char)) && char != '*' {
-			return errors.New("frequency can contain only digits or '*'")
-		}
-
-		// check that we do not have too many values
-		exploded := strings.Split(s, " ")
-		if len(exploded) > 5 {
-			return errors.New("must be exactly 5 values")
-		}
-
-		// check that the newest word is <= 2 characters
-		lastWord := []rune(exploded[len(exploded)-1])
-		if len(lastWord) > 2 {
-			return errors.New("each word is <= 2 digits")
-		}
-
-		// checking for the values of each word is delayed until connection.CreateScheduledSearch to
-		// save on cycles
-
-		return nil
-	}
+	sch.cronfreqTI.Validate = uniques.CronRuneValidator
 
 	// focus frequency by default
 	sch.cronfreqTI.SetValue(cronfreq)
