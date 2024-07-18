@@ -407,7 +407,7 @@ func fetchResults(search *grav.Search) (results []string, tableMode bool, err er
 	}
 
 	// did not manage to complete results earlier; fail out
-	return nil, false, fmt.Errorf("unable to display results of type %v.", search.RenderMod)
+	return nil, false, fmt.Errorf("unable to display results of type %v", search.RenderMod)
 }
 
 // Fetches all text results related to the given search by continually re-fetching until no more
