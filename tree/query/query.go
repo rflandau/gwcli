@@ -88,8 +88,7 @@ func initialLocalFlagSet() pflag.FlagSet {
 	fs := pflag.FlagSet{}
 
 	fs.DurationP("duration", "t", time.Hour*1,
-		"the historical timeframe (now minus duration) the query should pour over.\n"+
-			"Ex: the past hour")
+		stylesheet.FlagDurationDesc)
 	fs.StringP("output", "o", "", stylesheet.FlagOutputDesc)
 	fs.Bool("append", false, stylesheet.FlagAppendDesc)
 	fs.Bool("json", false, stylesheet.FlagJSONDesc)
