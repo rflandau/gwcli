@@ -224,7 +224,6 @@ func (c *create) Update(msg tea.Msg) tea.Cmd {
 			c.focusPrevious()
 
 		case key.Matches(msg, c.help.keys.Help):
-			clilog.Writer.Debugf("Swapping showall")
 			c.help.model.ShowAll = !c.help.model.ShowAll
 
 		default:
@@ -329,20 +328,17 @@ func (c *create) SetArgs(_ *pflag.FlagSet, tokens []string) (invalid string, onS
 		return "", nil, err
 	}
 	val = strings.ToUpper(strings.TrimSpace(val))
-	clilog.Writer.Debugf("Set name to %v", val)
 	c.ti[name].SetValue(val)
 
 	if val, err := c.fs.GetString("description"); err != nil {
 		return "", nil, err
 	} else if val != "" {
-		clilog.Writer.Debugf("Set description to %v", val)
 		c.ti[desc].SetValue(val)
 	}
 
 	if val, err := c.fs.GetString("expansion"); err != nil {
 		return "", nil, err
 	} else if val != "" {
-		clilog.Writer.Debugf("Set expansion to %v", val)
 		c.ti[value].SetValue(val)
 	}
 
