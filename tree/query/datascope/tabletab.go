@@ -193,8 +193,7 @@ func viewTable(s *DataScope) string {
 // recalculate and update the size parameters of the table.
 // The clipped height is the height available to the table tab (height - tabs height).
 func (tt *tableTab) recalculateSize(rawWidth, clippedHeight int) {
-	tt.tbl = tt.tbl.WithMaxTotalWidth(rawWidth).
-		WithTargetWidth(rawWidth) //.WithPageSize(clippedHeight - 13) // 8 is extra padding due to the margins of the table itself
+	tt.tbl = tt.tbl.WithMaxTotalWidth(rawWidth).WithTargetWidth(rawWidth)
 	tt.vp.Width = rawWidth
 	tt.vp.Height = clippedHeight - lipgloss.Height(tt.renderFooter())
 	tt.vp.SetContent(tt.tbl.View())
