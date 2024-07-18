@@ -69,34 +69,34 @@ func run(cmd *cobra.Command, s []string) {
 	// check script mode
 	script, err := cmd.Flags().GetBool("script")
 	if err != nil {
-		clilog.Tee(clilog.ERROR, cmd.ErrOrStderr(), err.Error())
+		clilog.Tee(clilog.ERROR, cmd.ErrOrStderr(), err.Error()+"\n")
 		return
 	}
 
 	// fetch data from flags
 	name, err := cmd.Flags().GetString(flagName)
 	if err != nil {
-		clilog.Tee(clilog.ERROR, cmd.ErrOrStderr(), err.Error())
+		clilog.Tee(clilog.ERROR, cmd.ErrOrStderr(), err.Error()+"\n")
 		return
 	}
 	name = strings.ToUpper(name) // name must be caps
 
 	desc, err := cmd.Flags().GetString(flagDesc)
 	if err != nil {
-		clilog.Tee(clilog.ERROR, cmd.ErrOrStderr(), err.Error())
+		clilog.Tee(clilog.ERROR, cmd.ErrOrStderr(), err.Error()+"\n")
 		return
 	}
 	value, err := cmd.Flags().GetString(flagExp)
 	if err != nil {
-		clilog.Tee(clilog.ERROR, cmd.ErrOrStderr(), err.Error())
+		clilog.Tee(clilog.ERROR, cmd.ErrOrStderr(), err.Error()+"\n")
 		return
 	}
 
 	// check required flags
-	if name == "" || desc == "" || value == "" {
+	if name == "" || value == "" {
 		if script { // fail out
 			fmt.Fprintf(
-				cmd.ErrOrStderr(), "--%v, --%v, --%v are required in script mode",
+				cmd.ErrOrStderr(), "--%v, --%v, --%v are required in script mode\n",
 				flagName, flagDesc, flagExp,
 			)
 			return
@@ -110,7 +110,7 @@ func run(cmd *cobra.Command, s []string) {
 	}
 
 	if id, err := createMacro(name, desc, value); err != nil {
-		fmt.Fprintf(cmd.ErrOrStderr(), "Failed to create macro: %v", err.Error())
+		fmt.Fprintf(cmd.ErrOrStderr(), "Failed to create macro: %v\n", err.Error())
 	} else {
 		fmt.Fprintf(cmd.OutOrStdout(), "Successfully created macro %v (ID: %v)\n", name, id)
 	}
