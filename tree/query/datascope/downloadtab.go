@@ -349,7 +349,7 @@ func viewDownload(s *DataScope) string {
 			"",
 			recs,
 			"",
-			submitString(s.download.inputErrorString, s.download.resultString, s.usableWidth()),
+			colorizer.SubmitString("alt+enter", s.download.inputErrorString, s.download.resultString, s.usableWidth()),
 		),
 	)
 }

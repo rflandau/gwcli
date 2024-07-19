@@ -33,28 +33,6 @@ var (
 	indexStyle     = lipgloss.NewStyle().Foreground(stylesheet.AccentColor1)
 )
 
-// Displays either the key-bind to submit the action on the current tab or the input error,
-// if one exists, as well as the result string, beneath the submit-string/input-error
-func submitString(inputErr, result string, width int) string {
-	alignerSty := lipgloss.NewStyle().
-		PaddingTop(1).
-		AlignHorizontal(lipgloss.Center).
-		Width(width)
-	var (
-		inputErrOrAltEnterColor        = stylesheet.TertiaryColor
-		inputErrOrAltEnterText  string = "Press Alt+Enter to submit"
-	)
-	if inputErr != "" {
-		inputErrOrAltEnterColor = stylesheet.ErrorColor
-		inputErrOrAltEnterText = inputErr
-	}
-
-	return lipgloss.JoinVertical(lipgloss.Center,
-		alignerSty.Foreground(inputErrOrAltEnterColor).Render(inputErrOrAltEnterText),
-		alignerSty.Foreground(stylesheet.SecondaryColor).Render(result),
-	)
-}
-
 // Returns a line, right-suffixed with the given percent*100.
 // Width should be the target total width of this string.
 // If you want to add other items horizontally, make sure to subtract their width from the width

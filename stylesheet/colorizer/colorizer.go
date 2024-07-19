@@ -56,3 +56,25 @@ func box(val bool, leftBoundary, rightBoundary rune) string {
 	}
 	return fmt.Sprintf("%c%c%c", leftBoundary, c, rightBoundary)
 }
+
+// Displays either the key-bind to submit the action on the current tab or the input error,
+// if one exists, as well as the result string, beneath the submit-string/input-error
+func SubmitString(keybind, inputErr, result string, width int) string {
+	alignerSty := lipgloss.NewStyle().
+		PaddingTop(1).
+		AlignHorizontal(lipgloss.Center).
+		Width(width)
+	var (
+		inputErrOrAltEnterColor        = stylesheet.TertiaryColor
+		inputErrOrAltEnterText  string = "Press " + keybind + " to submit"
+	)
+	if inputErr != "" {
+		inputErrOrAltEnterColor = stylesheet.ErrorColor
+		inputErrOrAltEnterText = inputErr
+	}
+
+	return lipgloss.JoinVertical(lipgloss.Center,
+		alignerSty.Foreground(inputErrOrAltEnterColor).Render(inputErrOrAltEnterText),
+		alignerSty.Foreground(stylesheet.SecondaryColor).Render(result),
+	)
+}

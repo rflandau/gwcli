@@ -151,7 +151,7 @@ func viewSchedule(s *DataScope) string {
 			tabDesc,
 			composed,
 			"",
-			submitString(s.schedule.inputErrorString, s.schedule.resultString, s.usableWidth()),
+			colorizer.SubmitString("alt+enter", s.schedule.inputErrorString, s.schedule.resultString, s.usableWidth()),
 		),
 	)
 }
