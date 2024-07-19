@@ -1,5 +1,7 @@
 // colorizer provides common utilities that rely on the stylesheet.
-// These functions are to support a consistent UI.
+// These functions are some degree of a mish-mash, but all are in the vein of supporting a
+// consistent UI. Any UI elements that look similar across actions should go here as well as
+// functional applications of the rest of the stylesheet.
 package colorizer
 
 import (
