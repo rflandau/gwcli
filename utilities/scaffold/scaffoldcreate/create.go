@@ -35,6 +35,7 @@ import (
 
 const (
 	errMissingRequiredFlags = "missing required flags %v"
+	createdSuccessfully     = "Successfully created %v (ID: %v)."
 )
 
 // #region local styles
@@ -48,8 +49,10 @@ var (
 // keys -> Field; used as (ReadOnly) configuration for this creation instance
 type Config = map[string]Field
 
+type Values = map[string]string
+
 // signature the supplied creation function must match
-type CreateFunc func(cfg Config, values map[string]string) (id any, invalid string, err error)
+type CreateFunc func(cfg Config, values Values) (id any, invalid string, err error)
 
 func NewCreateAction(aliases []string, singular string,
 	fields Config,
@@ -105,6 +108,36 @@ func NewCreateAction(aliases []string, singular string,
 	cmd.Flags().AddFlagSet(&flags)
 
 	return treeutils.GenerateAction(cmd, newCreateModel(fields, singular, create))
+}
+
+// Given a parsed flagset and the field configuration, builds a corollary map of field values.
+//
+// Returns the values for each flag (default if unset), a list of required fields (as their flag
+// names) that were not set, and an error (if one occurred).
+func getValuesFromFlags(fs *pflag.FlagSet, fields Config) (
+	values Values, missingRequireds []string, err error,
+) {
+	values = make(Values)
+	for k, f := range fields {
+		switch f.Type {
+		case Text:
+
+			flagVal, err := fs.GetString(f.FlagName)
+			if err != nil {
+				return nil, nil, err
+			}
+			clilog.Writer.Debugf("flag %v changed? %v", f.FlagName, fs.Changed(f.FlagName))
+			// if this value is required, but unset, add it to the list
+			if f.Required && !fs.Changed(f.FlagName) {
+				missingRequireds = append(missingRequireds, f.FlagName)
+			}
+
+			values[k] = flagVal
+		default:
+			panic("developer error: unknown field type: " + f.Type)
+		}
+	}
+	return values, missingRequireds, nil
 }
 
 //#region Field
@@ -168,38 +201,6 @@ func installFlagsFromFields(fields Config) pflag.FlagSet {
 	return flags
 }
 
-// Given a parsed flagset and the fiel configuration, builds a corollary map of field values.
-//
-// Returns the values for each flag (default if unset), a list of required fields (as their flag
-// names) that were not set, and an error (if one occurred).
-func getValuesFromFlags(fs *pflag.FlagSet, fields Config) (
-	values map[string]string, missingRequireds []string, err error,
-) {
-	values = make(map[string]string)
-	for k, f := range fields {
-		switch f.Type {
-		case Text:
-
-			flagVal, err := fs.GetString(f.FlagName)
-			if err != nil {
-				return nil, nil, err
-			}
-			clilog.Writer.Debugf("flag %v changed? %v", f.FlagName, fs.Changed(f.FlagName))
-			// if this value is required, but unset, add it to the list
-			if f.Required && !fs.Changed(f.FlagName) {
-				missingRequireds = append(missingRequireds, f.FlagName)
-			}
-
-			values[k] = flagVal
-		default:
-			panic("developer error: unknown field type: " + f.Type)
-		}
-		// resave the updated field value back into the map for later use
-		fields[k] = f
-	}
-	return values, missingRequireds, nil
-}
-
 //#endregion
 
 //#region interactive mode (model) implementation
@@ -224,6 +225,9 @@ type createModel struct {
 	keyOrder []string
 	selected uint              // currently focused ti (in key order index)
 	tis      []textinput.Model // text inputs. Use keyOrder to map to fields
+
+	inputErr  string // the reason inputs are invalid
+	createErr string // the reason the last create failed (not for invalid parameters)
 
 	fs pflag.FlagSet // parsed flag values, mined from the Config
 	cf CreateFunc    // function to create the new entity
@@ -262,6 +266,7 @@ func (c *createModel) Update(msg tea.Msg) tea.Cmd {
 		return nil
 	}
 	if msg, ok := msg.(tea.KeyMsg); ok {
+		c.inputErr = "" // clear last input error
 		switch msg.Type {
 		case tea.KeyUp, tea.KeyTab:
 			c.focusPrevious()
@@ -269,6 +274,24 @@ func (c *createModel) Update(msg tea.Msg) tea.Cmd {
 		case tea.KeyDown, tea.KeyShiftTab:
 			c.focusNext()
 			return textinput.Blink
+		case tea.KeyEnter:
+			c.createErr = "" // clear last error
+			// extract values from TIs
+			values, mr := c.extractValuesFromTIs()
+			if mr != nil {
+				c.inputErr = fmt.Sprintf("%v are required", mr)
+				return nil
+			}
+			id, invalid, err := c.cf(c.fields, values)
+			if err != nil {
+				c.createErr = err.Error()
+			} else if invalid != "" {
+				c.inputErr = invalid
+				return nil
+			}
+			// done, die
+			c.mode = quitting
+			return tea.Println(fmt.Sprintf(createdSuccessfully, c.singular, id))
 		}
 	}
 	// pass message to currently focused ti
@@ -296,6 +319,27 @@ func (c *createModel) focusPrevious() {
 	c.tis[c.selected].Focus()
 }
 
+// Generates the corrollary value map from the TIs.
+//
+// Returns the values for each TI (mapped to their Config key), a list of required fields (as their
+// field.Title names) that were not set, and an error (if one occured).
+func (c *createModel) extractValuesFromTIs() (
+	values Values, missingRequireds []string,
+) {
+	values = make(Values)
+	for i, k := range c.keyOrder {
+		val := strings.TrimSpace(c.tis[i].Value())
+		field := c.fields[k]
+		if val == "" && field.Required {
+			missingRequireds = append(missingRequireds, field.Title)
+		}
+
+		values[k] = val
+	}
+
+	return values, missingRequireds
+}
+
 // Iterates through the keymap, drawing each ti and title in key key order
 func (c *createModel) View() string {
 	var sb strings.Builder
@@ -314,7 +358,9 @@ func (c *createModel) View() string {
 		)
 	}
 
-	// may need to chomp the last newline
+	// display errors, if they exist
+	sb.WriteString(c.inputErr + "\n")
+	sb.WriteString(c.createErr + "\n")
 
 	return sb.String()
 }
@@ -336,12 +382,13 @@ func (c *createModel) Reset() error {
 		}
 		wg.Done()
 	}()
-
 	// refresh flags to their original, unparsed and unvalued state
 	go func() { c.fs = installFlagsFromFields(c.fields); wg.Done() }()
 
 	wg.Wait()
 
+	c.createErr = ""
+	c.inputErr = ""
 	c.selected = 0
 	if len(c.tis) > 0 {
 		c.tis[0].Focus()
