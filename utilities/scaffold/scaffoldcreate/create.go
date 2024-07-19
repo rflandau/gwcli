@@ -204,10 +204,10 @@ type createModel struct {
 	fields Config // RO configuration provided by the caller
 
 	// Ordered array of map keys, defines order in which fields are displayed.
-	// Set on newCreate.
+	// Set on newCreate. Shares indices with tis
 	keyOrder []string
-
-	tis map[string]textinput.Model // key -> field's TI, if it exists
+	selected uint              // currently focused ti (in key order index)
+	tis      []textinput.Model // text inputs. Use keyOrder to map to fields
 
 	fs pflag.FlagSet // parsed flag values, mined from the Config
 	cf CreateFunc    // function to create the new entity
@@ -218,7 +218,7 @@ func newCreateModel(fields Config, singular string, cf CreateFunc) *createModel 
 		mode:     inputting,
 		singular: singular,
 		fields:   fields,
-		tis:      make(map[string]textinput.Model),
+		tis:      make([]textinput.Model, 0),
 		cf:       cf,
 	}
 
@@ -227,7 +227,7 @@ func newCreateModel(fields Config, singular string, cf CreateFunc) *createModel 
 		// generate the key order
 		c.keyOrder = append(c.keyOrder, k)
 		// generate the TI for the field
-		c.tis[k] = stylesheet.NewTI(v.DefaultValue, !v.Required)
+		c.tis = append(c.tis, stylesheet.NewTI(v.DefaultValue, !v.Required))
 	}
 
 	return c
@@ -238,13 +238,30 @@ func (c *createModel) Update(msg tea.Msg) tea.Cmd {
 	return nil
 }
 
+func (c *createModel) focusSelected() {
+	keyCount := len(c.keyOrder)
+	if c.selected > uint(keyCount) {
+		clilog.Writer.Errorf("selected index %v is out of viable range [0-%v]. Resetting to 0.",
+			c.selected, keyCount-1)
+		c.selected = 0
+	}
+	for i := range c.keyOrder {
+		if i == int(c.selected) {
+			c.tis[i].Focus()
+		} else {
+			c.tis[i].Blur()
+		}
+
+	}
+}
+
 // Iterates through the keymap, drawing each ti and title in key key order
 func (c *createModel) View() string {
 	var sb strings.Builder
 
-	for _, key := range c.keyOrder {
+	for i, key := range c.keyOrder {
 		// pair titles and their TIs
-		sb.WriteString(c.fields[key].Title + ": " + c.tis[key].View() + "\n")
+		sb.WriteString(c.fields[key].Title + ": " + c.tis[i].View() + "\n")
 	}
 
 	// may need to chomp the last newline
@@ -258,6 +275,8 @@ func (c *createModel) Done() bool {
 
 func (c *createModel) Reset() error {
 	c.mode = inputting
+
+	c.selected = 0
 
 	var wg sync.WaitGroup
 	wg.Add(2)
@@ -290,10 +309,8 @@ func (c *createModel) SetArgs(_ *pflag.FlagSet, tokens []string) (
 		return fmt.Sprintf(errMissingRequiredFlags+"\n", mr), nil, nil
 	} else {
 		// set flag values as the starter values in their corresponding TI
-		for k, v := range flagVals {
-			ti := c.tis[k]
-			ti.SetValue(v)
-			c.tis[k] = ti // iirc TIs are not reference types, so this is requires // TODO test this
+		for i, k := range c.keyOrder {
+			c.tis[i].SetValue(flagVals[k])
 		}
 	}
 
