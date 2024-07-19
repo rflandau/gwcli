@@ -129,7 +129,6 @@ func getValuesFromFlags(fs *pflag.FlagSet, fields Config) (
 			if err != nil {
 				return nil, nil, err
 			}
-			clilog.Writer.Debugf("flag %v changed? %v", f.FlagName, fs.Changed(f.FlagName))
 			// if this value is required, but unset, add it to the list
 			if f.Required && !fs.Changed(f.FlagName) {
 				missingRequireds = append(missingRequireds, f.FlagName)
@@ -145,10 +144,13 @@ func getValuesFromFlags(fs *pflag.FlagSet, fields Config) (
 
 //#region Field
 
+// FieldType, though currently unutilized, is intended as an expandable way to add new data inputs,
+// such as checkboxes or radio buttons. It alters the draw in .View and how data is parsed from the
+// Field's flag.
 type FieldType = string
 
 const (
-	Text FieldType = "text"
+	Text FieldType = "text" // string inputs, consumed via flag.String & textinput.Model
 )
 
 // A field defines a single data point that will be passed to the create function.
@@ -181,6 +183,8 @@ func NewField(req bool, Title string) Field {
 	return f
 }
 
+// Returns a consistent name, usable as a flag name.
+// Default Field.Flagname if unset.
 func DeriveFlagName(title string) string {
 	return strings.Replace(title, " ", "-", -1)
 }
@@ -189,6 +193,10 @@ func DeriveFlagName(title string) string {
 func installFlagsFromFields(fields Config) pflag.FlagSet {
 	var flags pflag.FlagSet
 	for _, f := range fields {
+		if f.FlagName == "" {
+			f.FlagName = DeriveFlagName(f.Title)
+		}
+
 		// map fields to their flags
 		switch f.Type {
 		case Text:
@@ -208,13 +216,13 @@ func installFlagsFromFields(fields Config) pflag.FlagSet {
 
 //#region interactive mode (model) implementation
 
-const defaultWidth = 80
+const defaultWidth = 80 // default wrap width, used before initial WinMsgSz arrives
 
 type mode uint // state of the interactive application
 
 const (
-	inputting mode = iota
-	quitting
+	inputting mode = iota // user entering data
+	quitting              // done
 )
 
 // interactive model that builds out inputs based on the read-only Config supplied on creation.
@@ -240,6 +248,7 @@ type createModel struct {
 	cf CreateFunc    // function to create the new entity
 }
 
+// Creates and returns a create Model, ready for interactive usage via Mother.
 func newCreateModel(fields Config, singular string, cf CreateFunc) *createModel {
 	c := &createModel{
 		mode:     inputting,
@@ -313,6 +322,7 @@ func (c *createModel) Update(msg tea.Msg) tea.Cmd {
 	return cmd
 }
 
+// Blurs the current ti, selects and focuses the next (indexically) one.
 func (c *createModel) focusNext() {
 	c.tis[c.selected].Blur()
 	c.selected += 1
@@ -322,6 +332,7 @@ func (c *createModel) focusNext() {
 	c.tis[c.selected].Focus()
 }
 
+// Blurs the current ti, selects and focuses the previous (indexically) one.
 func (c *createModel) focusPrevious() {
 	c.tis[c.selected].Blur()
 	if c.selected == 0 { // jump to end
@@ -441,21 +452,3 @@ func fetchWindowSize() tea.Msg {
 }
 
 //#endregion
-
-/*
-Creates needs to know the fields to present to a user for population.
-For each field, we need to know:
-1. field name
-2. optional or required?
-3. corresponding flag for non-interactive input
-4. an optional validation function
-We need to be able to pass populated fields, once all requireds are filled,
-back to the implementation to contort and pass to a create function.
-This create function must be able to return an error and, ideally,
-a string validation error.
-However, we cannot pre-declare the function signature until we know how the
-create data will be stored.
-
-Field likely need to be stored in a map (string -> struct).
-This will also allow me to bolt additional features onto the struct easily.
-*/
