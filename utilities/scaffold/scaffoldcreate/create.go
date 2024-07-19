@@ -219,6 +219,7 @@ func newCreateModel(fields Config, singular string, cf CreateFunc) *createModel 
 		singular: singular,
 		fields:   fields,
 		tis:      make([]textinput.Model, 0),
+		fs:       installFlagsFromFields(fields),
 		cf:       cf,
 	}
 
@@ -230,29 +231,50 @@ func newCreateModel(fields Config, singular string, cf CreateFunc) *createModel 
 		c.tis = append(c.tis, stylesheet.NewTI(v.DefaultValue, !v.Required))
 	}
 
+	if len(c.tis) > 0 {
+		c.tis[0].Focus()
+	}
+
 	return c
 }
 
 func (c *createModel) Update(msg tea.Msg) tea.Cmd {
-	// TODO
-	return nil
+	if c.mode == quitting {
+		return nil
+	}
+	if msg, ok := msg.(tea.KeyMsg); ok {
+		switch msg.Type {
+		case tea.KeyUp, tea.KeyTab:
+			c.focusPrevious()
+			return textinput.Blink
+		case tea.KeyDown, tea.KeyShiftTab:
+			c.focusNext()
+			return textinput.Blink
+		}
+	}
+	// pass message to currently focused ti
+	var cmd tea.Cmd
+	c.tis[c.selected], cmd = c.tis[c.selected].Update(msg)
+	return cmd
 }
 
-func (c *createModel) focusSelected() {
-	keyCount := len(c.keyOrder)
-	if c.selected > uint(keyCount) {
-		clilog.Writer.Errorf("selected index %v is out of viable range [0-%v]. Resetting to 0.",
-			c.selected, keyCount-1)
+func (c *createModel) focusNext() {
+	c.tis[c.selected].Blur()
+	c.selected += 1
+	if c.selected >= uint(len(c.tis)) { // jump to start
 		c.selected = 0
 	}
-	for i := range c.keyOrder {
-		if i == int(c.selected) {
-			c.tis[i].Focus()
-		} else {
-			c.tis[i].Blur()
-		}
+	c.tis[c.selected].Focus()
+}
 
+func (c *createModel) focusPrevious() {
+	c.tis[c.selected].Blur()
+	if c.selected == 0 { // jump to end
+		c.selected = uint(len(c.tis)) - 1
+	} else {
+		c.selected -= 1
 	}
+	c.tis[c.selected].Focus()
 }
 
 // Iterates through the keymap, drawing each ti and title in key key order
@@ -276,15 +298,13 @@ func (c *createModel) Done() bool {
 func (c *createModel) Reset() error {
 	c.mode = inputting
 
-	c.selected = 0
-
 	var wg sync.WaitGroup
 	wg.Add(2)
 	// reset TIs
 	go func() {
-		for k, ti := range c.tis {
-			ti.Reset()
-			c.tis[k] = ti
+		for i := range c.tis {
+			c.tis[i].Reset()
+			c.tis[i].Blur()
 		}
 		wg.Done()
 	}()
@@ -293,6 +313,11 @@ func (c *createModel) Reset() error {
 	go func() { c.fs = installFlagsFromFields(c.fields); wg.Done() }()
 
 	wg.Wait()
+
+	c.selected = 0
+	if len(c.tis) > 0 {
+		c.tis[0].Focus()
+	}
 	return nil
 }
 
@@ -303,10 +328,9 @@ func (c *createModel) SetArgs(_ *pflag.FlagSet, tokens []string) (
 		return "", nil, err
 	}
 
-	if flagVals, mr, err := getValuesFromFlags(&c.fs, c.fields); err != nil {
+	// we do not need to check missing requires when run from mother
+	if flagVals, _, err := getValuesFromFlags(&c.fs, c.fields); err != nil {
 		return "", nil, err
-	} else if mr != nil {
-		return fmt.Sprintf(errMissingRequiredFlags+"\n", mr), nil, nil
 	} else {
 		// set flag values as the starter values in their corresponding TI
 		for i, k := range c.keyOrder {
