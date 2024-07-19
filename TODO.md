@@ -30,8 +30,6 @@
         - ? -> IPExists
         - ? -> Archive
 
-- [ ] check for sentinel errors in createMacro
-
 - [ ] search around for a BubbleTea rendering fix for window size messages in non-altmode.
     - currently, get artefacting above most recent draw
 
@@ -45,9 +43,6 @@
 
 - add debouncer to DS to reduce lag when holding a key
 
-- create scheduled search `create` function
-
-- create generic `create` scaffold
 
 - utilize DataScope's table's native filtering
     - provide keybind and external ("API") filter TI
@@ -55,3 +50,7 @@
     - will require utilizing the table's update method, which is currently not called
         - somewhat conflicts with the viewport wrapper
         - remember to disable the table's keybinds, other than filtering
+
+- suuport more FieldTypes in scaffold create
+    - radio button
+    - checkbox
