@@ -11,7 +11,7 @@
 // Look to the scheduled query creation action (external to the one built into DataScope) as a good
 // example.
 //
-// ! Once a FlagMap is given by the caller, it should be considered ReadOnly.
+// ! Once a Config is given by the caller, it should be considered ReadOnly.
 //
 // NOTE: More complex creation with nested options and mutli-stage flows should be built
 // independently. This scaffold is intended for simple, handful-of-field creations.
@@ -222,6 +222,7 @@ func newCreateModel(fields Config, singular string, cf CreateFunc) *createModel 
 		cf:       cf,
 	}
 
+	// TODO add support for custom ordering
 	for k, v := range fields {
 		// generate the key order
 		c.keyOrder = append(c.keyOrder, k)
@@ -237,6 +238,7 @@ func (c *createModel) Update(msg tea.Msg) tea.Cmd {
 	return nil
 }
 
+// Iterates through the keymap, drawing each ti and title in key key order
 func (c *createModel) View() string {
 	var sb strings.Builder
 
