@@ -25,14 +25,14 @@ func NewQueriesScheduledCreateAction() action.Pair {
 	fields := scaffoldcreate.Config{
 		kname: scaffoldcreate.NewField(true, "name"),
 		kdesc: scaffoldcreate.NewField(false, "description"),
-		kfreq: scaffoldcreate.NewField(true, "frequency"),
+		kdur:  scaffoldcreate.NewField(true, "duration"),
 		kqry:  scaffoldcreate.NewField(true, "query"),
-		kdur: scaffoldcreate.Field{
+		kfreq: scaffoldcreate.Field{
 			Required:     true,
-			Title:        "duration",
+			Title:        "frequency",
 			Usage:        stylesheet.FlagDurationDesc,
 			Type:         scaffoldcreate.Text,
-			FlagName:     scaffoldcreate.DeriveFlagName("duration"),
+			FlagName:     scaffoldcreate.DeriveFlagName("frequency"),
 			DefaultValue: "", // no default value
 			TI: struct {
 				Placeholder string
