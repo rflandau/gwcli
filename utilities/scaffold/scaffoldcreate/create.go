@@ -262,13 +262,16 @@ func newCreateModel(fields Config, singular string, cf CreateFunc) *createModel 
 	}
 
 	// TODO add support for custom ordering
-	for k, v := range fields {
+	for k, f := range fields {
 		// generate the key order
 		c.keyOrder = append(c.keyOrder, k)
 		// generate the TI for the field
-		ti := stylesheet.NewTI(v.DefaultValue, !v.Required)
-		ti.Validate = v.TI.Validator
-		ti.Placeholder = v.TI.Placeholder
+		ti := stylesheet.NewTI(f.DefaultValue, !f.Required)
+		ti.Validate = f.TI.Validator
+		ti.Placeholder = f.TI.Placeholder
+		if ti.Placeholder == "" && !f.Required {
+			ti.Placeholder = "(optional)"
+		}
 		c.tis = append(c.tis, ti)
 	}
 
