@@ -26,6 +26,7 @@ import (
 	"gwcli/stylesheet/colorizer"
 	"gwcli/treeutils"
 	"os"
+	"slices"
 	"strings"
 	"sync"
 
@@ -165,6 +166,10 @@ type Field struct {
 
 	// values specific to interactive usage
 	TI struct {
+		// display ordering.
+		//
+		// Higher values are displayed first. Order collisions are unstable and discouraged.
+		Order       int
 		Placeholder string // defaults to '(optional)' if unset and !Field.Required
 		// validator to run each each time an input is keyed into the TI.
 		//
@@ -179,8 +184,17 @@ type Field struct {
 //
 // You can build a Field manually, w/o NewField, but make sure you call
 // .DeriveFlagName() if you do not supply one.
-func NewField(req bool, Title string) Field {
-	f := Field{Required: req, Title: Title, Type: Text, FlagName: DeriveFlagName(Title)}
+func NewField(req bool, title string, order int) Field {
+	f := Field{
+		Required: req,
+		Title:    title,
+		Type:     Text,
+		FlagName: DeriveFlagName(title),
+		TI: struct {
+			Order       int
+			Placeholder string
+			Validator   func(s string) error
+		}{Order: order}}
 	return f
 }
 
@@ -226,6 +240,12 @@ const (
 	quitting              // done
 )
 
+// a tuple for storing a TI and the field key it is associated with
+type keyedTI struct {
+	key string
+	ti  textinput.Model
+}
+
 // interactive model that builds out inputs based on the read-only Config supplied on creation.
 type createModel struct {
 	mode mode
@@ -236,11 +256,8 @@ type createModel struct {
 
 	fields Config // RO configuration provided by the caller
 
-	// Ordered array of map keys, defines order in which fields are displayed.
-	// Set on newCreate. Shares indices with tis
-	keyOrder []string
-	selected uint              // currently focused ti (in key order index)
-	tis      []textinput.Model // text inputs. Use keyOrder to map to fields
+	orderedTIs []keyedTI // Ordered array of map keys, based on Config.TI.Order
+	selected   uint      // currently focused ti (in key order index)
 
 	inputErr  string // the reason inputs are invalid
 	createErr string // the reason the last create failed (not for invalid parameters)
@@ -252,31 +269,34 @@ type createModel struct {
 // Creates and returns a create Model, ready for interactive usage via Mother.
 func newCreateModel(fields Config, singular string, cf CreateFunc) *createModel {
 	c := &createModel{
-		mode:     inputting,
-		width:    defaultWidth,
-		singular: singular,
-		fields:   fields,
-		tis:      make([]textinput.Model, 0),
-		fs:       installFlagsFromFields(fields),
-		cf:       cf,
+		mode:       inputting,
+		width:      defaultWidth,
+		singular:   singular,
+		fields:     fields,
+		orderedTIs: make([]keyedTI, 0),
+		fs:         installFlagsFromFields(fields),
+		cf:         cf,
 	}
 
-	// TODO add support for custom ordering
 	for k, f := range fields {
-		// generate the key order
-		c.keyOrder = append(c.keyOrder, k)
-		// generate the TI for the field
-		ti := stylesheet.NewTI(f.DefaultValue, !f.Required)
-		ti.Validate = f.TI.Validator
-		ti.Placeholder = f.TI.Placeholder
-		if ti.Placeholder == "" && !f.Required {
-			ti.Placeholder = "(optional)"
+		// generate the TI
+		kti := keyedTI{
+			key: k,
+			ti:  stylesheet.NewTI(f.DefaultValue, !f.Required),
 		}
-		c.tis = append(c.tis, ti)
+		kti.ti.Validate = f.TI.Validator
+		if f.TI.Placeholder != "" {
+			kti.ti.Placeholder = f.TI.Placeholder
+		}
+		c.orderedTIs = append(c.orderedTIs, kti)
 	}
+	// sort keys from highest order to lowest order
+	slices.SortFunc(c.orderedTIs, func(a, b keyedTI) int {
+		return fields[b.key].TI.Order - fields[a.key].TI.Order
+	})
 
-	if len(c.tis) > 0 {
-		c.tis[0].Focus()
+	if len(c.orderedTIs) > 0 {
+		c.orderedTIs[0].ti.Focus()
 	}
 
 	return c
@@ -322,29 +342,29 @@ func (c *createModel) Update(msg tea.Msg) tea.Cmd {
 	}
 	// pass message to currently focused ti
 	var cmd tea.Cmd
-	c.tis[c.selected], cmd = c.tis[c.selected].Update(msg)
+	c.orderedTIs[c.selected].ti, cmd = c.orderedTIs[c.selected].ti.Update(msg)
 	return cmd
 }
 
 // Blurs the current ti, selects and focuses the next (indexically) one.
 func (c *createModel) focusNext() {
-	c.tis[c.selected].Blur()
+	c.orderedTIs[c.selected].ti.Blur()
 	c.selected += 1
-	if c.selected >= uint(len(c.tis)) { // jump to start
+	if c.selected >= uint(len(c.orderedTIs)) { // jump to start
 		c.selected = 0
 	}
-	c.tis[c.selected].Focus()
+	c.orderedTIs[c.selected].ti.Focus()
 }
 
 // Blurs the current ti, selects and focuses the previous (indexically) one.
 func (c *createModel) focusPrevious() {
-	c.tis[c.selected].Blur()
+	c.orderedTIs[c.selected].ti.Blur()
 	if c.selected == 0 { // jump to end
-		c.selected = uint(len(c.tis)) - 1
+		c.selected = uint(len(c.orderedTIs)) - 1
 	} else {
 		c.selected -= 1
 	}
-	c.tis[c.selected].Focus()
+	c.orderedTIs[c.selected].ti.Focus()
 }
 
 // Generates the corrollary value map from the TIs.
@@ -355,14 +375,14 @@ func (c *createModel) extractValuesFromTIs() (
 	values Values, missingRequireds []string,
 ) {
 	values = make(Values)
-	for i, k := range c.keyOrder {
-		val := strings.TrimSpace(c.tis[i].Value())
-		field := c.fields[k]
+	for _, kti := range c.orderedTIs {
+		val := strings.TrimSpace(kti.ti.Value())
+		field := c.fields[kti.key]
 		if val == "" && field.Required {
 			missingRequireds = append(missingRequireds, field.Title)
 		}
 
-		values[k] = val
+		values[kti.key] = val
 	}
 
 	return values, missingRequireds
@@ -372,21 +392,21 @@ func (c *createModel) extractValuesFromTIs() (
 func (c *createModel) View() string {
 	var sb strings.Builder
 
-	for i, key := range c.keyOrder {
+	for i, kti := range c.orderedTIs {
 		var title string
 		// color the title appropriately
-		if c.fields[key].Required {
-			title = tiFieldRequiredSty.Render(c.fields[key].Title + ": ")
+		if c.fields[kti.key].Required {
+			title = tiFieldRequiredSty.Render(c.fields[kti.key].Title + ": ")
 		} else {
-			title = tiFieldOptionalSty.Render(c.fields[key].Title + ": ")
+			title = tiFieldOptionalSty.Render(c.fields[kti.key].Title + ": ")
 		}
 		sb.WriteString(title)
 
 		// if window width is too small, bump TI to next line
-		if c.width <= (lipgloss.Width(title) + c.tis[i].Width) { // include equals for a 1 cell buffer
+		if c.width <= (lipgloss.Width(title) + c.orderedTIs[i].ti.Width) { // include equals for a 1 cell buffer
 			sb.WriteString("\n")
 		}
-		sb.WriteString(c.tis[i].View() + "\n")
+		sb.WriteString(c.orderedTIs[i].ti.View() + "\n")
 	}
 
 	// display errors, if they exist
@@ -407,9 +427,9 @@ func (c *createModel) Reset() error {
 	wg.Add(2)
 	// reset TIs
 	go func() {
-		for i := range c.tis {
-			c.tis[i].Reset()
-			c.tis[i].Blur()
+		for i := range c.orderedTIs {
+			c.orderedTIs[i].ti.Reset()
+			c.orderedTIs[i].ti.Blur()
 		}
 		wg.Done()
 	}()
@@ -421,8 +441,8 @@ func (c *createModel) Reset() error {
 	c.createErr = ""
 	c.inputErr = ""
 	c.selected = 0
-	if len(c.tis) > 0 {
-		c.tis[0].Focus()
+	if len(c.orderedTIs) > 0 {
+		c.orderedTIs[0].ti.Focus()
 	}
 	return nil
 }
@@ -439,8 +459,8 @@ func (c *createModel) SetArgs(_ *pflag.FlagSet, tokens []string) (
 		return "", nil, err
 	} else {
 		// set flag values as the starter values in their corresponding TI
-		for i, k := range c.keyOrder {
-			c.tis[i].SetValue(flagVals[k])
+		for i, kti := range c.orderedTIs {
+			c.orderedTIs[i].ti.SetValue(flagVals[kti.key])
 		}
 	}
 

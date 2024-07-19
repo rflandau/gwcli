@@ -23,10 +23,10 @@ var (
 
 func NewQueriesScheduledCreateAction() action.Pair {
 	fields := scaffoldcreate.Config{
-		kname: scaffoldcreate.NewField(true, "name"),
-		kdesc: scaffoldcreate.NewField(false, "description"),
-		kdur:  scaffoldcreate.NewField(true, "duration"),
-		kqry:  scaffoldcreate.NewField(true, "query"),
+		kname: scaffoldcreate.NewField(true, "name", 100),
+		kdesc: scaffoldcreate.NewField(false, "description", 90),
+		kdur:  scaffoldcreate.NewField(true, "duration", 140),
+		kqry:  scaffoldcreate.NewField(true, "query", 150),
 		kfreq: scaffoldcreate.Field{
 			Required:     true,
 			Title:        "frequency",
@@ -35,9 +35,14 @@ func NewQueriesScheduledCreateAction() action.Pair {
 			FlagName:     scaffoldcreate.DeriveFlagName("frequency"),
 			DefaultValue: "", // no default value
 			TI: struct {
+				Order       int
 				Placeholder string
 				Validator   func(s string) error
-			}{Placeholder: "* * * * *", Validator: uniques.CronRuneValidator},
+			}{
+				Order:       50,
+				Placeholder: "* * * * *",
+				Validator:   uniques.CronRuneValidator,
+			},
 		},
 	}
 
