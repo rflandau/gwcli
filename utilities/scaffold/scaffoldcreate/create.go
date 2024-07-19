@@ -21,6 +21,7 @@ import (
 	"fmt"
 	"gwcli/action"
 	"gwcli/clilog"
+	"gwcli/mother"
 	"gwcli/stylesheet"
 	"gwcli/treeutils"
 	"strings"
@@ -64,7 +65,7 @@ func NewCreateAction(aliases []string, singular string,
 		aliases,
 		func(c *cobra.Command, s []string) {
 			// get standard flags
-			_, err := c.Flags().GetBool("script")
+			script, err := c.Flags().GetBool("script")
 			if err != nil {
 				clilog.Tee(clilog.ERROR, c.ErrOrStderr(), err.Error()+"\n")
 				return
@@ -75,7 +76,14 @@ func NewCreateAction(aliases []string, singular string,
 				clilog.Tee(clilog.ERROR, c.ErrOrStderr(), err.Error()+"\n")
 				return
 			} else if mr != nil {
-				fmt.Fprintf(c.OutOrStdout(), errMissingRequiredFlags+"\n", mr)
+				if !script {
+					if err := mother.Spawn(c.Root(), c, s); err != nil {
+						clilog.Writer.Critical(err.Error())
+					}
+					return
+				} else {
+					fmt.Fprintf(c.OutOrStdout(), errMissingRequiredFlags+"\n", mr)
+				}
 				return
 			} else {
 				values = vals
