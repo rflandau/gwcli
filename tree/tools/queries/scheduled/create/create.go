@@ -27,13 +27,13 @@ func NewQueriesScheduledCreateAction() action.Pair {
 		kdesc: scaffoldcreate.NewField(false, "description", 90),
 		kdur:  scaffoldcreate.NewField(true, "duration", 140),
 		kqry:  scaffoldcreate.NewField(true, "query", 150),
-		kfreq: scaffoldcreate.Field{
+		kfreq: scaffoldcreate.Field{ // manually build so we have more control
 			Required:     true,
 			Title:        "frequency",
 			Usage:        stylesheet.FlagDurationDesc,
 			Type:         scaffoldcreate.Text,
-			FlagName:     scaffoldcreate.DeriveFlagName("frequency"),
-			DefaultValue: "", // no default value
+			FlagName:     "cron-frequency", // custom flag name
+			DefaultValue: "",               // no default value
 			TI: struct {
 				Order       int
 				Placeholder string
@@ -46,12 +46,7 @@ func NewQueriesScheduledCreateAction() action.Pair {
 		},
 	}
 
-	// assign validator functions
-	//durField := scaffoldcreate.NewField(true, "duration")
-
-	return scaffoldcreate.NewCreateAction(aliases,
-		"scheduled query",
-		fields, create)
+	return scaffoldcreate.NewCreateAction(aliases, "scheduled query", fields, create)
 }
 
 func create(_ scaffoldcreate.Config, vals map[string]string) (any, string, error) {
