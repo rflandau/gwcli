@@ -115,7 +115,7 @@ func new(root *navCmd, cur *cobra.Command, trailingTokens []string, _ *lipgloss.
 		p.WriteString(cur.Name())
 		cur.LocalFlags().VisitAll(func(f *pflag.Flag) {
 			if f.Changed {
-				p.WriteString(fmt.Sprintf(" --%v=%v", f.Name, f.Value))
+				p.WriteString(fmt.Sprintf(" --%v=\"%v\"", f.Name, f.Value))
 			}
 		})
 		m.ti.SetValue(p.String())
@@ -371,6 +371,10 @@ func processActionHandoff(m *Mother, actionCmd *cobra.Command, remTokens []strin
 
 	// NOTE: the inherited flags here may have a combination of parsed and !parsed flags
 	// persistent commands defined below root may not be parsed
+
+	// strip quotes from tokens before passing into SetArg
+	remTokens = quoteSplitTokens(remTokens)
+
 	var (
 		invalid string
 		cmds    []tea.Cmd
@@ -394,6 +398,48 @@ func processActionHandoff(m *Mother, actionCmd *cobra.Command, remTokens []strin
 		return tea.Sequence(cmds...)
 	}
 	return nil
+}
+
+// Walk through the given tokens
+// (of the form token[x] = `--flag=value` or (token[y]=`--flag`, token[y+1]= `value`))
+// in order to strip quotes off of parameters and split the former form into the latter for ease of
+// stripping.
+// Operates in O(n) time, but costs at least O(2n) memory.
+//
+// len(strippedTokens) >= len(oldTokens)
+func quoteSplitTokens(oldTokens []string) (strippedTokens []string) {
+	var prevWasFlag bool // previous item was a flag
+	for _, tkn := range oldTokens {
+		if strings.HasPrefix(tkn, "--") || strings.HasPrefix(tkn, "-") { // this is a flag
+			// check for form `--flag=value`
+			if flag, value, found := strings.Cut(tkn, "="); found {
+				// because we already know this is not a bare parameter (the -- check above)
+				// we can safely assume a cut on = is valid and not due to = in the parameter
+
+				strippedTokens = append(strippedTokens, flag)
+				strippedTokens = append(strippedTokens, strings.Trim(value, "\"'"))
+				continue
+			}
+			// this is a bare flag, next value is likely a parameter
+			// (unless this is a bool flag, but we do not know that yet)
+			prevWasFlag = true
+			strippedTokens = append(strippedTokens, tkn)
+			continue
+		}
+		// if the previous token was a flag and this token is not
+		// it is likely a parameter: strip quote off of it
+		if prevWasFlag {
+			strippedTokens = append(strippedTokens, strings.Trim(tkn, "\"'"))
+			prevWasFlag = false
+			continue
+		}
+
+		// if previous token was not a flag and neither is this token, this is a raw arg
+		// leave it untouched
+		strippedTokens = append(strippedTokens, tkn)
+	}
+
+	return
 }
 
 // Call *after* moving to update the current command suggestions
