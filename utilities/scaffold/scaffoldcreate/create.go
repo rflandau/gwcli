@@ -36,6 +36,14 @@ const (
 	errMissingRequiredFlags = "missing required flags %v"
 )
 
+// #region local styles
+var (
+	tiFieldRequiredSty = stylesheet.Header1Style
+	tiFieldOptionalSty = stylesheet.Header2Style
+)
+
+//#endregion
+
 // keys -> Field; used as (ReadOnly) configuration for this creation instance
 type Config = map[string]Field
 
@@ -228,7 +236,10 @@ func newCreateModel(fields Config, singular string, cf CreateFunc) *createModel 
 		// generate the key order
 		c.keyOrder = append(c.keyOrder, k)
 		// generate the TI for the field
-		c.tis = append(c.tis, stylesheet.NewTI(v.DefaultValue, !v.Required))
+		ti := stylesheet.NewTI(v.DefaultValue, !v.Required)
+		ti.Validate = v.TI.Validator
+		ti.Placeholder = v.TI.Placeholder
+		c.tis = append(c.tis, ti)
 	}
 
 	if len(c.tis) > 0 {
@@ -282,8 +293,17 @@ func (c *createModel) View() string {
 	var sb strings.Builder
 
 	for i, key := range c.keyOrder {
+		var title string
+		if c.fields[key].Required {
+			title = tiFieldRequiredSty.Render(c.fields[key].Title + ": ")
+		} else {
+			title = tiFieldOptionalSty.Render(c.fields[key].Title + ": ")
+
+		}
 		// pair titles and their TIs
-		sb.WriteString(c.fields[key].Title + ": " + c.tis[i].View() + "\n")
+		sb.WriteString(
+			title + c.tis[i].View() + "\n",
+		)
 	}
 
 	// may need to chomp the last newline
