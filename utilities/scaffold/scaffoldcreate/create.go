@@ -23,12 +23,15 @@ import (
 	"gwcli/clilog"
 	"gwcli/mother"
 	"gwcli/stylesheet"
+	"gwcli/stylesheet/colorizer"
 	"gwcli/treeutils"
+	"os"
 	"strings"
 	"sync"
 
 	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/charmbracelet/x/term"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 )
@@ -205,6 +208,8 @@ func installFlagsFromFields(fields Config) pflag.FlagSet {
 
 //#region interactive mode (model) implementation
 
+const defaultWidth = 80
+
 type mode uint // state of the interactive application
 
 const (
@@ -215,6 +220,8 @@ const (
 // interactive model that builds out inputs based on the read-only Config supplied on creation.
 type createModel struct {
 	mode mode
+
+	width int // tty width
 
 	singular string // "macro", "search", etc
 
@@ -236,6 +243,7 @@ type createModel struct {
 func newCreateModel(fields Config, singular string, cf CreateFunc) *createModel {
 	c := &createModel{
 		mode:     inputting,
+		width:    defaultWidth,
 		singular: singular,
 		fields:   fields,
 		tis:      make([]textinput.Model, 0),
@@ -265,9 +273,9 @@ func (c *createModel) Update(msg tea.Msg) tea.Cmd {
 	if c.mode == quitting {
 		return nil
 	}
-	if msg, ok := msg.(tea.KeyMsg); ok {
+	if keyMsg, ok := msg.(tea.KeyMsg); ok {
 		c.inputErr = "" // clear last input error
-		switch msg.Type {
+		switch keyMsg.Type {
 		case tea.KeyUp, tea.KeyTab:
 			c.focusPrevious()
 			return textinput.Blink
@@ -275,24 +283,29 @@ func (c *createModel) Update(msg tea.Msg) tea.Cmd {
 			c.focusNext()
 			return textinput.Blink
 		case tea.KeyEnter:
-			c.createErr = "" // clear last error
-			// extract values from TIs
-			values, mr := c.extractValuesFromTIs()
-			if mr != nil {
-				c.inputErr = fmt.Sprintf("%v are required", mr)
-				return nil
+			if keyMsg.Alt { // only submit on alt+enter
+				c.createErr = "" // clear last error
+				// extract values from TIs
+				values, mr := c.extractValuesFromTIs()
+				if mr != nil {
+					c.inputErr = fmt.Sprintf("%v are required", mr)
+					return nil
+				}
+				id, invalid, err := c.cf(c.fields, values)
+				if err != nil {
+					c.createErr = err.Error()
+				} else if invalid != "" {
+					c.inputErr = invalid
+					return nil
+				}
+				// done, die
+				c.mode = quitting
+				return tea.Println(fmt.Sprintf(createdSuccessfully, c.singular, id))
 			}
-			id, invalid, err := c.cf(c.fields, values)
-			if err != nil {
-				c.createErr = err.Error()
-			} else if invalid != "" {
-				c.inputErr = invalid
-				return nil
-			}
-			// done, die
-			c.mode = quitting
-			return tea.Println(fmt.Sprintf(createdSuccessfully, c.singular, id))
 		}
+	} else if sizeMsg, ok := msg.(tea.WindowSizeMsg); ok {
+		c.width = sizeMsg.Width
+		return nil
 	}
 	// pass message to currently focused ti
 	var cmd tea.Cmd
@@ -356,11 +369,12 @@ func (c *createModel) View() string {
 		sb.WriteString(
 			title + c.tis[i].View() + "\n",
 		)
+		// TODO wrap TIs to newline if window width is < longest title width+TI width
 	}
 
 	// display errors, if they exist
-	sb.WriteString(c.inputErr + "\n")
-	sb.WriteString(c.createErr + "\n")
+	// note: result will always be an error string, as we exit on success
+	sb.WriteString(colorizer.SubmitString("alt+enter", c.inputErr, c.createErr, c.width))
 
 	return sb.String()
 }
@@ -413,7 +427,17 @@ func (c *createModel) SetArgs(_ *pflag.FlagSet, tokens []string) (
 		}
 	}
 
-	return "", nil, nil
+	return "", []tea.Cmd{fetchWindowSize}, nil
+}
+
+// Queries for avaialble window size so we can wrap text by width, once this arrives.
+// NOTE: width and height are returned, but create only uses width.
+func fetchWindowSize() tea.Msg {
+	w, h, err := term.GetSize(os.Stdin.Fd())
+	if err != nil {
+		clilog.Writer.Errorf("Failed to fetch terminal size: %v", err)
+	}
+	return tea.WindowSizeMsg{Width: w, Height: h}
 }
 
 //#endregion
