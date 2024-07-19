@@ -51,6 +51,8 @@
         - somewhat conflicts with the viewport wrapper
         - remember to disable the table's keybinds, other than filtering
 
-- suuport more FieldTypes in scaffold create
+- support more FieldTypes in scaffold create
     - radio button
     - checkbox
+
+- add aliases to the dynamic search generation at Mother's prompt
