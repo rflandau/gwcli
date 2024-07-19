@@ -31,6 +31,7 @@ import (
 
 	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/charmbracelet/lipgloss"
 	"github.com/charmbracelet/x/term"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
@@ -370,17 +371,19 @@ func (c *createModel) View() string {
 
 	for i, key := range c.keyOrder {
 		var title string
+		// color the title appropriately
 		if c.fields[key].Required {
 			title = tiFieldRequiredSty.Render(c.fields[key].Title + ": ")
 		} else {
 			title = tiFieldOptionalSty.Render(c.fields[key].Title + ": ")
-
 		}
-		// pair titles and their TIs
-		sb.WriteString(
-			title + c.tis[i].View() + "\n",
-		)
-		// TODO wrap TIs to newline if window width is < longest title width+TI width
+		sb.WriteString(title)
+
+		// if window width is too small, bump TI to next line
+		if c.width <= (lipgloss.Width(title) + c.tis[i].Width) { // include equals for a 1 cell buffer
+			sb.WriteString("\n")
+		}
+		sb.WriteString(c.tis[i].View() + "\n")
 	}
 
 	// display errors, if they exist
