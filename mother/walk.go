@@ -38,7 +38,7 @@ type walkResult struct {
 	builtinFunc func(*Mother, []string) tea.Cmd
 
 	// contains args for actions
-	remainingTokens []string // any tokens remaining for later processing by walk caller
+	remainingString string // any tokens remaining for later processing by walk caller
 }
 
 // Recursively walk the tokens of the exploded user input until we run out or
@@ -67,7 +67,7 @@ func walk(dir *cobra.Command, tokens []string) walkResult {
 			status:          foundBuiltin,
 			builtinStr:      curToken,
 			builtinFunc:     bif,
-			remainingTokens: tokens[1:],
+			remainingString: strings.Join(tokens[1:], " "),
 		}
 	}
 
@@ -108,7 +108,7 @@ func walk(dir *cobra.Command, tokens []string) walkResult {
 			endCommand:      nil,
 			status:          invalidCommand,
 			errString:       fmt.Sprintf("unknown command '%s'. Press F1 or type 'help' for relevant commands.", curToken),
-			remainingTokens: tokens[1:],
+			remainingString: strings.Join(tokens[1:], " "),
 		}
 	}
 
@@ -117,7 +117,7 @@ func walk(dir *cobra.Command, tokens []string) walkResult {
 		return walkResult{
 			endCommand:      invocation,
 			status:          foundAction,
-			remainingTokens: tokens[1:],
+			remainingString: strings.Join(tokens[1:], " "),
 		}
 	} else { // nav
 		// navigate given path

@@ -23,6 +23,7 @@ import (
 	"strings"
 
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/google/shlex"
 	"github.com/gravwell/gravwell/v3/ingest/log"
 
 	"github.com/charmbracelet/bubbles/textinput"
@@ -307,7 +308,8 @@ func processInput(m *Mother) tea.Cmd {
 		m.updateSuggestions()
 		return historyCmd
 	case foundAction:
-		cmd := processActionHandoff(m, wr.endCommand, wr.remainingTokens)
+		// reconstitute remaining tokens to re-split them via shlex
+		cmd := processActionHandoff(m, wr.endCommand, wr.remainingString)
 		return tea.Sequence(historyCmd, cmd)
 
 	case invalidCommand:
@@ -344,8 +346,14 @@ func (m *Mother) promptString() string {
 // Returns commands to run after the push-to-history command.
 // These commands are either commands the action wants run to setup or an error print if an error
 // occurred
-func processActionHandoff(m *Mother, actionCmd *cobra.Command, remTokens []string) tea.Cmd {
+func processActionHandoff(m *Mother, actionCmd *cobra.Command, remString string) tea.Cmd {
 	m.mode = handoff
+
+	// split remaining tokens
+	args, err := shlex.Split(remString)
+	if err != nil {
+		clilog.Writer.Errorf("failed to split remaining string %v: %v", remString, err)
+	}
 
 	// look up the subroutines to load
 	m.active.model, _ = action.GetModel(actionCmd) // save add-on subroutines
@@ -364,7 +372,7 @@ func processActionHandoff(m *Mother, actionCmd *cobra.Command, remTokens []strin
 			fStr.WriteString(fmt.Sprintf("%s - %s", f.Name, f.Value))
 		})
 		clilog.Writer.Debugf("Passing args (%v) and inherited flags (%#v) into %s\n",
-			remTokens,
+			remString,
 			fStr.String(),
 			m.active.command.Name())
 	}
@@ -372,22 +380,18 @@ func processActionHandoff(m *Mother, actionCmd *cobra.Command, remTokens []strin
 	// NOTE: the inherited flags here may have a combination of parsed and !parsed flags
 	// persistent commands defined below root may not be parsed
 
-	// strip quotes from tokens before passing into SetArg
-	remTokens = quoteSplitTokens(remTokens)
-
 	var (
 		invalid string
 		cmds    []tea.Cmd
-		err     error
 	)
 	if invalid, cmds, err = m.active.model.SetArgs(
-		m.active.command.InheritedFlags(), remTokens,
+		m.active.command.InheritedFlags(), args,
 	); err != nil { // undo and return
 		m.unsetAction()
 
-		errString := fmt.Sprintf("Failed to set args %v: %v", remTokens, err)
+		errString := fmt.Sprintf("Failed to set args %v: %v", remString, err)
 		clilog.Writer.Errorf("%v\nactive model %v\nactive command%v",
-			errString, m.active.model, remTokens)
+			errString, m.active.model, remString)
 
 		return tea.Println(errString)
 	} else if invalid != "" {
