@@ -361,7 +361,7 @@ func processActionHandoff(m *Mother, actionCmd *cobra.Command, remString string)
 		m.unsetAction()
 		str := fmt.Sprintf("Did not find actor associated to '%s'.", actionCmd.Name())
 		clilog.Writer.Warnf(str)
-		return tea.Printf("Developer str: %v. Please submit a bug report.\n", str)
+		return tea.Printf("Developer error: %v. Please submit a bug report.\n", str)
 	}
 	m.active.command = actionCmd
 
