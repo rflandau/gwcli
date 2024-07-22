@@ -1,20 +1,56 @@
-// A create action creates a shallow list of inputs for the user to fill via flags or interactive
-// TIs before being passed back to the progenitor to transform into usable data for their create
-// function.
-//
-// The available fields are fairly configurable, the progentior provides their own map of Field
-// structs, and easily extensible, the struct can have more options or formats bolted on without too
-// much trouble.
-//
-// This scaffold is a bit easier to extend than Delete and List, given it did not require generics.
-//
-// Look to the scheduled query creation action (external to the one built into DataScope) or macro
-// creation action as two examples of implementation styles.
-//
-// ! Once a Config is given by the caller, it should be considered ReadOnly.
-//
-// NOTE: More complex creation with nested options and mutli-stage flows should be built
-// independently. This scaffold is intended for simple, handful-of-field creations.
+/*
+A create action creates a shallow list of inputs for the user to fill via flags or interactive
+TIs before being passed back to the progenitor to transform into usable data for their create
+function.
+
+The available fields are fairly configurable, the progentior provides their own map of Field
+structs, and easily extensible, the struct can have more options or formats bolted on without too
+much trouble.
+
+This scaffold is a bit easier to extend than Delete and List, given it did not require generics.
+
+Look to the scheduled query creation action (external to the one built into DataScope) or macro
+creation action as two examples of implementation styles.
+
+! Once a Config is given by the caller, it should be considered ReadOnly.
+
+NOTE: More complex creation with nested options and mutli-stage flows should be built
+independently. This scaffold is intended for simple, handful-of-field creations.
+
+Example implementation:
+
+	func NewCreateAction() action.Pair {
+		n := scaffoldcreate.NewField(true, "name", 100)
+		d := scaffoldcreate.NewField(true, "value", 90)
+		fields := scaffoldcreate.Config{
+			"name":  n,
+			"value": d,
+			"field3": scaffoldcreate.Field{
+				Required:      true,
+				Title:         "field3",
+				Usage:         "field 3 usage",
+				Type:          scaffoldcreate.Text,
+				FlagName:      "flagn",
+				FlagShorthand: 'f',
+				DefaultValue:  "",
+				TI: struct {
+					Order       int
+					Placeholder string
+					Validator   func(s string) error
+				}{
+					Order: 80,
+				},
+			},
+		}
+
+		return scaffoldcreate.NewCreateAction("singular noun", fields, create)
+	}
+
+	func create(_ scaffoldcreate.Config, vals scaffoldcreate.Values) (any, string, error) {
+		id, err := connection.Client.X()
+		return id, "", err
+	}
+*/
 package scaffoldcreate
 
 import (
