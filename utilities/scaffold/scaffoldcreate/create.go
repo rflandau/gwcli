@@ -98,8 +98,12 @@ type CreateFunc func(cfg Config, values Values) (id any, invalid string, err err
 func NewCreateAction(singular string,
 	fields Config,
 	create CreateFunc) action.Pair {
+	// nil check singular
+	if singular == "" {
+		panic("")
+	}
+
 	// pull flags from provided fields
-	//const mappedString = "mapped field %v (key: %v) to %v flag %v"
 	var flags pflag.FlagSet = installFlagsFromFields(fields)
 
 	cmd := treeutils.NewActionCommand(
