@@ -30,6 +30,18 @@ Tree nodes (commands that require further input/are submenus), such as `user`, a
 
 # Design and Philosophy
 
+## Command Tree Generation
+
+The command tree is self-building: Each nav knows navs and actions underneath it, 'recurring' downward until only actions are returned.
+
+Root begins generation as it is just a Nav. Take a look at `Execute()` in root.go; you can see that root is given a series of `.New*Nav` and `.New*Action`. Diving into one of the `.New*Nav` subroutines shows that it is built in the same way as root: given a series of self-building Navs and a list of actions that can be invoked at that level.
+
+### Creating a New Nav
+
+To create a new Nav, just create a `.New*Nav` command and add it to the list of nav for the parent nav you want this nav to be accessible under.
+
+The package structure of gwcli reflects the command tree, but there is no real reason this has to be the case.
+
 ## "Global" Variables
 
 A number of development features exist as global singletons driven by static subroutines operating on a single, underlying variable instance.
