@@ -360,7 +360,7 @@ func processActionHandoff(m *Mother, actionCmd *cobra.Command, remString string)
 	if m.active.model == nil {                     // undo and return
 		m.unsetAction()
 		str := fmt.Sprintf("Did not find actor associated to '%s'.", actionCmd.Name())
-		clilog.Writer.Warnf(str)
+		clilog.Writer.Warnf(str+" %#v", actionCmd)
 		return tea.Printf("Developer error: %v. Please submit a bug report.\n", str)
 	}
 	m.active.command = actionCmd
