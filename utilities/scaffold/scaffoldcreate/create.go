@@ -237,12 +237,18 @@ func newCreateModel(fields Config, singular string, cf CreateFunc) *createModel 
 		// generate the TI
 		kti := keyedTI{
 			key: k,
-			ti:  stylesheet.NewTI(f.DefaultValue, !f.Required),
 		}
-		kti.ti.Validate = f.TI.Validator
-		if f.TI.Placeholder != "" {
-			kti.ti.Placeholder = f.TI.Placeholder
+
+		if f.CustomTIFunc == nil {
+			kti.ti = stylesheet.NewTI(f.DefaultValue, !f.Required)
+			kti.ti.Validate = f.TI.Validator
+			if f.TI.Placeholder != "" {
+				kti.ti.Placeholder = f.TI.Placeholder
+			}
+		} else {
+			kti.ti = f.CustomTIFunc()
 		}
+
 		c.orderedTIs = append(c.orderedTIs, kti)
 	}
 	// sort keys from highest order to lowest order

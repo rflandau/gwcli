@@ -4,6 +4,7 @@ import (
 	"errors"
 	"strings"
 
+	"github.com/charmbracelet/bubbles/textinput"
 	"github.com/spf13/pflag"
 )
 
@@ -42,6 +43,7 @@ type Field struct {
 		// Whole string validation is left to the createFunc.
 		Validator func(s string) error
 	}
+	CustomTIFunc func() textinput.Model
 }
 
 // Returns a new field with only the required fields. Defaults to a Text type.
