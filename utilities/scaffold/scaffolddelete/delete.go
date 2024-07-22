@@ -1,58 +1,56 @@
-package scaffolddelete
+/*
+A delete action consumes a list of delete-able items, allowing the user to select them
+interactively or by passing a (numeric or UUID) ID.
 
-/**
- * A delete action consumes a list of delete-able items, allowing the user to select them
- * interactively or by passing a (numeric or UUID) ID.
- *
- * Delete actions have the --dryrun and --id default flags.
- *
- * Implementations will probably look a lot like:
- *
-var aliases []string = []string{}
+Delete actions have the --dryrun and --id default flags.
 
-func New[pkg]DeleteAction() action.Pair {
-	return scaffold.NewDeleteAction(aliases, [singular], [plural], del,
-		func() ([]scaffold.Item[[integer]], error) {
-			couldDelete, err := connection.Client.GetAll[X]()
-			if err != nil {
-				return nil, err
-			}
-			slices.SortFunc(couldDelete, func(m1, m2 types.[Y]) int {
-				return strings.Compare(m1.Name, m2.Name)
+Implementations will probably look a lot like:
+
+	var aliases []string = []string{}
+
+	func New[pkg]DeleteAction() action.Pair {
+		return scaffold.NewDeleteAction(aliases, [singular], [plural], del,
+			func() ([]scaffold.Item[[integer]], error) {
+				couldDelete, err := connection.Client.GetAll[X]()
+				if err != nil {
+					return nil, err
+				}
+				slices.SortFunc(couldDelete, func(m1, m2 types.[Y]) int {
+					return strings.Compare(m1.Name, m2.Name)
+				})
+				var items = make([]scaffold.Item[[integer]], len(couldDelete))
+				for i := range couldDelete {
+					items[i] = [pkg]Item{id: couldDelete[i].ID, name: couldDelete[i].Name}
+				}
+				return items, nil
 			})
-			var items = make([]scaffold.Item[[integer]], len(couldDelete))
-			for i := range couldDelete {
-				items[i] = [pkg]Item{id: couldDelete[i].ID, name: couldDelete[i].Name}
-			}
-			return items, nil
-		})
-}
-
-func del(dryrun bool, id uint64) error {
-	if dryrun {
-		_, err := connection.Client.Get[X](id)
-		return err
 	}
-	return connection.Client.Delete[X](id)
-}
 
-type [pkg]Item struct {
-	id   [integer]
-	name string
-}
+	func del(dryrun bool, id uint64) error {
+		if dryrun {
+			_, err := connection.Client.Get[X](id)
+			return err
+		}
+		return connection.Client.Delete[X](id)
+	}
 
-type [pkg]Item struct {
-	id   [integer]
-	name string
-}
+	type [pkg]Item struct {
+		id   [integer]
+		name string
+	}
+
+	type [pkg]Item struct {
+		id   [integer]
+		name string
+	}
 
 var _ scaffold.Item[[integer]] = [pkg]Item{}
 
 func (pi [pkg]Item) ID() [integer]       { return pi.id }
 func (pi [pkg]Item) FilterValue() string { return pi.name }
 func (pi [pkg]Item) String() string      { return pi.name }
- *
 */
+package scaffolddelete
 
 import (
 	"fmt"
