@@ -242,6 +242,7 @@ func (c *createModel) Update(msg tea.Msg) tea.Cmd {
 				id, invalid, err := c.cf(c.fields, values)
 				if err != nil {
 					c.createErr = err.Error()
+					return nil
 				} else if invalid != "" {
 					c.inputErr = invalid
 					return nil
