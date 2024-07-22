@@ -298,6 +298,13 @@ func processInput(m *Mother) tea.Cmd {
 		m.updateSuggestions()
 		return historyCmd
 	case foundAction:
+		// check for -h and confirm -h is not nested with a different, long flag (ex: -history)
+		if _, after, found := strings.Cut(wr.remainingString, "-h"); found &&
+			(len(after) == 0 || after[0] == ' ') {
+
+			return tea.Sequence(historyCmd, builtins["help"](m, given))
+		}
+
 		// reconstitute remaining tokens to re-split them via shlex
 		cmd := processActionHandoff(m, wr.endCommand, wr.remainingString)
 		return tea.Sequence(historyCmd, cmd)
