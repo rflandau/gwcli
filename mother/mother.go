@@ -359,9 +359,9 @@ func processActionHandoff(m *Mother, actionCmd *cobra.Command, remString string)
 	m.active.model, _ = action.GetModel(actionCmd) // save add-on subroutines
 	if m.active.model == nil {                     // undo and return
 		m.unsetAction()
-
-		return tea.Printf("Developer issue: Did not find actor associated to '%s'."+
-			" Please submit a bug report.\n", actionCmd.Name())
+		str := fmt.Sprintf("Did not find actor associated to '%s'.", actionCmd.Name())
+		clilog.Writer.Warnf(str)
+		return tea.Printf("Developer str: %v. Please submit a bug report.\n", str)
 	}
 	m.active.command = actionCmd
 
