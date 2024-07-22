@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"gwcli/action"
 	"gwcli/connection"
-	"gwcli/utilities/scaffold"
+	"gwcli/utilities/scaffold/scaffolddelete"
 	"math"
 	"slices"
 	"strings"
@@ -17,8 +17,8 @@ var (
 )
 
 func NewQueriesScheduledDeleteAction() action.Pair {
-	return scaffold.NewDeleteAction(aliases,
-		"query", "queries", del, func() ([]scaffold.Item[int32], error) {
+	return scaffolddelete.NewDeleteAction(aliases,
+		"query", "queries", del, func() ([]scaffolddelete.Item[int32], error) {
 			//var items []list.Item
 			ss, err := connection.Client.GetScheduledSearchList()
 			if err != nil {
@@ -28,7 +28,7 @@ func NewQueriesScheduledDeleteAction() action.Pair {
 			slices.SortFunc(ss, func(m1, m2 types.ScheduledSearch) int {
 				return strings.Compare(m1.Name, m2.Name)
 			})
-			var items = make([]scaffold.Item[int32], len(ss))
+			var items = make([]scaffolddelete.Item[int32], len(ss))
 			for i := range ss {
 				items[i] = scheduledSearchItem{
 					id:       ss[i].ID,
@@ -59,7 +59,7 @@ type scheduledSearchItem struct {
 	duration int64
 }
 
-var _ scaffold.Item[int32] = scheduledSearchItem{}
+var _ scaffolddelete.Item[int32] = scheduledSearchItem{}
 
 func (ssi scheduledSearchItem) ID() int32 {
 	return ssi.id

@@ -1,4 +1,4 @@
-package scaffold
+package scaffolddelete
 
 /**
  * A delete action consumes a list of delete-able items, allowing the user to select them

@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"gwcli/action"
 	"gwcli/connection"
-	"gwcli/utilities/scaffold"
+	"gwcli/utilities/scaffold/scaffolddelete"
 	"slices"
 	"strings"
 
@@ -16,8 +16,8 @@ var (
 )
 
 func NewMacroDeleteAction() action.Pair {
-	return scaffold.NewDeleteAction(aliases, "macro", "macros", del,
-		func() ([]scaffold.Item[uint64], error) {
+	return scaffolddelete.NewDeleteAction(aliases, "macro", "macros", del,
+		func() ([]scaffolddelete.Item[uint64], error) {
 			ms, err := connection.Client.GetUserGroupsMacros()
 			if err != nil {
 				return nil, err
@@ -25,7 +25,7 @@ func NewMacroDeleteAction() action.Pair {
 			slices.SortFunc(ms, func(m1, m2 types.SearchMacro) int {
 				return strings.Compare(m1.Name, m2.Name)
 			})
-			var items = make([]scaffold.Item[uint64], len(ms))
+			var items = make([]scaffolddelete.Item[uint64], len(ms))
 			for i := range ms {
 				items[i] = macroItem{
 					id:          ms[i].ID,
@@ -53,7 +53,7 @@ type macroItem struct {
 	expansion   string
 }
 
-var _ scaffold.Item[uint64] = macroItem{}
+var _ scaffolddelete.Item[uint64] = macroItem{}
 
 func (mi macroItem) ID() uint64          { return mi.id }
 func (mi macroItem) FilterValue() string { return mi.name }
