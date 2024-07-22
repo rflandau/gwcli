@@ -291,17 +291,7 @@ func processInput(m *Mother) tea.Cmd {
 	// split on action or nav
 	switch wr.status {
 	case foundBuiltin:
-		// if the built-in is not the first command, we don't care about it
-		// so re-test only the first token
-		if bi, ok := builtins[given[0]]; ok {
-			return tea.Sequence(historyCmd, bi(m, given[1:]))
-		}
-		clilog.Writer.Errorf(
-			"walk returned built in, but first token in %v is not a known builtin", given)
-		return tea.Sequence(
-			historyCmd,
-			tea.Println("An error has occurred: unknown builtin. No action taken."),
-		)
+		return tea.Sequence(historyCmd, wr.builtinFunc(m, given[1:]))
 	case foundNav:
 		m.pwd = wr.endCommand // move mother to target directory
 		// update her suggestions

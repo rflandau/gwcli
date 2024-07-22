@@ -33,9 +33,7 @@ type walkResult struct {
 	status     walkStatus     // ending state
 	errString  string
 
-	// builtin function information, if relevant (else Zero vals)
-	builtinStr  string
-	builtinFunc func(*Mother, []string) tea.Cmd
+	builtinFunc func(*Mother, []string) tea.Cmd // built-in func to invoke
 
 	// contains args for actions
 	remainingString string // any tokens remaining for later processing by walk caller
@@ -65,7 +63,6 @@ func walk(dir *cobra.Command, tokens []string) walkResult {
 		return walkResult{
 			endCommand:      nil,
 			status:          foundBuiltin,
-			builtinStr:      curToken,
 			builtinFunc:     bif,
 			remainingString: strings.Join(tokens[1:], " "),
 		}
