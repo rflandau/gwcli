@@ -168,3 +168,5 @@ Stylesheet provides a shared repository for style constants. The intention is fo
 Logging is all done via the clilog package, which is just an implementation of the gravwell ingest logger.
 
 Stylistically speaking, callees log relevant data only they have access to, but return errors for the caller to log, lest both callee and caller try to log the same error.
+
+*Please note*: Most errors should be recoverable while in interactive mode and therefore panics are profane (panic/recover is slow as hell). However, panicking during setup is perfectly acceptable; errors during setup are almost certainly developer error, therefore the earlier they arise the better.
