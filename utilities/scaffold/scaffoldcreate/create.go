@@ -59,7 +59,7 @@ type Values = map[string]string
 // signature the supplied creation function must match
 type CreateFunc func(cfg Config, values Values) (id any, invalid string, err error)
 
-func NewCreateAction(aliases []string, singular string,
+func NewCreateAction(singular string,
 	fields Config,
 	create CreateFunc) action.Pair {
 	// pull flags from provided fields
@@ -67,10 +67,10 @@ func NewCreateAction(aliases []string, singular string,
 	var flags pflag.FlagSet = installFlagsFromFields(fields)
 
 	cmd := treeutils.NewActionCommand(
-		"create",
-		"create a "+singular,
-		"create a new "+singular,
-		aliases,
+		"create",                 // use
+		"create a "+singular,     // short
+		"create a new "+singular, // long
+		[]string{},               // aliases
 		func(c *cobra.Command, s []string) {
 			// get standard flags
 			script, err := c.Flags().GetBool("script")

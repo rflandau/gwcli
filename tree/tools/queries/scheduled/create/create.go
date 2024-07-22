@@ -17,10 +17,6 @@ const ( // field keys
 	kdur  = "dur"
 )
 
-var (
-	aliases []string = []string{}
-)
-
 func NewQueriesScheduledCreateAction() action.Pair {
 	fields := scaffoldcreate.Config{
 		kname: scaffoldcreate.NewField(true, "name", 100),
@@ -47,7 +43,7 @@ func NewQueriesScheduledCreateAction() action.Pair {
 		},
 	}
 
-	return scaffoldcreate.NewCreateAction(aliases, "scheduled query", fields, create)
+	return scaffoldcreate.NewCreateAction("scheduled query", fields, create)
 }
 
 func create(_ scaffoldcreate.Config, vals map[string]string) (any, string, error) {
