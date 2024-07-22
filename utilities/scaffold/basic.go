@@ -1,28 +1,26 @@
-package scaffold
+/*
+A basic action is the simplest action: it does its thing and returns a string to be printed to the
+terminal. Give it the function you want performed when the action is invoked and have it return
+whatever string value you want printed to the screen, if at all.
 
-/**
- * A basic action is the simplest action: it does its thing and returns a string to be printed to the
- * terminal. Give it the function you want performed when the action is invoked and have it return
- * whatever string value you want printed to the screen, if at all.
- *
- * Basic actions have no default flags and will not handle flags unless a flagFunc is given.
- *
- * Implementations will probably look a lot like:
- *
-var (
-	use     string   = ""
-	short   string   = ""
-	long    string   = ""
-	aliases []string = []string{}
-)
+Basic actions have no default flags and will not handle flags unless a flagFunc is given.
 
-func New[parentpkg][pkg]Action() action.Pair {
-	return scaffold.NewBasicAction(use, short, long, aliases, func(*cobra.Command, *pflag.FlagSet) (string, tea.Cmd) {
+Implementations will probably look a lot like:
 
-	}, nil)
-}
- *
+	var (
+		use     string   = ""
+		short   string   = ""
+		long    string   = ""
+		aliases []string = []string{}
+	)
+
+	func New[parentpkg][pkg]Action() action.Pair {
+		return scaffold.NewBasicAction(use, short, long, aliases, func(*cobra.Command, *pflag.FlagSet) (string, tea.Cmd) {
+
+		}, nil)
+	}
 */
+package scaffold
 
 import (
 	"fmt"
