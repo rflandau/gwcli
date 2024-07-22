@@ -15,7 +15,7 @@ var (
 )
 
 func New[parentpkg]ListAction() action.Pair {
-	return scaffold.NewListAction(short, long, aliases, defaultColumns,
+	return scaffoldlist.NewListAction(short, long, aliases, defaultColumns,
 		types.[X]{}, list, flags)
 }
 
