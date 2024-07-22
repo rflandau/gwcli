@@ -11,6 +11,7 @@ import (
 	"gwcli/clilog"
 	"gwcli/connection"
 	"gwcli/group"
+	"gwcli/tree/extractors"
 	"gwcli/tree/kits"
 	"gwcli/tree/query"
 	"gwcli/tree/tools"
@@ -149,6 +150,7 @@ func Execute(args []string) int {
 			tools.NewToolsNav(),
 			kits.NewKitsNav(),
 			user.NewUserNav(),
+			extractors.NewExtractorsNav(),
 		},
 		[]action.Pair{
 			query.NewQueryAction(),

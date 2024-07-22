@@ -42,6 +42,14 @@
         "remotePath": "${workspaceFolder}",
         "port": 43000,
         "host": "127.0.0.1"
-    }
+    },
+    {
+        "name": "Cobra `sch query create -h`",
+        "type": "go",
+        "request": "launch",
+        "mode": "debug",
+        "program": "${workspaceRoot}",
+        "args": ["-u=admin", "-password=changeme", "--insecure", "--script", "tools","queries","create"]
+    },
     ]
 }
