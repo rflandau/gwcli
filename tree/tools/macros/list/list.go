@@ -4,7 +4,7 @@ import (
 	"gwcli/action"
 	"gwcli/clilog"
 	"gwcli/connection"
-	"gwcli/utilities/scaffold"
+	"gwcli/utilities/scaffold/scaffoldlist"
 
 	grav "github.com/gravwell/gravwell/v3/client"
 	"github.com/spf13/pflag"
@@ -22,7 +22,7 @@ var (
 )
 
 func NewMacroListAction() action.Pair {
-	return scaffold.NewListAction(short, long, aliases, defaultColumns,
+	return scaffoldlist.NewListAction(short, long, aliases, defaultColumns,
 		types.SearchMacro{}, listMacros, flags)
 }
 

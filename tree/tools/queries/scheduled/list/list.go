@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"gwcli/action"
 	"gwcli/clilog"
-	"gwcli/utilities/scaffold"
+	"gwcli/utilities/scaffold/scaffoldlist"
 	"strconv"
 
 	"github.com/google/uuid"
@@ -22,7 +22,7 @@ var (
 )
 
 func NewScheduledQueriesListAction() action.Pair {
-	return scaffold.NewListAction(short, long, aliases, defaultColumns,
+	return scaffoldlist.NewListAction(short, long, aliases, defaultColumns,
 		types.ScheduledSearch{}, listScheduledSearch, flags)
 }
 

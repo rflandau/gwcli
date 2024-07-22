@@ -1,4 +1,4 @@
-package scaffold
+package scaffoldlist
 
 /**
  * A list action runs a given function that outputs an arbitrary data structure.
