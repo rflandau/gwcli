@@ -224,10 +224,10 @@ func (c *createModel) Update(msg tea.Msg) tea.Cmd {
 	if keyMsg, ok := msg.(tea.KeyMsg); ok {
 		c.inputErr = "" // clear last input error
 		switch keyMsg.Type {
-		case tea.KeyUp, tea.KeyTab:
+		case tea.KeyUp, tea.KeyShiftTab:
 			c.focusPrevious()
 			return textinput.Blink
-		case tea.KeyDown, tea.KeyShiftTab:
+		case tea.KeyDown, tea.KeyTab:
 			c.focusNext()
 			return textinput.Blink
 		case tea.KeyEnter:
