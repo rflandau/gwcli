@@ -8,8 +8,8 @@
 //
 // This scaffold is a bit easier to extend than Delete and List, given it did not require generics.
 //
-// Look to the scheduled query creation action (external to the one built into DataScope) as a good
-// example.
+// Look to the scheduled query creation action (external to the one built into DataScope) or macro
+// creation action as two examples of implementation styles.
 //
 // ! Once a Config is given by the caller, it should be considered ReadOnly.
 //
