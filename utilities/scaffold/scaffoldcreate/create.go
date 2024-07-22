@@ -43,7 +43,7 @@ Example implementation:
 			},
 		}
 
-		return scaffoldcreate.NewCreateAction("singular noun", fields, create)
+		return scaffoldcreate.NewCreateAction("", fields, create)
 	}
 
 	func create(_ scaffoldcreate.Config, vals scaffoldcreate.Values) (any, string, error) {
