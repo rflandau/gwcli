@@ -11,4 +11,9 @@ const (
 	FlagJSONDesc     = "display results as JSON.\nOnly effectual with --output.\nMutually exclusive with CSV."
 	FlagDurationDesc = "the historical timeframe (now minus duration) the query should pour over.\n" +
 		"Ex: the past hour"
+	FlagDryrunDesc = "feigns action, descibing what result would have taken place"
+)
+
+const (
+	FlagDryrunName = "dryrun"
 )

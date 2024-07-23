@@ -10,6 +10,7 @@ import (
 	"strings"
 
 	"github.com/charmbracelet/bubbles/textinput"
+	"github.com/google/uuid"
 	"github.com/gravwell/gravwell/v3/client/types"
 	"github.com/spf13/pflag"
 )
@@ -145,10 +146,13 @@ func NewExtractorsCreateAction() action.Pair {
 		},
 	}
 
-	return scaffoldcreate.NewCreateAction("extractor", fields, create, nil)
+	return scaffoldcreate.NewCreateAction("extractor", fields, create, func() (fs pflag.FlagSet) {
+		fs.Bool("dryrun", false, stylesheet.FlagDryrunDesc)
+		return fs
+	})
 }
 
-func create(_ scaffoldcreate.Config, vals scaffoldcreate.Values, _ *pflag.FlagSet) (any, string, error) {
+func create(_ scaffoldcreate.Config, vals scaffoldcreate.Values, fs *pflag.FlagSet) (any, string, error) {
 	// no need to nil check; Required boolean enforces that for us
 	axd := types.AXDefinition{
 		Name:   vals[kname],
@@ -160,7 +164,25 @@ func create(_ scaffoldcreate.Config, vals scaffoldcreate.Values, _ *pflag.FlagSe
 		Labels: strings.Split(strings.Replace(vals[klabels], " ", "", -1), ","),
 	}
 
-	id, wrs, err := connection.Client.AddExtraction(axd)
+	// check for dryrun
+	var (
+		dr  bool
+		err error
+	)
+	if dr, err = fs.GetBool(stylesheet.FlagDryrunName); err != nil {
+		return 0, "", err
+	}
+
+	var (
+		id  uuid.UUID
+		wrs []types.WarnResp
+	)
+	if dr {
+		wrs, err = connection.Client.TestAddExtraction(axd)
+		id = uuid.Nil
+	} else {
+		id, wrs, err = connection.Client.AddExtraction(axd)
+	}
 
 	if len(wrs) > 0 {
 		var invSB strings.Builder
