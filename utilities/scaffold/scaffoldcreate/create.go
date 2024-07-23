@@ -93,11 +93,12 @@ type Config = map[string]Field
 type Values = map[string]string
 
 // signature the supplied creation function must match
-type CreateFunc func(cfg Config, values Values) (id any, invalid string, err error)
+type CreateFunc func(cfg Config, values Values, fs *pflag.FlagSet) (id any, invalid string, err error)
 
 func NewCreateAction(singular string,
 	fields Config,
-	create CreateFunc) action.Pair {
+	create CreateFunc,
+	addtlFlags func() pflag.FlagSet) action.Pair {
 	// nil check singular
 	if singular == "" {
 		panic("")
@@ -105,6 +106,10 @@ func NewCreateAction(singular string,
 
 	// pull flags from provided fields
 	var flags pflag.FlagSet = installFlagsFromFields(fields)
+	if addtlFlags != nil {
+		afs := addtlFlags()
+		flags.AddFlagSet(&afs)
+	}
 
 	cmd := treeutils.NewActionCommand(
 		"create",                 // use
@@ -138,7 +143,7 @@ func NewCreateAction(singular string,
 			}
 
 			// attempt to create the new X
-			if id, inv, err := create(fields, values); err != nil {
+			if id, inv, err := create(fields, values, c.Flags()); err != nil {
 				clilog.Tee(clilog.ERROR, c.ErrOrStderr(), err.Error()+"\n")
 				return
 			} else if inv != "" { // some of the flags were invalid
@@ -152,7 +157,7 @@ func NewCreateAction(singular string,
 	// attach mined flags to cmd
 	cmd.Flags().AddFlagSet(&flags)
 
-	return treeutils.GenerateAction(cmd, newCreateModel(fields, singular, create))
+	return treeutils.GenerateAction(cmd, newCreateModel(fields, singular, create, addtlFlags))
 }
 
 // Given a parsed flagset and the field configuration, builds a corollary map of field values.
@@ -217,20 +222,30 @@ type createModel struct {
 	inputErr  string // the reason inputs are invalid
 	createErr string // the reason the last create failed (not for invalid parameters)
 
-	fs pflag.FlagSet // parsed flag values, mined from the Config
-	cf CreateFunc    // function to create the new entity
+	// function to provide additional flags for this specific create instance
+	addtlFlagFunc func() pflag.FlagSet
+	// current state of the flagset, Reset to addtlFlagFunc + installFlags
+	fs pflag.FlagSet
+	cf CreateFunc // function to create the new entity
 }
 
 // Creates and returns a create Model, ready for interactive usage via Mother.
-func newCreateModel(fields Config, singular string, cf CreateFunc) *createModel {
+func newCreateModel(fields Config, singular string, cf CreateFunc, addtlFlagFunc func() pflag.FlagSet) *createModel {
 	c := &createModel{
-		mode:       inputting,
-		width:      defaultWidth,
-		singular:   singular,
-		fields:     fields,
-		orderedTIs: make([]keyedTI, 0),
-		fs:         installFlagsFromFields(fields),
-		cf:         cf,
+		mode:          inputting,
+		width:         defaultWidth,
+		singular:      singular,
+		fields:        fields,
+		orderedTIs:    make([]keyedTI, 0),
+		addtlFlagFunc: addtlFlagFunc,
+		cf:            cf,
+	}
+
+	// set flags by mining flags and, if applicable, tacking on additional flags
+	c.fs = installFlagsFromFields(fields)
+	if c.addtlFlagFunc != nil {
+		addtlFlags := c.addtlFlagFunc()
+		c.fs.AddFlagSet(&addtlFlags)
 	}
 
 	for k, f := range fields {
@@ -282,7 +297,7 @@ func (c *createModel) Update(msg tea.Msg) tea.Cmd {
 					c.inputErr = fmt.Sprintf("%v are required", mr)
 					return nil
 				}
-				id, invalid, err := c.cf(c.fields, values)
+				id, invalid, err := c.cf(c.fields, values, &c.fs)
 				if err != nil {
 					c.createErr = err.Error()
 					return nil
@@ -393,7 +408,14 @@ func (c *createModel) Reset() error {
 		wg.Done()
 	}()
 	// refresh flags to their original, unparsed and unvalued state
-	go func() { c.fs = installFlagsFromFields(c.fields); wg.Done() }()
+	go func() {
+		c.fs = installFlagsFromFields(c.fields)
+		if c.addtlFlagFunc != nil {
+			addtlFlags := c.addtlFlagFunc()
+			c.fs.AddFlagSet(&addtlFlags)
+		}
+		wg.Done()
+	}()
 
 	wg.Wait()
 

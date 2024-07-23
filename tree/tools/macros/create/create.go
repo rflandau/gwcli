@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/gravwell/gravwell/v3/client/types"
+	"github.com/spf13/pflag"
 )
 
 func NewMacroCreateAction() action.Pair {
@@ -30,10 +31,10 @@ func NewMacroCreateAction() action.Pair {
 		},
 	}
 
-	return scaffoldcreate.NewCreateAction("macro", fields, create)
+	return scaffoldcreate.NewCreateAction("macro", fields, create, nil)
 }
 
-func create(_ scaffoldcreate.Config, vals scaffoldcreate.Values) (any, string, error) {
+func create(_ scaffoldcreate.Config, vals scaffoldcreate.Values, _ *pflag.FlagSet) (any, string, error) {
 	sm := types.SearchMacro{}
 	// all three fields are required, no need to nil-check them
 	sm.Name = strings.ToUpper(vals["name"])

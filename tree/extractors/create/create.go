@@ -11,6 +11,7 @@ import (
 
 	"github.com/charmbracelet/bubbles/textinput"
 	"github.com/gravwell/gravwell/v3/client/types"
+	"github.com/spf13/pflag"
 )
 
 const (
@@ -144,10 +145,10 @@ func NewExtractorsCreateAction() action.Pair {
 		},
 	}
 
-	return scaffoldcreate.NewCreateAction("extractor", fields, create)
+	return scaffoldcreate.NewCreateAction("extractor", fields, create, nil)
 }
 
-func create(_ scaffoldcreate.Config, vals scaffoldcreate.Values) (any, string, error) {
+func create(_ scaffoldcreate.Config, vals scaffoldcreate.Values, _ *pflag.FlagSet) (any, string, error) {
 	// no need to nil check; Required boolean enforces that for us
 	axd := types.AXDefinition{
 		Name:   vals[kname],

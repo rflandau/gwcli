@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/charmbracelet/bubbles/textinput"
+	"github.com/spf13/pflag"
 )
 
 const ( // field keys
@@ -43,10 +44,10 @@ func NewQueriesScheduledCreateAction() action.Pair {
 		},
 	}
 
-	return scaffoldcreate.NewCreateAction("scheduled query", fields, create)
+	return scaffoldcreate.NewCreateAction("scheduled query", fields, create, nil)
 }
 
-func create(_ scaffoldcreate.Config, vals map[string]string) (any, string, error) {
+func create(_ scaffoldcreate.Config, vals map[string]string, _ *pflag.FlagSet) (any, string, error) {
 	var (
 		name      = vals[kname]
 		desc      = vals[kdesc]
