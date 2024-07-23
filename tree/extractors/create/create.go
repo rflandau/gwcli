@@ -44,9 +44,12 @@ func NewExtractorsCreateAction() action.Pair {
 			Order:         90,
 		},
 		kmodule: scaffoldcreate.Field{
-			Required:      true,
-			Title:         "module",
-			Usage:         "",
+			Required: true,
+			Title:    "module",
+			Usage: "extraction module to use. Available modules:\n" +
+				"ax, canbus, cef, csv, dump, fields, grok, intrinsic, ip, ipfix, j1939, json, " +
+				"kv, netflow, packet, packetlayer, path, regex, slice, strings, subnet, syslog, " +
+				"winlog, xml",
 			Type:          scaffoldcreate.Text,
 			FlagName:      "module",
 			FlagShorthand: 'm',
