@@ -56,3 +56,9 @@
     - checkbox
 
 - add aliases to the dynamic search generation at Mother's prompt
+
+- `extractor create`: figure out how to support dynamic module suggestion based on current tags
+    - `ExploreGenerate()` returns a map where the keys are extraction modules, but it appears to be a heavier operation if we only want the module names.
+        - There must be a better way to filter the list of module names.
+    - Suggestions would need to automatically update whenever a new, valid tag is punched into the tags TI
+        - this TI must be aware of the other TI, meaning the function signature of this customTI feature likely needs references to other parts of the createModel.

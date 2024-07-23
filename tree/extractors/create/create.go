@@ -52,6 +52,38 @@ func NewExtractorsCreateAction() action.Pair {
 			FlagShorthand: 'm',
 			DefaultValue:  "",
 			Order:         80,
+			CustomTIFuncInit: func() textinput.Model {
+				// manually add suggestions based on
+				// docs.gravwell.io/search/extractionmodules.html#search-module-documentation
+				ti := stylesheet.NewTI("", false)
+				ti.ShowSuggestions = true
+				ti.SetSuggestions([]string{"ax", "canbus", "cef", "csv", "dump", "fields", "grok",
+					"intrinsic", "ip", "ipfix", "j1939", "json", "kv", "netflow", "packet",
+					"packetlayer", "path", "regex", "slice", "strings", "subnet", "syslog",
+					"winlog", "xml"})
+				return ti
+			},
+			/*CustomTIFuncSetArg: func(ti *textinput.Model) textinput.Model {
+				// TODO move this.... somewhere as it depends on the tag?
+
+				// fetch current labels as suggestions
+				if mp, err := connection.Client.ExploreGenerate(); err != nil {
+					clilog.Writer.Warnf("failed to fetch ax label map: %v", err)
+					ti.ShowSuggestions = false
+				} else {
+					suggest := make([]string, len(mp))
+					i := 0
+					for k, _ := range mp {
+						suggest[i] = k
+						i += 1
+					}
+					ti.SetSuggestions(suggest)
+					ti.ShowSuggestions = true
+				}
+
+				return ti
+			}, */
+
 		},
 		ktags: scaffoldcreate.Field{
 			Required:      true,
@@ -106,26 +138,6 @@ func NewExtractorsCreateAction() action.Pair {
 			Type:         scaffoldcreate.Text,
 			FlagName:     "labels",
 			DefaultValue: "",
-			/*CustomTIFuncSetArg: func(ti *textinput.Model) *textinput.Model {
-				// TODO move this.... somewhere as it depends on the tag?
-
-				// fetch current labels as suggestions
-				if mp, err := connection.Client.ExploreGenerate(); err != nil {
-					clilog.Writer.Warnf("failed to fetch ax label map: %v", err)
-					ti.ShowSuggestions = false
-				} else {
-					suggest := make([]string, len(mp))
-					i := 0
-					for k, _ := range mp {
-						suggest[i] = k
-						i += 1
-					}
-					ti.SetSuggestions(suggest)
-					ti.ShowSuggestions = true
-				}
-
-				return ti
-			}, */
 		},
 	}
 
