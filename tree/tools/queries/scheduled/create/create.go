@@ -7,6 +7,8 @@ import (
 	"gwcli/utilities/scaffold/scaffoldcreate"
 	"gwcli/utilities/uniques"
 	"time"
+
+	"github.com/charmbracelet/bubbles/textinput"
 )
 
 const ( // field keys
@@ -31,14 +33,12 @@ func NewQueriesScheduledCreateAction() action.Pair {
 			FlagName:      "cron-frequency", // custom flag name
 			FlagShorthand: 'c',
 			DefaultValue:  "", // no default value
-			TI: struct {
-				Order       int
-				Placeholder string
-				Validator   func(s string) error
-			}{
-				Order:       50,
-				Placeholder: "* * * * *",
-				Validator:   uniques.CronRuneValidator,
+			Order:         50,
+			CustomTIFuncInit: func() textinput.Model {
+				ti := stylesheet.NewTI("", false)
+				ti.Placeholder = "* * * * *"
+				ti.Validate = uniques.CronRuneValidator
+				return ti
 			},
 		},
 	}

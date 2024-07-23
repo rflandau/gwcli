@@ -3,10 +3,13 @@ package create
 import (
 	"fmt"
 	"gwcli/action"
+	"gwcli/clilog"
 	"gwcli/connection"
+	"gwcli/stylesheet"
 	"gwcli/utilities/scaffold/scaffoldcreate"
 	"strings"
 
+	"github.com/charmbracelet/bubbles/textinput"
 	"github.com/gravwell/gravwell/v3/client/types"
 )
 
@@ -29,13 +32,7 @@ func NewExtractorsCreateAction() action.Pair {
 			Type:          scaffoldcreate.Text,
 			FlagName:      "name",
 			FlagShorthand: 'n',
-			TI: struct {
-				Order       int
-				Placeholder string
-				Validator   func(s string) error
-			}{
-				Order: 100,
-			},
+			Order:         100,
 		},
 		kdesc: scaffoldcreate.Field{
 			Required:      true,
@@ -44,13 +41,7 @@ func NewExtractorsCreateAction() action.Pair {
 			Type:          scaffoldcreate.Text,
 			FlagName:      "desc",
 			FlagShorthand: 'd',
-			TI: struct {
-				Order       int
-				Placeholder string
-				Validator   func(s string) error
-			}{
-				Order: 90,
-			},
+			Order:         90,
 		},
 		kmodule: scaffoldcreate.Field{
 			Required:      true,
@@ -60,13 +51,7 @@ func NewExtractorsCreateAction() action.Pair {
 			FlagName:      "module",
 			FlagShorthand: 'm',
 			DefaultValue:  "",
-			TI: struct {
-				Order       int
-				Placeholder string
-				Validator   func(s string) error
-			}{
-				Order: 80,
-			},
+			Order:         80,
 		},
 		ktags: scaffoldcreate.Field{
 			Required:      true,
@@ -76,13 +61,22 @@ func NewExtractorsCreateAction() action.Pair {
 			FlagName:      "tags",
 			FlagShorthand: 't',
 			DefaultValue:  "",
-			TI: struct {
-				Order       int
-				Placeholder string
-				Validator   func(s string) error
-			}{
-				Order:       70,
-				Placeholder: "tag1,tag2,tag3",
+			Order:         70,
+			CustomTIFuncInit: func() textinput.Model {
+				ti := stylesheet.NewTI("", false)
+				ti.Placeholder = "tag1,tag2,tag3"
+				return ti
+			},
+			CustomTIFuncSetArg: func(ti *textinput.Model) textinput.Model {
+				if tags, err := connection.Client.GetTags(); err != nil {
+					clilog.Writer.Warnf("failed to fetch tags: %v", err)
+					ti.ShowSuggestions = false
+				} else {
+					ti.ShowSuggestions = true
+					ti.SetSuggestions(tags)
+				}
+
+				return *ti
 			},
 		},
 		kparams: scaffoldcreate.Field{
@@ -92,14 +86,8 @@ func NewExtractorsCreateAction() action.Pair {
 			Type:         scaffoldcreate.Text,
 			FlagName:     "params",
 			DefaultValue: "",
-			TI: struct {
-				Order       int
-				Placeholder string
-				Validator   func(s string) error
-			}{
-				Order: 60,
-				//Placeholder: "",
-			},
+
+			Order: 60,
 		},
 		kargs: scaffoldcreate.Field{
 			Required:     false,
@@ -108,14 +96,8 @@ func NewExtractorsCreateAction() action.Pair {
 			Type:         scaffoldcreate.Text,
 			FlagName:     "args",
 			DefaultValue: "",
-			TI: struct {
-				Order       int
-				Placeholder string
-				Validator   func(s string) error
-			}{
-				Order: 50,
-				//Placeholder: "",
-			},
+
+			Order: 50,
 		},
 		klabels: scaffoldcreate.Field{
 			Required:     false,
@@ -124,14 +106,26 @@ func NewExtractorsCreateAction() action.Pair {
 			Type:         scaffoldcreate.Text,
 			FlagName:     "labels",
 			DefaultValue: "",
-			TI: struct {
-				Order       int
-				Placeholder string
-				Validator   func(s string) error
-			}{
-				Order:       40,
-				Placeholder: "label1,label2,label3",
-			},
+			/*CustomTIFuncSetArg: func(ti *textinput.Model) *textinput.Model {
+				// TODO move this.... somewhere as it depends on the tag?
+
+				// fetch current labels as suggestions
+				if mp, err := connection.Client.ExploreGenerate(); err != nil {
+					clilog.Writer.Warnf("failed to fetch ax label map: %v", err)
+					ti.ShowSuggestions = false
+				} else {
+					suggest := make([]string, len(mp))
+					i := 0
+					for k, _ := range mp {
+						suggest[i] = k
+						i += 1
+					}
+					ti.SetSuggestions(suggest)
+					ti.ShowSuggestions = true
+				}
+
+				return ti
+			}, */
 		},
 	}
 

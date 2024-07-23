@@ -26,24 +26,15 @@ type Field struct {
 	FlagName      string    // OPTIONAL. Defaults to DeriveFlagName() result.
 	FlagShorthand rune      // OPTIONAL. '-x' form of FlagName.
 	DefaultValue  string    // OPTIONAL. Default flag and TI value
+	Order         int       // OPTIONAL. Top-Down (highest to lowest) display order of this field.
 
-	// values specific to interactive usage
-	TI struct {
-		// OPTIONAL.
-		// Display ordering.
-		//
-		// Higher values are displayed first. Order collisions are unstable and discouraged.
-		Order       int
-		Placeholder string // OPTIONAL. Defaults to '(optional)' if unset and !Field.Required
-		// OPTIONAL.
-		// Validator to run each each time an input is keyed into the TI.
-		//
-		// This validator is run constantly in interactive mode, so it should be lightweight.
-		//
-		// Whole string validation is left to the createFunc.
-		Validator func(s string) error
-	}
-	CustomTIFunc func() textinput.Model
+	// OPTIONAL.
+	// Called once, at program start to generate a TI instead of using a generalize newTI()
+	CustomTIFuncInit func() textinput.Model
+	// OPTIONAL.
+	// Called every SetArg() (prior to passing control to the child create action), if not nil.
+	// The associated TI will be replaced by the returned Model.
+	CustomTIFuncSetArg func(*textinput.Model) textinput.Model
 }
 
 // Returns a new field with only the required fields. Defaults to a Text type.
@@ -56,11 +47,7 @@ func NewField(req bool, title string, order int) Field {
 		Title:    title,
 		Type:     Text,
 		FlagName: DeriveFlagName(title),
-		TI: struct {
-			Order       int
-			Placeholder string
-			Validator   func(s string) error
-		}{Order: order}}
+		Order:    order}
 	return f
 }
 

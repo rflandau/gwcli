@@ -26,13 +26,7 @@ func NewMacroCreateAction() action.Pair {
 			FlagName:      "expansion",
 			FlagShorthand: 'e',
 			DefaultValue:  "",
-			TI: struct {
-				Order       int
-				Placeholder string
-				Validator   func(s string) error
-			}{
-				Order: 80,
-			},
+			Order:         80,
 		},
 	}
 

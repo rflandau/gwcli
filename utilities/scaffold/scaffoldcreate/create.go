@@ -239,21 +239,18 @@ func newCreateModel(fields Config, singular string, cf CreateFunc) *createModel 
 			key: k,
 		}
 
-		if f.CustomTIFunc == nil {
+		// if a custom func was not given, use the default generation
+		if f.CustomTIFuncInit == nil {
 			kti.ti = stylesheet.NewTI(f.DefaultValue, !f.Required)
-			kti.ti.Validate = f.TI.Validator
-			if f.TI.Placeholder != "" {
-				kti.ti.Placeholder = f.TI.Placeholder
-			}
 		} else {
-			kti.ti = f.CustomTIFunc()
+			kti.ti = f.CustomTIFuncInit()
 		}
 
 		c.orderedTIs = append(c.orderedTIs, kti)
 	}
 	// sort keys from highest order to lowest order
 	slices.SortFunc(c.orderedTIs, func(a, b keyedTI) int {
-		return fields[b.key].TI.Order - fields[a.key].TI.Order
+		return fields[b.key].Order - fields[a.key].Order
 	})
 
 	if len(c.orderedTIs) > 0 {
@@ -273,7 +270,7 @@ func (c *createModel) Update(msg tea.Msg) tea.Cmd {
 		case tea.KeyUp, tea.KeyShiftTab:
 			c.focusPrevious()
 			return textinput.Blink
-		case tea.KeyDown, tea.KeyTab:
+		case tea.KeyDown:
 			c.focusNext()
 			return textinput.Blink
 		case tea.KeyEnter:
@@ -417,12 +414,17 @@ func (c *createModel) SetArgs(_ *pflag.FlagSet, tokens []string) (
 	}
 
 	// we do not need to check missing requires when run from mother
-	if flagVals, _, err := getValuesFromFlags(&c.fs, c.fields); err != nil {
+	flagVals, _, err := getValuesFromFlags(&c.fs, c.fields)
+	if err != nil {
 		return "", nil, err
-	} else {
+	}
+
+	for i, kti := range c.orderedTIs {
 		// set flag values as the starter values in their corresponding TI
-		for i, kti := range c.orderedTIs {
-			c.orderedTIs[i].ti.SetValue(flagVals[kti.key])
+		c.orderedTIs[i].ti.SetValue(flagVals[kti.key])
+		// if a TI has a CustomSetArg, call it now
+		if c.fields[kti.key].CustomTIFuncSetArg != nil {
+			c.orderedTIs[i].ti = c.fields[kti.key].CustomTIFuncSetArg(&kti.ti)
 		}
 	}
 
