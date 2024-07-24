@@ -3,7 +3,7 @@ package kits
 import (
 	"gwcli/action"
 	"gwcli/tree/kits/list"
-	"gwcli/treeutils"
+	"gwcli/utilities/treeutils"
 
 	"github.com/spf13/cobra"
 )

@@ -1,7 +1,5 @@
-/**
- * Treeutils provides global utility functions to enforce consistency and
- * facillitate shared references across the tree.
- */
+// Treeutils provides functions for creating the cobra command tree.
+// It has been extracted into its own package to avoid import cycles.
 package treeutils
 
 import (
@@ -13,19 +11,19 @@ import (
 	"github.com/spf13/cobra"
 )
 
-/* Creates and returns a Nav (tree node) that can now be assigned subcommands*/
-func GenerateNav(use, short, long string, aliases []string, navCmds []*cobra.Command, actionCmds []action.Pair) *cobra.Command {
+// Creates and returns a Nav (tree node) that can now be assigned subcommands
+func GenerateNav(use, short, long string, aliases []string,
+	navCmds []*cobra.Command, actionCmds []action.Pair) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:     use,
 		Short:   short,
 		Long:    long,
 		Aliases: aliases,
 		GroupID: group.NavID,
-		//PreRun: ,
-		Run: NavRun,
+		Run:     NavRun,
 	}
 
-	// associate groups
+	// associate groups available to this (and all) navs
 	group.AddNavGroup(cmd)
 	group.AddActionGroup(cmd)
 
@@ -42,15 +40,15 @@ func GenerateNav(use, short, long string, aliases []string, navCmds []*cobra.Com
 	return cmd
 }
 
-/** Creates and returns an Action (tree leaf) that can be called directly
- * non-interactively or via associated methods (actions.Pair) interactively
- */
+// Creates and returns an Action (tree leaf) that can be called directly non-interactively or via
+// associated methods (actions.Pair) interactively
 func GenerateAction(cmd *cobra.Command, act action.Model) action.Pair {
 	return action.Pair{Action: cmd, Model: act}
 }
 
-/* Returns a boilerplate action command that can be fed into GenerateAction */
-func NewActionCommand(use, short, long string, aliases []string, runFunc func(*cobra.Command, []string)) *cobra.Command {
+// Returns a boilerplate action command that can be fed into GenerateAction.
+func NewActionCommand(use, short, long string, aliases []string,
+	runFunc func(*cobra.Command, []string)) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:     use,
 		Short:   short,
@@ -65,13 +63,9 @@ func NewActionCommand(use, short, long string, aliases []string, runFunc func(*c
 	return cmd
 }
 
-//#region cobra run functions
-
-/**
- * NavRun is the Run function for all Navs (nodes).
- * It checks for the --script flag and initializes Mother with the
- * command as her pwd if script is unset.
- */
+// NavRun is the Run function for all Navs (nodes).
+// It checks for the --script flag and initializes Mother with the command as her pwd if script is
+// unset.
 var NavRun = func(cmd *cobra.Command, args []string) {
 	script, err := cmd.Flags().GetBool("script")
 	if err != nil {
@@ -87,5 +81,3 @@ var NavRun = func(cmd *cobra.Command, args []string) {
 			"failed to spawn a mother instance: "+err.Error())
 	}
 }
-
-//#endregion

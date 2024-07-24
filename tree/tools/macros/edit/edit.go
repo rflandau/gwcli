@@ -3,7 +3,7 @@ package edit
 import (
 	"gwcli/action"
 	"gwcli/connection"
-	"gwcli/treeutils"
+	"gwcli/utilities/treeutils"
 
 	"github.com/charmbracelet/bubbles/list"
 	tea "github.com/charmbracelet/bubbletea"

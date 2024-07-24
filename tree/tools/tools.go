@@ -4,7 +4,7 @@ import (
 	"gwcli/action"
 	"gwcli/tree/tools/macros"
 	"gwcli/tree/tools/queries"
-	"gwcli/treeutils"
+	"gwcli/utilities/treeutils"
 
 	"github.com/spf13/cobra"
 )

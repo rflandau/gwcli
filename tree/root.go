@@ -18,8 +18,8 @@ import (
 	"gwcli/tree/tools"
 	"gwcli/tree/tree"
 	"gwcli/tree/user"
-	"gwcli/treeutils"
 	"gwcli/utilities/cfgdir"
+	"gwcli/utilities/treeutils"
 	"gwcli/utilities/usage"
 	"time"
 

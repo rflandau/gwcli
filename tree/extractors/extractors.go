@@ -5,7 +5,7 @@ import (
 	"gwcli/tree/extractors/create"
 	"gwcli/tree/extractors/delete"
 	"gwcli/tree/extractors/list"
-	"gwcli/treeutils"
+	"gwcli/utilities/treeutils"
 
 	"github.com/spf13/cobra"
 )

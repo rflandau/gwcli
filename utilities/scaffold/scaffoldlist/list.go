@@ -51,7 +51,7 @@ import (
 	"gwcli/clilog"
 	"gwcli/connection"
 	"gwcli/stylesheet"
-	"gwcli/treeutils"
+	"gwcli/utilities/treeutils"
 	"os"
 	"reflect"
 	"strings"

@@ -25,7 +25,7 @@ package scaffold
 import (
 	"fmt"
 	"gwcli/action"
-	"gwcli/treeutils"
+	"gwcli/utilities/treeutils"
 
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/spf13/cobra"

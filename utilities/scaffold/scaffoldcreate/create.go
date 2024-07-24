@@ -60,7 +60,7 @@ import (
 	"gwcli/mother"
 	"gwcli/stylesheet"
 	"gwcli/stylesheet/colorizer"
-	"gwcli/treeutils"
+	"gwcli/utilities/treeutils"
 	"gwcli/utilities/uniques"
 	"slices"
 	"strings"

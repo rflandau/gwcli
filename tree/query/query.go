@@ -25,7 +25,7 @@ import (
 	"gwcli/mother"
 	"gwcli/stylesheet"
 	"gwcli/tree/query/datascope"
-	"gwcli/treeutils"
+	"gwcli/utilities/treeutils"
 	"gwcli/utilities/uniques"
 	"io"
 	"os"

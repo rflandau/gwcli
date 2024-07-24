@@ -6,7 +6,7 @@ import (
 	"gwcli/tree/user/logout"
 	"gwcli/tree/user/myinfo"
 	"gwcli/tree/user/refreshmyinfo"
-	"gwcli/treeutils"
+	"gwcli/utilities/treeutils"
 
 	"github.com/spf13/cobra"
 )

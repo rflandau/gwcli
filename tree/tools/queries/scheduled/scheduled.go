@@ -6,7 +6,7 @@ import (
 	"gwcli/tree/tools/queries/scheduled/delete"
 	"gwcli/tree/tools/queries/scheduled/list"
 
-	"gwcli/treeutils"
+	"gwcli/utilities/treeutils"
 
 	"github.com/spf13/cobra"
 )

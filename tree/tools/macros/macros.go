@@ -5,7 +5,7 @@ import (
 	"gwcli/tree/tools/macros/create"
 	"gwcli/tree/tools/macros/delete"
 	"gwcli/tree/tools/macros/list"
-	"gwcli/treeutils"
+	"gwcli/utilities/treeutils"
 
 	"github.com/spf13/cobra"
 )

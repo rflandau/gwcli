@@ -7,7 +7,7 @@ package queries
 import (
 	"gwcli/action"
 	"gwcli/tree/tools/queries/scheduled"
-	"gwcli/treeutils"
+	"gwcli/utilities/treeutils"
 
 	"github.com/spf13/cobra"
 )

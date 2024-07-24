@@ -52,7 +52,7 @@ import (
 	"gwcli/action"
 	"gwcli/clilog"
 	"gwcli/mother"
-	"gwcli/treeutils"
+	"gwcli/utilities/treeutils"
 	"strconv"
 
 	"github.com/charmbracelet/bubbles/list"

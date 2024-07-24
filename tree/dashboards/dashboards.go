@@ -4,7 +4,7 @@ import (
 	"gwcli/action"
 	"gwcli/tree/dashboards/delete"
 	"gwcli/tree/dashboards/list"
-	"gwcli/treeutils"
+	"gwcli/utilities/treeutils"
 
 	"github.com/spf13/cobra"
 )
