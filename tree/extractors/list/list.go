@@ -12,8 +12,8 @@ import (
 )
 
 var (
-	short          string   = ""
-	long           string   = ""
+	short          string   = "list extractors"
+	long           string   = "list autoextractions available to you and the system"
 	aliases        []string = []string{}
 	defaultColumns []string = []string{"UID", "UUID", "Name", "Desc"}
 )
