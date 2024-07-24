@@ -15,8 +15,8 @@ import (
 )
 
 var (
-	short          string   = "List scheduled queries"
-	long           string   = "Prints out all scheduled queries.\n"
+	short          string   = "list scheduled queries"
+	long           string   = "prints out all scheduled queries."
 	aliases        []string = []string{}
 	defaultColumns []string = []string{"ID", "Name", "Description", "Duration", "Schedule"}
 )

@@ -13,10 +13,9 @@ import (
 )
 
 var (
-	short string = "List your macros"
-	long  string = "Prints out all macros associated to your user.\n" +
-		"(NYI) Use the x flag to get all macros system-wide or the y <user>" +
-		"parameter to all macros associated to a <user> (if you are an admin)"
+	short string = "list your macros"
+	long  string = "lists all macros associated to your user, a group," +
+		"or the system itself"
 	aliases        []string = []string{}
 	defaultColumns []string = []string{"ID", "Name", "Description", "Expansion"}
 )
