@@ -61,7 +61,7 @@ import (
 	"gwcli/stylesheet"
 	"gwcli/stylesheet/colorizer"
 	"gwcli/treeutils"
-	"os"
+	"gwcli/utilities/uniques"
 	"slices"
 	"strings"
 	"sync"
@@ -69,7 +69,6 @@ import (
 	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
-	"github.com/charmbracelet/x/term"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 )
@@ -450,17 +449,7 @@ func (c *createModel) SetArgs(_ *pflag.FlagSet, tokens []string) (
 		}
 	}
 
-	return "", fetchWindowSize, nil
-}
-
-// Queries for avaialble window size so we can wrap text by width, once this arrives.
-// NOTE: width and height are returned, but create only uses width.
-func fetchWindowSize() tea.Msg {
-	w, h, err := term.GetSize(os.Stdin.Fd())
-	if err != nil {
-		clilog.Writer.Errorf("Failed to fetch terminal size: %v", err)
-	}
-	return tea.WindowSizeMsg{Width: w, Height: h}
+	return "", uniques.FetchWindowSize, nil
 }
 
 //#endregion

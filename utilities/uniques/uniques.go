@@ -1,11 +1,18 @@
-// uniques contains global constants that must be referenced across multiple packages
+// uniques contains global constants and functions that must be referenced across multiple packages
+// but cannot belong to any.
+// ! Uniques does not import any local packages as to prevent import cycles.
 package uniques
 
 import (
 	"errors"
 	"fmt"
+	"os"
 	"strings"
 	"unicode"
+
+	tea "github.com/charmbracelet/bubbletea"
+
+	"github.com/charmbracelet/x/term"
 )
 
 const (
@@ -51,4 +58,11 @@ func CronRuneValidator(s string) error {
 	}
 
 	return nil
+}
+
+// Queries for avaialble window size.
+// Generally useful as an onStart command as Mother does not maintain a set of dimensions.
+func FetchWindowSize() tea.Msg {
+	w, h, _ := term.GetSize(os.Stdin.Fd())
+	return tea.WindowSizeMsg{Width: w, Height: h}
 }
