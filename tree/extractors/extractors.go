@@ -3,6 +3,7 @@ package extractors
 import (
 	"gwcli/action"
 	"gwcli/tree/extractors/create"
+	"gwcli/tree/extractors/delete"
 	"gwcli/tree/extractors/list"
 	"gwcli/treeutils"
 
@@ -21,5 +22,6 @@ func NewExtractorsNav() *cobra.Command {
 		[]*cobra.Command{},
 		[]action.Pair{
 			list.NewExtractorsListAction(),
-			create.NewExtractorsCreateAction()})
+			create.NewExtractorsCreateAction(),
+			delete.NewExtractorDeleteAction()})
 }
