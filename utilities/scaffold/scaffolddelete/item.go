@@ -57,7 +57,9 @@ func defaultRender[I id_t](w io.Writer, m list.Model, index int, listItem list.I
 // modifiers on the item delegate, usable by implementations of scaffolddelete
 type DelegateOption[I id_t] func(*defaultDelegate[I])
 
-// Alter the number of lines allocated to each item
+// Alter the number of lines allocated to each item.
+// Height should be set equal to the lipgloss.Height of your Item.String.
+// Values above or below that can have... unpredictable... results.
 func WithHeight[I id_t](h int) DelegateOption[I] {
 	return func(dd *defaultDelegate[I]) { dd.height = h }
 }

@@ -271,7 +271,7 @@ func newDeleteModel[I id_t](del deleteFunc[I], fch fetchFunc[I], dopts []Delegat
 	d.ff = fch
 
 	// base delegate
-	d.delegate = &defaultDelegate[I]{
+	delegate := defaultDelegate[I]{
 		height:     defaultItemHeight,
 		spacing:    defaultItemSpacing,
 		renderFunc: defaultRender[I],
@@ -280,9 +280,11 @@ func newDeleteModel[I id_t](del deleteFunc[I], fch fetchFunc[I], dopts []Delegat
 	// apply delegate options
 	for _, opt := range dopts {
 		if opt != nil {
-			opt(d.delegate)
+			opt(&delegate)
 		}
 	}
+
+	d.delegate = &delegate
 
 	return d
 }
@@ -386,7 +388,7 @@ func (d *deleteModel[I]) SetArgs(_ *pflag.FlagSet, tokens []string) (invalid str
 	}
 
 	// create list from the generated delegate
-	d.list = list.New(simpleitems, d.delegate, 80, 20)
+	d.list = list.New(simpleitems, d.delegate, 80, 40)
 	d.list.Title = "Select a " + d.itemSingular + " to delete"
 	d.list.SetFilteringEnabled(true)
 
