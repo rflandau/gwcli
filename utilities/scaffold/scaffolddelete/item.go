@@ -21,13 +21,27 @@ type Item[I id_t] interface {
 var itemStyle = stylesheet.Composable.Unfocused.PaddingLeft(2)
 var selectedItemStyle = lipgloss.NewStyle().PaddingLeft(2).Foreground(stylesheet.PrimaryColor)
 
-// the item delegate defines display format of an item in the list
-type itemDelegate[I id_t] struct{}
+const (
+	defaultItemHeight  = 2
+	defaultItemSpacing = 1
+)
 
-func (id itemDelegate[I]) Height() int                             { return 2 }
-func (id itemDelegate[I]) Spacing() int                            { return 1 }
-func (id itemDelegate[I]) Update(_ tea.Msg, _ *list.Model) tea.Cmd { return nil }
-func (id itemDelegate[I]) Render(w io.Writer, m list.Model, index int, listItem list.Item) {
+// the item delegate defines display format of an item in the list
+type defaultDelegate[I id_t] struct {
+	height     int
+	spacing    int
+	renderFunc func(w io.Writer, m list.Model, index int, listItem list.Item)
+}
+
+func (d defaultDelegate[I]) Height() int                           { return d.height }
+func (d defaultDelegate[I]) Spacing() int                          { return d.spacing }
+func (defaultDelegate[I]) Update(_ tea.Msg, _ *list.Model) tea.Cmd { return nil }
+func (dd defaultDelegate[I]) Render(w io.Writer, m list.Model, index int, listItem list.Item) {
+	dd.renderFunc(w, m, index, listItem)
+}
+
+// default renderFunc used by the delegate if not overwritten by WithRender()
+func defaultRender[I id_t](w io.Writer, m list.Model, index int, listItem list.Item) {
 	i, ok := listItem.(Item[I])
 	if !ok {
 		return
@@ -37,14 +51,23 @@ func (id itemDelegate[I]) Render(w io.Writer, m list.Model, index int, listItem 
 		colorizer.Pip(uint(index), uint(m.Index())),
 		colorizer.Index(index+1),
 		i.String())
-
-	/*fn := itemStyle.Render
-	if index == m.Index() {
-		fn = func(s ...string) string {
-			return selectedItemStyle.Render("> " + strings.Join(s, " "))
-		}
-	}
-
-	fmt.Fprint(w, fn(str))*/
 	fmt.Fprint(w, str)
+}
+
+// modifiers on the item delegate, usable by implementations of scaffolddelete
+type DelegateOption[I id_t] func(*defaultDelegate[I])
+
+// Alter the number of lines allocated to each item
+func WithHeight[I id_t](h int) DelegateOption[I] {
+	return func(dd *defaultDelegate[I]) { dd.height = h }
+}
+
+// Alter the number of lines between each item
+func WithSpacing[I id_t](s int) DelegateOption[I] {
+	return func(dd *defaultDelegate[I]) { dd.spacing = s }
+}
+
+// Alter how each item is displayed in the list of delete-able items
+func WithRender[I id_t](f func(w io.Writer, m list.Model, index int, listItem list.Item)) DelegateOption[I] {
+	return func(dd *defaultDelegate[I]) { dd.renderFunc = f }
 }

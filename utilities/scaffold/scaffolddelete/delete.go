@@ -156,8 +156,13 @@ const (
 //
 // Fch is a function that fetches all, delete-able records for the user to pick from.
 // It returns a user-defined struct fitting the Item interface.
+//
+// dopts allows you to modify how each item is displayed in the list of delete-able items.
+// While you could provide your own renderer via WithRender(), this is discouraged in order to
+// maintain style uniformity.
 func NewDeleteAction[I id_t](aliases []string, singular, plural string,
-	del deleteFunc[I], fch fetchFunc[I]) action.Pair {
+	del deleteFunc[I], fch fetchFunc[I],
+	dopts ...DelegateOption[I]) action.Pair {
 	cmd := treeutils.NewActionCommand(
 		"delete",
 		"delete a "+singular,
@@ -201,7 +206,7 @@ func NewDeleteAction[I id_t](aliases []string, singular, plural string,
 		})
 	fs := flags()
 	cmd.Flags().AddFlagSet(&fs)
-	d := newDeleteModel[I](del, fch)
+	d := newDeleteModel[I](del, fch, dopts)
 	d.itemSingular = singular
 	d.itemPlural = plural
 	return treeutils.GenerateAction(cmd, d)
@@ -253,16 +258,31 @@ type deleteModel[I id_t] struct {
 	flagset pflag.FlagSet // parsed flag values (set in SetArgs)
 	dryrun  bool
 
-	df deleteFunc[I] // function to delete an item
-	ff fetchFunc[I]  // function to get all delete-able items
+	df       deleteFunc[I]       // function to delete an item
+	ff       fetchFunc[I]        // function to get all delete-able items
+	delegate *defaultDelegate[I] // delegate for displaying items in the list
 }
 
-func newDeleteModel[I id_t](del deleteFunc[I], fch fetchFunc[I]) *deleteModel[I] {
+func newDeleteModel[I id_t](del deleteFunc[I], fch fetchFunc[I], dopts []DelegateOption[I]) *deleteModel[I] {
 	d := &deleteModel[I]{mode: selecting}
 	d.flagset = flags()
 
 	d.df = del
 	d.ff = fch
+
+	// base delegate
+	d.delegate = &defaultDelegate[I]{
+		height:     defaultItemHeight,
+		spacing:    defaultItemSpacing,
+		renderFunc: defaultRender[I],
+	}
+
+	// apply delegate options
+	for _, opt := range dopts {
+		if opt != nil {
+			opt(d.delegate)
+		}
+	}
 
 	return d
 }
@@ -298,11 +318,11 @@ func (d *deleteModel[I]) Update(msg tea.Msg) tea.Cmd {
 			if err := d.df(d.dryrun, itm.ID()); err != nil {
 				return tea.Printf(errorNoDeleteText+"\n", err)
 			}
-			go d.list.RemoveItem(d.list.Index())
 			if d.dryrun {
 				return tea.Printf(dryrunSuccessText,
 					d.itemSingular, itm.ID())
 			} else {
+				go d.list.RemoveItem(d.list.Index())
 				return tea.Printf(deleteSuccessText,
 					d.itemSingular, itm.ID())
 			}
@@ -365,9 +385,10 @@ func (d *deleteModel[I]) SetArgs(_ *pflag.FlagSet, tokens []string) (invalid str
 		simpleitems[i] = itms[i]
 	}
 
-	d.list = list.New(simpleitems, itemDelegate[I]{}, 80, 20)
+	// create list from the generated delegate
+	clilog.Writer.Debugf("list with delegate: %#v", d.delegate)
+	d.list = list.New(simpleitems, d.delegate, 80, 20)
 	d.list.Title = "Select a " + d.itemSingular + " to delete"
-
 	d.list.SetFilteringEnabled(true)
 
 	// disable quit keys; they clash with mother
