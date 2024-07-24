@@ -2,6 +2,7 @@ package dashboards
 
 import (
 	"gwcli/action"
+	"gwcli/tree/dashboards/list"
 	"gwcli/treeutils"
 
 	"github.com/spf13/cobra"
@@ -17,5 +18,5 @@ var (
 func NewExtractorsNav() *cobra.Command {
 	return treeutils.GenerateNav(use, short, long, aliases,
 		[]*cobra.Command{},
-		[]action.Pair{})
+		[]action.Pair{list.NewDashboardsListAction()})
 }
