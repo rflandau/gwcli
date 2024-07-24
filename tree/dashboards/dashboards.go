@@ -2,6 +2,7 @@ package dashboards
 
 import (
 	"gwcli/action"
+	"gwcli/tree/dashboards/delete"
 	"gwcli/tree/dashboards/list"
 	"gwcli/treeutils"
 
@@ -18,5 +19,8 @@ var (
 func NewExtractorsNav() *cobra.Command {
 	return treeutils.GenerateNav(use, short, long, aliases,
 		[]*cobra.Command{},
-		[]action.Pair{list.NewDashboardsListAction()})
+		[]action.Pair{
+			list.NewDashboardsListAction(),
+			delete.NewDashboardDeleteAction(),
+		})
 }
