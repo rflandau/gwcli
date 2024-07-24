@@ -3,8 +3,8 @@ package scaffolddelete
 import (
 	"fmt"
 	"gwcli/stylesheet"
+	"gwcli/stylesheet/colorizer"
 	"io"
-	"strings"
 
 	"github.com/charmbracelet/bubbles/list"
 	tea "github.com/charmbracelet/bubbletea"
@@ -33,14 +33,15 @@ func (id itemDelegate[I]) Render(w io.Writer, m list.Model, index int, listItem 
 		return
 	}
 
-	str := fmt.Sprintf("%d. %s", index+1, i.String())
+	str := fmt.Sprintf("%s%d. %s", colorizer.Pip(uint(index), uint(m.Index())), index+1, i.String())
 
-	fn := itemStyle.Render
+	/*fn := itemStyle.Render
 	if index == m.Index() {
 		fn = func(s ...string) string {
 			return selectedItemStyle.Render("> " + strings.Join(s, " "))
 		}
 	}
 
-	fmt.Fprint(w, fn(str))
+	fmt.Fprint(w, fn(str))*/
+	fmt.Fprint(w, str)
 }
