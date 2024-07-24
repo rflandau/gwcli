@@ -350,7 +350,7 @@ func (d *deleteModel[I]) View() string {
 			clilog.Writer.Warnf("Failed to type assert selected %v", itm)
 			return "An error has occurred. Exitting..."
 		} else {
-			return fmt.Sprintf("Deleting %v...\n", searchitm.String())
+			return fmt.Sprintf("Deleting %v...\n", searchitm.Details())
 		}
 	case selecting:
 		return "\n" + d.list.View()

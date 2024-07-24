@@ -15,7 +15,8 @@ import (
 type Item[I id_t] interface {
 	ID() I               // value passed to the delete function
 	FilterValue() string // value to compare against for filtration
-	String() string      // how the record should be displayed in the list
+	Title() string       // one-line representation of the item
+	Details() string     // displayed beneath item # and title for additional details
 }
 
 var itemStyle = stylesheet.Composable.Unfocused.PaddingLeft(2)
@@ -47,10 +48,11 @@ func defaultRender[I id_t](w io.Writer, m list.Model, index int, listItem list.I
 		return
 	}
 
-	str := fmt.Sprintf("%s%s. %s",
+	str := fmt.Sprintf("%s%s. %s\n%s",
 		colorizer.Pip(uint(index), uint(m.Index())),
 		colorizer.Index(index+1),
-		i.String())
+		stylesheet.Header1Style.Render(i.Title()),
+		i.Details())
 	fmt.Fprint(w, str)
 }
 
@@ -58,7 +60,8 @@ func defaultRender[I id_t](w io.Writer, m list.Model, index int, listItem list.I
 type DelegateOption[I id_t] func(*defaultDelegate[I])
 
 // Alter the number of lines allocated to each item.
-// Height should be set equal to the lipgloss.Height of your Item.String.
+// Height should be set equal to 1 + the lipgloss.Height of your Item.Details (1+ for Title) if
+// using the default render function.
 // Values above or below that can have... unpredictable... results.
 func WithHeight[I id_t](h int) DelegateOption[I] {
 	return func(dd *defaultDelegate[I]) { dd.height = h }

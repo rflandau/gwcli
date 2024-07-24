@@ -4,10 +4,12 @@ import (
 	"fmt"
 	"gwcli/action"
 	"gwcli/connection"
+	"gwcli/stylesheet"
 	"gwcli/utilities/scaffold/scaffolddelete"
 	"slices"
 	"strings"
 
+	"github.com/charmbracelet/lipgloss"
 	"github.com/gravwell/gravwell/v3/client/types"
 )
 
@@ -35,7 +37,7 @@ func NewMacroDeleteAction() action.Pair {
 				}
 			}
 			return items, nil
-		})
+		}, scaffolddelete.WithHeight[uint64](lipgloss.Height(macroItem{}.Details())+1))
 }
 
 func del(dryrun bool, id uint64) error {
@@ -57,7 +59,8 @@ var _ scaffolddelete.Item[uint64] = macroItem{}
 
 func (mi macroItem) ID() uint64          { return mi.id }
 func (mi macroItem) FilterValue() string { return mi.name }
-func (mi macroItem) String() string {
-	return fmt.Sprintf("%v (expands to '%v')\n%v",
-		mi.name, mi.expansion, mi.description)
+func (mi macroItem) Title() string       { return mi.name }
+func (mi macroItem) Details() string {
+	return fmt.Sprintf("Expansion: '%v'\n%v",
+		stylesheet.Header2Style.Render(mi.expansion), mi.description)
 }

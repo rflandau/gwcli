@@ -19,7 +19,7 @@ import (
 func NewExtractorDeleteAction() action.Pair {
 	return scaffolddelete.NewDeleteAction([]string{}, "extractor", "extractors",
 		del, fetch,
-		scaffolddelete.WithHeight[uuid.UUID](lipgloss.Height(axItem{}.String())))
+		scaffolddelete.WithHeight[uuid.UUID](lipgloss.Height(axItem{}.Details())+1))
 }
 
 func del(dryrun bool, id uuid.UUID) error {
@@ -54,9 +54,10 @@ func fetch() ([]scaffolddelete.Item[uuid.UUID], error) {
 		items[i] = axItem{
 			id:   ax.UUID,
 			name: ax.Name,
-			str: fmt.Sprintf("%v (module: %v)\ntags: %v\n%v",
-				stylesheet.Header1Style.Render(ax.Name), stylesheet.Header2Style.Render(ax.Module),
-				stylesheet.Header2Style.Render(strings.Join(ax.Tags, " ")), ax.Desc),
+			details: fmt.Sprintf("module: %v\ntags: %v\n%v",
+				stylesheet.Header2Style.Render(ax.Module),
+				stylesheet.Header2Style.Render(strings.Join(ax.Tags, " ")),
+				ax.Desc),
 		}
 	}
 
@@ -64,15 +65,16 @@ func fetch() ([]scaffolddelete.Item[uuid.UUID], error) {
 }
 
 type axItem struct {
-	id   uuid.UUID
-	name string
-	str  string
+	id      uuid.UUID
+	name    string
+	details string
 }
 
 var _ scaffolddelete.Item[uuid.UUID] = axItem{}
 
 func (ai axItem) ID() uuid.UUID       { return ai.id }
 func (ai axItem) FilterValue() string { return ai.name }
-func (ai axItem) String() string {
-	return ai.str
+func (ai axItem) Title() string       { return ai.name }
+func (ai axItem) Details() string {
+	return ai.details
 }

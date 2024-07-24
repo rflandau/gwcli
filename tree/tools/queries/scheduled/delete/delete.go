@@ -19,7 +19,6 @@ var (
 func NewQueriesScheduledDeleteAction() action.Pair {
 	return scaffolddelete.NewDeleteAction(aliases,
 		"query", "queries", del, func() ([]scaffolddelete.Item[int32], error) {
-			//var items []list.Item
 			ss, err := connection.Client.GetScheduledSearchList()
 			if err != nil {
 				return nil, err
@@ -69,7 +68,11 @@ func (ssi scheduledSearchItem) FilterValue() string {
 	return ssi.name
 }
 
-func (ssi scheduledSearchItem) String() string {
-	return fmt.Sprintf("%v (looks %v seconds into the past)\n%v",
-		ssi.name, math.Abs(float64(ssi.duration)), ssi.query)
+func (ssi scheduledSearchItem) Title() string {
+	return ssi.name
+}
+
+func (ssi scheduledSearchItem) Details() string {
+	return fmt.Sprintf("%v\n(looks %v seconds into the past)",
+		ssi.query, math.Abs(float64(ssi.duration)))
 }
