@@ -9,7 +9,7 @@ Implementations will probably look a lot like:
 	var aliases []string = []string{}
 
 	func New[pkg]DeleteAction() action.Pair {
-		return scaffold.NewDeleteAction(aliases, [singular], [plural], del,
+		return scaffolddelete.NewDeleteAction(aliases, [singular], [plural], del,
 			func() ([]scaffold.Item[[integer]], error) {
 				couldDelete, err := connection.Client.GetAll[X]()
 				if err != nil {
@@ -32,11 +32,6 @@ Implementations will probably look a lot like:
 			return err
 		}
 		return connection.Client.Delete[X](id)
-	}
-
-	type [pkg]Item struct {
-		id   [integer]
-		name string
 	}
 
 	type [pkg]Item struct {
