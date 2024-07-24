@@ -7,6 +7,7 @@ package datascope
 import (
 	"fmt"
 	"gwcli/stylesheet"
+	"gwcli/stylesheet/colorizer"
 	"strconv"
 	"strings"
 
@@ -92,7 +93,7 @@ func (s *DataScope) setResultsDisplayed() {
 	var bldr strings.Builder
 	var trueIndex int = start // index of full results, between start and end
 	for _, d := range data {
-		bldr.WriteString(indexStyle.Render(strconv.Itoa(trueIndex+1) + ":"))
+		bldr.WriteString(colorizer.Index(trueIndex+1) + ":")
 		if trueIndex%2 == 0 {
 			bldr.WriteString(evenEntryStyle.Render(d))
 		} else {

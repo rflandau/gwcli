@@ -8,6 +8,7 @@ package datascope
 import (
 	"gwcli/clilog"
 	"gwcli/stylesheet"
+	"gwcli/stylesheet/colorizer"
 	"strconv"
 	"strings"
 
@@ -53,7 +54,7 @@ func initTableTab(data []string) tableTab {
 		// map each row cell to its column
 		rd := table.RowData{}
 		// prepend the index column
-		rd["index"] = indexStyle.Render(strconv.Itoa(i + 1))
+		rd["index"] = colorizer.Index(i + 1)
 		for j, c := range cells {
 			rd[strconv.Itoa(j+1)] = c
 		}

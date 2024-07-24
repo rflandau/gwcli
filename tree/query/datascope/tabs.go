@@ -30,7 +30,6 @@ var (
 	}
 	evenEntryStyle = lipgloss.NewStyle()
 	oddEntryStyle  = lipgloss.NewStyle().Foreground(stylesheet.SecondaryColor)
-	indexStyle     = lipgloss.NewStyle().Foreground(stylesheet.AccentColor1)
 )
 
 // Returns a line, right-suffixed with the given percent*100.

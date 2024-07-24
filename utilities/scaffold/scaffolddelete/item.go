@@ -33,7 +33,10 @@ func (id itemDelegate[I]) Render(w io.Writer, m list.Model, index int, listItem 
 		return
 	}
 
-	str := fmt.Sprintf("%s%d. %s", colorizer.Pip(uint(index), uint(m.Index())), index+1, i.String())
+	str := fmt.Sprintf("%s%s. %s",
+		colorizer.Pip(uint(index), uint(m.Index())),
+		colorizer.Index(index+1),
+		i.String())
 
 	/*fn := itemStyle.Render
 	if index == m.Index() {
