@@ -4,6 +4,7 @@ import (
 	"gwcli/action"
 	"gwcli/connection"
 	"gwcli/utilities/treeutils"
+	"gwcli/utilities/uniques"
 
 	"github.com/charmbracelet/bubbles/list"
 	tea "github.com/charmbracelet/bubbletea"
@@ -103,7 +104,9 @@ func (em *editModel) Reset() error {
 	return nil
 }
 
-func (em *editModel) SetArgs(*pflag.FlagSet, []string) (invalid string, onStart tea.Cmd, err error) {
+func (em *editModel) SetArgs(*pflag.FlagSet, []string) (
+	invalid string, onStart tea.Cmd, err error,
+) {
 	// fetch edit-able macros
 	if em.data, err = em.fchFunc(); err != nil {
 		return
@@ -128,7 +131,7 @@ func (em *editModel) SetArgs(*pflag.FlagSet, []string) (invalid string, onStart 
 	// generatelist
 	em.list = list.New(itms, list.NewDefaultDelegate(), 80, 40)
 
-	return "", nil, nil
+	return "", uniques.FetchWindowSize, nil
 }
 
 //#endregion interactive mode (model) implementation
