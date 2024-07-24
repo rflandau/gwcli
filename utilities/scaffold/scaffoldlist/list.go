@@ -392,7 +392,7 @@ var _ action.Model = &ListAction[any]{}
 // Called when the action is invoked by the user and Mother *enters* handoff mode
 // Mother parses flags and provides us a handle to check against
 func (la *ListAction[T]) SetArgs(
-	inherited *pflag.FlagSet, tokens []string) (invalid string, onStart []tea.Cmd, err error) {
+	inherited *pflag.FlagSet, tokens []string) (invalid string, onStart tea.Cmd, err error) {
 
 	err = la.fs.Parse(tokens)
 	if err != nil {

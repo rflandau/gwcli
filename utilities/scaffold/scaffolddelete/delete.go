@@ -371,7 +371,7 @@ func (d *deleteModel[I]) Reset() error {
 	return nil
 }
 
-func (d *deleteModel[I]) SetArgs(_ *pflag.FlagSet, tokens []string) (invalid string, onStart []tea.Cmd, err error) {
+func (d *deleteModel[I]) SetArgs(_ *pflag.FlagSet, tokens []string) (invalid string, onStart tea.Cmd, err error) {
 	var zero I
 	// initialize the list
 	itms, err := d.ff()
@@ -410,18 +410,16 @@ func (d *deleteModel[I]) SetArgs(_ *pflag.FlagSet, tokens []string) (invalid str
 			// NOTE: this relies on the client log consistently returning 404s as ClientErrors,
 			// which I cannot guarentee
 			if err, ok := err.(*client.ClientError); ok && err.StatusCode == 404 {
-				return "", []tea.Cmd{
-					tea.Printf("Did not find a valid %v with ID %v", d.itemSingular, id),
-				}, nil
+				return "", tea.Printf("Did not find a valid %v with ID %v", d.itemSingular, id), nil
 			}
 			return "", nil, err
 		} else if dryrun {
 			return "",
-				[]tea.Cmd{tea.Printf(dryrunSuccessText, d.itemSingular, id)},
+				tea.Printf(dryrunSuccessText, d.itemSingular, id),
 				nil
 		}
 		return "",
-			[]tea.Cmd{tea.Printf(deleteSuccessText, d.itemSingular, id)},
+			tea.Printf(deleteSuccessText, d.itemSingular, id),
 			nil
 
 	}

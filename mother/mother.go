@@ -379,9 +379,9 @@ func processActionHandoff(m *Mother, actionCmd *cobra.Command, remString string)
 
 	var (
 		invalid string
-		cmds    []tea.Cmd
+		cmd     tea.Cmd
 	)
-	if invalid, cmds, err = m.active.model.SetArgs(
+	if invalid, cmd, err = m.active.model.SetArgs(
 		m.active.command.InheritedFlags(), args,
 	); err != nil { // undo and return
 		m.unsetAction()
@@ -395,8 +395,8 @@ func processActionHandoff(m *Mother, actionCmd *cobra.Command, remString string)
 		return tea.Println("invalid arguments. See help for invocation requirements")
 	}
 	clilog.Writer.Debugf("Handing off control to %s", m.active.command.Name())
-	if cmds != nil {
-		return tea.Sequence(cmds...)
+	if cmd != nil {
+		return cmd
 	}
 	return nil
 }

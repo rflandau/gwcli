@@ -269,10 +269,10 @@ func (q *query) Reset() error {
 }
 
 // Consume flags and associated them to the local flagset
-func (q *query) SetArgs(_ *pflag.FlagSet, tokens []string) (string, []tea.Cmd, error) {
+func (q *query) SetArgs(_ *pflag.FlagSet, tokens []string) (string, tea.Cmd, error) {
 	// parse the tokens agains the local flagset
 	if err := localFS.Parse(tokens); err != nil {
-		return "", []tea.Cmd{}, err
+		return "", nil, err
 	}
 
 	flags, err := transmogrifyFlags(&localFS)
@@ -298,7 +298,7 @@ func (q *query) SetArgs(_ *pflag.FlagSet, tokens []string) (string, []tea.Cmd, e
 	if qry := strings.TrimSpace(strings.Join(localFS.Args(), " ")); qry != "" {
 		q.editor.ta.SetValue(qry)
 		// if we are given a query, submitQuery will place us directly into waiting mode
-		return "", []tea.Cmd{q.submitQuery()}, nil
+		return "", q.submitQuery(), nil
 	}
 
 	return "", nil, nil

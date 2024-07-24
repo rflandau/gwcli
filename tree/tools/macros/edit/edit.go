@@ -103,7 +103,7 @@ func (em *editModel) Reset() error {
 	return nil
 }
 
-func (em *editModel) SetArgs(*pflag.FlagSet, []string) (invalid string, onStart []tea.Cmd, err error) {
+func (em *editModel) SetArgs(*pflag.FlagSet, []string) (invalid string, onStart tea.Cmd, err error) {
 	// fetch edit-able macros
 	if em.data, err = em.fchFunc(); err != nil {
 		return
@@ -113,7 +113,7 @@ func (em *editModel) SetArgs(*pflag.FlagSet, []string) (invalid string, onStart 
 
 	// check for a lack of data
 	if dataCount < 1 { // die
-		return "", []tea.Cmd{tea.Println("You have no macros that can be editted")}, nil
+		return "", tea.Println("You have no macros that can be editted"), nil
 	}
 
 	// transmute data into list items

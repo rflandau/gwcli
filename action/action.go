@@ -40,7 +40,7 @@ type Model interface {
 	View() string               // action displaying
 	Done() bool                 // should Mother reassert control?
 	Reset() error               // clean up action post-run
-	SetArgs(*pflag.FlagSet, []string) (invalid string, onStart []tea.Cmd, err error)
+	SetArgs(*pflag.FlagSet, []string) (invalid string, onStart tea.Cmd, err error)
 }
 
 // Duple used to construct the Action Map.

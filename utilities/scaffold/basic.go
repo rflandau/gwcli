@@ -102,7 +102,7 @@ func (ba *BasicAction) Reset() error {
 	return nil
 }
 
-func (ba *BasicAction) SetArgs(_ *pflag.FlagSet, tokens []string) (_ string, _ []tea.Cmd, err error) {
+func (ba *BasicAction) SetArgs(_ *pflag.FlagSet, tokens []string) (_ string, _ tea.Cmd, err error) {
 	// if no additional flags could be given, we have nothing more to do
 	// (basic actions have no starter flags)
 	if ba.fsFunc != nil {

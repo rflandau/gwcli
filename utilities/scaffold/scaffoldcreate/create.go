@@ -429,7 +429,7 @@ func (c *createModel) Reset() error {
 }
 
 func (c *createModel) SetArgs(_ *pflag.FlagSet, tokens []string) (
-	invalid string, onStart []tea.Cmd, err error,
+	invalid string, onStart tea.Cmd, err error,
 ) {
 	if err := c.fs.Parse(tokens); err != nil {
 		return "", nil, err
@@ -450,7 +450,7 @@ func (c *createModel) SetArgs(_ *pflag.FlagSet, tokens []string) (
 		}
 	}
 
-	return "", []tea.Cmd{fetchWindowSize}, nil
+	return "", fetchWindowSize, nil
 }
 
 // Queries for avaialble window size so we can wrap text by width, once this arrives.
