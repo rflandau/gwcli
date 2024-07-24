@@ -28,6 +28,10 @@ Tree nodes (commands that require further input/are submenus), such as `user`, a
 
 - Do not include newlines in lipgloss renders. It produces weird results.
 
+- tea.Cmds are like buckets; they can contain one command or many commands in different groupings. Bubble Tea is smart enough to handle it all. As such, it generally does not make sense to pass around arrays of tea.Cmd; make the progenitor of the tea.Cmds figure out how it wants to .Sequence/.Batch them.
+
+    - This lesson took a while to sink in; you may see []tea.Cmd signature floating around, but these should be replaced, primarily with .Batch()s. I already incorporated .Sequence() where important.
+
 # Design and Philosophy
 
 ## Command Tree Generation
