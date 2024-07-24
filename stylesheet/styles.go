@@ -27,4 +27,6 @@ var (
 	GreyedOutStyle = lipgloss.NewStyle().Faint(true)
 	// Mother's prompt (text prefixed to user input)
 	PromptStyle = lipgloss.NewStyle().Foreground(lipgloss.Color(PrimaryColor))
+	// used for displaying indices
+	IndexStyle = lipgloss.NewStyle().Foreground(AccentColor1)
 )

@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"gwcli/action"
 	"gwcli/stylesheet"
+	"strconv"
 
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
@@ -35,7 +36,7 @@ func Pip(selected, field uint) string {
 	if selected == field {
 		return lipgloss.NewStyle().Foreground(stylesheet.AccentColor2).Render(string(stylesheet.SelectionPrefix))
 	}
-	return ""
+	return " "
 }
 
 // Returns a simple checkbox with angled edges.
@@ -79,4 +80,8 @@ func SubmitString(keybind, inputErr, result string, width int) string {
 		alignerSty.Foreground(inputErrOrAltEnterColor).Render(inputErrOrAltEnterText),
 		alignerSty.Foreground(stylesheet.SecondaryColor).Render(result),
 	)
+}
+
+func Index(i int) string {
+	return stylesheet.IndexStyle.Render(strconv.Itoa(i))
 }
