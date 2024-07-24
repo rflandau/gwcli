@@ -386,7 +386,6 @@ func (d *deleteModel[I]) SetArgs(_ *pflag.FlagSet, tokens []string) (invalid str
 	}
 
 	// create list from the generated delegate
-	clilog.Writer.Debugf("list with delegate: %#v", d.delegate)
 	d.list = list.New(simpleitems, d.delegate, 80, 20)
 	d.list.Title = "Select a " + d.itemSingular + " to delete"
 	d.list.SetFilteringEnabled(true)
