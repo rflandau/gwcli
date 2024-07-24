@@ -31,7 +31,7 @@ func flags() pflag.FlagSet {
 
 func list(c *grav.Client, fs *pflag.FlagSet) ([]types.AXDefinition, error) {
 	if id, err := fs.GetString("uuid"); err != nil {
-		clilog.Writer.Errorf("failed to fetch '--uuid':%v\nignoring", err)
+		clilog.LogFlagFailedGet("uuid", err)
 	} else {
 		uid, err := uuid.Parse(id)
 		if err != nil {

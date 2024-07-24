@@ -38,12 +38,12 @@ func flags() pflag.FlagSet {
 
 func listScheduledSearch(c *grav.Client, fs *pflag.FlagSet) ([]types.ScheduledSearch, error) {
 	if all, err := fs.GetBool("all"); err != nil {
-		clilog.Writer.Errorf("failed to fetch '--all':%v\ndefaulting to false", err)
+		clilog.LogFlagFailedGet("all", err)
 	} else if all {
 		return c.GetAllScheduledSearches()
 	}
 	if untypedID, err := fs.GetString("id"); err != nil {
-		clilog.Writer.Errorf("failed to fetch '--id':%v\nignoring", err)
+		clilog.LogFlagFailedGet("id", err)
 	} else if untypedID != "" {
 		// attempt to parse as UUID first
 		if uuid, err := uuid.Parse(untypedID); err == nil {

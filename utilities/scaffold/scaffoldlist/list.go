@@ -30,12 +30,12 @@ Example implementation:
 
 	func list(c *grav.Client, fs *pflag.FlagSet) ([]types.[X], error) {
 		if all, err := fs.GetBool("all"); err != nil {
-			clilog.Writer.Errorf("failed to fetch '--all':%v\ndefaulting to false", err)
+			clilog.LogFlagFailedGet("all", err)
 		} else if all {
 			return c.GetAll[Y]()
 		}
 		if gid, err := fs.GetInt32("group"); err != nil {
-			clilog.Writer.Errorf("failed to fetch '--group':%v\nignoring", err)
+			clilog.LogFlagFailedGet("group", err)
 		} else if gid != 0 {
 			return c.GetGroup[Y](gid)
 		}

@@ -36,7 +36,7 @@ func flags() pflag.FlagSet {
 func ListKits(c *grav.Client, flags *pflag.FlagSet) ([]types.IdKitState, error) {
 	// if --all, use the admin version
 	if all, err := flags.GetBool("all"); err != nil {
-		clilog.Writer.Errorf("failed to fetch '--all':%v\ndefaulting to false", err)
+		clilog.LogFlagFailedGet("all", err)
 	} else if all {
 		return c.AdminListKits()
 	}

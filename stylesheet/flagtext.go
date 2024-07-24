@@ -1,10 +1,10 @@
 package stylesheet
 
 /**
- * Standardized flag description text for local flags "shared" across actions
+ *
  */
 
-const (
+const ( // standardized flag description text for local flags "shared" across actions
 	FlagOutputDesc   = "file to write results to.\nTruncates file unless --append is also given."
 	FlagAppendDesc   = "append to the given output file instead of truncating it."
 	FlagCSVDesc      = "display results as CSV.\nOnly effectual with --output.\nMutually exclusive with JSON."
@@ -14,6 +14,12 @@ const (
 	FlagDryrunDesc = "feigns action, descibing what result would have taken place"
 )
 
-const (
+const ( // description that require further formatting
+	// would include "Ignored if you are not admin" suffixed, except I cannot guarentee all Client
+	// library GetAll* functions actually do this rather than failing outright.
+	FlagListAllDescFormat = "ADMIN-ONLY. Lists all %s on the system."
+)
+
+const ( // flag name uniformity, a la descriptions
 	FlagDryrunName = "dryrun"
 )
