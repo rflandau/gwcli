@@ -59,6 +59,6 @@ gwcli is built on the fabulous BubbleTea and Cobra libraries. In the simplest of
 
 # Known Issues
 
-- Suggestions do not populate when navigation includes '..' (upward) or '~'/'/' (from home/root)
+- Suggestions do not populate when navigation includes `..` (upward) or `~`/`/` (from home/root)
 
     - This is just based on how bubbletea manages its suggestions. It operates off a list of strings, where each string is a *complete command*, returning closest-match. The suggestion engine is not intelligent enough to "walk" the current prompt (like the walk() subroutine is). We simple recur downward and supply these strings on every move. We do not supply suggestions with upward or rooted navigation because it would add a boatload more iterations and recusive logic when building the suggestions each hop. Relately, Bubble Tea does not handle .SetSuggestions coming in asyncronously, meaning each hop has to determine its suggestions immediately so keeping the lists down improves responsiveness.
