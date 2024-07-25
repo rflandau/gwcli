@@ -176,7 +176,9 @@ func (m Mother) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		connection.End()
 		return m, tea.Batch(tea.Println("Bye"), tea.Quit)
 	case killer.Child: // ineffectual if not in handoff mode
-		clilog.Writer.Infof("Child killing %v. Reasserting...", m.active.command.Name())
+		if m.mode == handoff { // to prevent segfault, as active is nil
+			clilog.Writer.Infof("Child killing %v. Reasserting...", m.active.command.Name())
+		}
 		m.unsetAction()
 		return m, tea.Batch(tea.ExitAltScreen, textinput.Blink)
 	}
