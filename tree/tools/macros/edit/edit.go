@@ -65,9 +65,9 @@ func NewMacroEditAction() action.Pair {
 
 func addtlFlags() pflag.FlagSet {
 	fs := pflag.FlagSet{}
-	fs.String("name", "", "new macro name")
-	fs.String("description", "", "new macro description")
-	fs.String("expansion", "", "new macro expansion")
+	fs.String(stylesheet.FlagNameMacroName, "", stylesheet.FlagDescMacroName)
+	fs.String(stylesheet.FlagNameMacroDesc, "", stylesheet.FlagDescMacroDesc)
+	fs.String(stylesheet.FlagNameMacroExpansion, "", stylesheet.FlagDescMacroExpansion)
 
 	return fs
 }
@@ -244,9 +244,9 @@ func transmuteStruct(data types.SearchMacro, fs pflag.FlagSet) []titledTI {
 	}
 
 	// check for name flag
-	if x, err := fs.GetString("name"); err != nil {
-		clilog.LogFlagFailedGet("name", err)
-	} else if fs.Changed("name") {
+	if x, err := fs.GetString(stylesheet.FlagNameMacroName); err != nil {
+		clilog.LogFlagFailedGet(stylesheet.FlagNameMacroName, err)
+	} else if fs.Changed(stylesheet.FlagNameMacroName) {
 		tis[0].ti.SetValue(x)
 	}
 
@@ -269,9 +269,9 @@ func transmuteStruct(data types.SearchMacro, fs pflag.FlagSet) []titledTI {
 		required: true,
 	}
 	// check for description flag
-	if x, err := fs.GetString("expansion"); err != nil {
-		clilog.LogFlagFailedGet("expansion", err)
-	} else if fs.Changed("expansion") {
+	if x, err := fs.GetString(stylesheet.FlagNameMacroExpansion); err != nil {
+		clilog.LogFlagFailedGet(stylesheet.FlagNameMacroExpansion, err)
+	} else if fs.Changed(stylesheet.FlagNameMacroExpansion) {
 		tis[2].ti.SetValue(x)
 	}
 

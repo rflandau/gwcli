@@ -1,9 +1,5 @@
 package stylesheet
 
-/**
- *
- */
-
 const ( // standardized flag description text for local flags "shared" across actions
 	FlagOutputDesc   = "file to write results to.\nTruncates file unless --append is also given."
 	FlagAppendDesc   = "append to the given output file instead of truncating it."
@@ -12,6 +8,11 @@ const ( // standardized flag description text for local flags "shared" across ac
 	FlagDurationDesc = "the historical timeframe (now minus duration) the query should pour over.\n" +
 		"Ex: the past hour"
 	FlagDryrunDesc = "feigns action, descibing what result would have taken place"
+
+	// Macros
+	FlagDescMacroName      = "name of the macro"
+	FlagDescMacroDesc      = "flavour description of the macro"
+	FlagDescMacroExpansion = "value for the macro to expand to"
 )
 
 const ( // description that require further formatting
@@ -21,5 +22,8 @@ const ( // description that require further formatting
 )
 
 const ( // flag name uniformity, a la descriptions
-	FlagDryrunName = "dryrun"
+	FlagNameDryrun         = "dryrun"
+	FlagNameMacroName      = "name"
+	FlagNameMacroDesc      = "description"
+	FlagNameMacroExpansion = "expansion"
 )

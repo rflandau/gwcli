@@ -169,7 +169,7 @@ func create(_ scaffoldcreate.Config, vals scaffoldcreate.Values, fs *pflag.FlagS
 		dr  bool
 		err error
 	)
-	if dr, err = fs.GetBool(stylesheet.FlagDryrunName); err != nil {
+	if dr, err = fs.GetBool(stylesheet.FlagNameDryrun); err != nil {
 		return 0, "", err
 	}
 
