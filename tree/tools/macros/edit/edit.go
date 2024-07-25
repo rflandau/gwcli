@@ -57,7 +57,19 @@ func NewMacroEditAction() action.Pair {
 		return connection.Client.GetUserMacros(connection.MyInfo.UID)
 	}
 
-	return treeutils.GenerateAction(cmd, newEditModel(fchFunc))
+	aflags := addtlFlags()
+	cmd.Flags().AddFlagSet(&aflags)
+
+	return treeutils.GenerateAction(cmd, newEditModel(fchFunc, addtlFlags))
+}
+
+func addtlFlags() pflag.FlagSet {
+	fs := pflag.FlagSet{}
+	fs.String("name", "", "new macro name")
+	fs.String("description", "", "new macro description")
+	fs.String("expansion", "", "new macro expansion")
+
+	return fs
 }
 
 //#region interactive mode (model) implementation
@@ -78,16 +90,16 @@ type titledTI struct {
 }
 
 type editModel struct {
-	mode mode // current program state
-
+	mode          mode                 // current program state
+	addtlFlagFunc func() pflag.FlagSet // function to generate flagset to parse field flags
+	fs            pflag.FlagSet        // current state of the flagset
 	width, height int
 
 	fchFunc func() ([]types.SearchMacro, error) // func to retrieve each editable item
 	data    []types.SearchMacro                 // data retrieved by fchFunc
 
 	// selecting mode
-	list    list.Model // list displayed during `selecting` mode
-	listErr string     // error occurred in list mode
+	list list.Model // list displayed during `selecting` mode
 
 	// editting mode
 	ttis         []titledTI        // TIs will be displayed in array order
@@ -98,8 +110,22 @@ type editModel struct {
 	updateErr    string            // error occured performing the update
 }
 
-func newEditModel(fchFunc fetchFunc) *editModel {
-	return &editModel{mode: idle, fchFunc: fchFunc}
+// Creates and returns a new edit model, ready for intreactive use.
+//
+// fchFunc must be a function that returns an array of editable structs.
+//
+// addtlFlagFunc may be nil or a function that returns a new flagset to parse/extract values from.
+func newEditModel(fchFunc fetchFunc, addtlFlagFunc func() pflag.FlagSet) *editModel {
+	em := &editModel{mode: idle, fchFunc: fchFunc, addtlFlagFunc: addtlFlagFunc}
+	if em.addtlFlagFunc != nil {
+		em.fs = em.addtlFlagFunc()
+	} else {
+		// set em.fs to the empty flagset
+		clilog.Writer.Warnf("no flags were given to edit model")
+		em.fs = pflag.FlagSet{}
+	}
+
+	return em
 }
 
 func (em *editModel) Update(msg tea.Msg) tea.Cmd {
@@ -118,13 +144,12 @@ func (em *editModel) Update(msg tea.Msg) tea.Cmd {
 		// switch on message type
 		switch msg := msg.(type) {
 		case tea.KeyMsg:
-			em.listErr = "" // clear lingering errors
 			if msg.Type == tea.KeySpace || msg.Type == tea.KeyEnter {
 				em.selectedData = em.data[em.list.Index()]
 				clilog.Writer.Debugf("editting macro %v", em.selectedData.Name)
 
 				// transmute the selected item into a series of TIs
-				em.ttis = transmuteStruct(em.selectedData)
+				em.ttis = transmuteStruct(em.selectedData, em.fs)
 				em.tiCount = len(em.ttis)
 				if em.tiCount < 1 {
 					str := "no tis created by transmutation"
@@ -209,7 +234,7 @@ func (em *editModel) nextTI() {
 
 // Takes the struct associated to the selected list item and transform its edit-able fields into a
 // list of TIs.
-func transmuteStruct(data types.SearchMacro) []titledTI {
+func transmuteStruct(data types.SearchMacro, fs pflag.FlagSet) []titledTI {
 	var tis []titledTI = make([]titledTI, 3)
 
 	tis[0] = titledTI{ // name
@@ -218,15 +243,36 @@ func transmuteStruct(data types.SearchMacro) []titledTI {
 		required: true,
 	}
 
+	// check for name flag
+	if x, err := fs.GetString("name"); err != nil {
+		clilog.LogFlagFailedGet("name", err)
+	} else if fs.Changed("name") {
+		tis[0].ti.SetValue(x)
+	}
+
 	tis[1] = titledTI{ // description
 		title:    "Description",
 		ti:       stylesheet.NewTI(data.Description, false),
 		required: true,
 	}
+
+	// check for description flag
+	if x, err := fs.GetString("description"); err != nil {
+		clilog.LogFlagFailedGet("description", err)
+	} else if fs.Changed("description") {
+		tis[1].ti.SetValue(x)
+	}
+
 	tis[2] = titledTI{ // description
 		title:    "Expansion",
 		ti:       stylesheet.NewTI(data.Expansion, false),
 		required: true,
+	}
+	// check for description flag
+	if x, err := fs.GetString("expansion"); err != nil {
+		clilog.LogFlagFailedGet("expansion", err)
+	} else if fs.Changed("expansion") {
+		tis[2].ti.SetValue(x)
 	}
 
 	return tis
@@ -261,7 +307,6 @@ func (em *editModel) View() string {
 		return ""
 	case selecting:
 		str = em.list.View() + "\n" +
-			stylesheet.ErrStyle.Render(em.listErr) + "\n" +
 			lipgloss.NewStyle().
 				AlignHorizontal(lipgloss.Center).
 				Width(em.width).
@@ -291,10 +336,14 @@ func (em *editModel) Done() bool {
 func (em *editModel) Reset() error {
 	em.mode = idle
 	em.data = nil
+	if em.addtlFlagFunc != nil {
+		em.fs = em.addtlFlagFunc()
+	} else {
+		em.fs = pflag.FlagSet{}
+	}
 
 	// selecting mode
 	em.list = list.Model{}
-	em.listErr = ""
 
 	// editting mode
 	em.ttis = nil
@@ -307,9 +356,14 @@ func (em *editModel) Reset() error {
 	return nil
 }
 
-func (em *editModel) SetArgs(*pflag.FlagSet, []string) (
+func (em *editModel) SetArgs(_ *pflag.FlagSet, tokens []string) (
 	invalid string, onStart tea.Cmd, err error,
 ) {
+	// parse the flags, save them for later, when TIs are created
+	if err := em.fs.Parse(tokens); err != nil {
+		return "", nil, err
+	}
+
 	// fetch edit-able macros
 	if em.data, err = em.fchFunc(); err != nil {
 		return
