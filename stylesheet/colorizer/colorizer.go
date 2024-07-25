@@ -45,7 +45,7 @@ func Checkbox(val bool) string {
 	return box(val, '[', ']')
 }
 
-// Checkbox but with rounded edges.
+// Checkbox() but with rounded edges.
 func Radiobox(val bool) string {
 	return box(val, '(', ')')
 }
@@ -82,6 +82,7 @@ func SubmitString(keybind, inputErr, result string, width int) string {
 	)
 }
 
+// Return the given number, styled as an index number in a list or table.
 func Index(i int) string {
 	return stylesheet.IndexStyle.Render(strconv.Itoa(i))
 }
