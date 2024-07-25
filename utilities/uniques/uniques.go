@@ -66,3 +66,9 @@ func FetchWindowSize() tea.Msg {
 	w, h, _ := term.GetSize(os.Stdin.Fd())
 	return tea.WindowSizeMsg{Width: w, Height: h}
 }
+
+// Returns a consistent, sanitized string, usable as a flag name.
+func DeriveFlagName(title string) string {
+	// TODO remove flag unfriendly inputs (/ ' " \ |)
+	return strings.Replace(title, " ", "-", -1)
+}

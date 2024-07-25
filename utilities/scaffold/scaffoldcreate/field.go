@@ -2,7 +2,7 @@ package scaffoldcreate
 
 import (
 	"errors"
-	"strings"
+	"gwcli/utilities/uniques"
 
 	"github.com/charmbracelet/bubbles/textinput"
 	"github.com/spf13/pflag"
@@ -46,7 +46,7 @@ func NewField(req bool, title string, order int) Field {
 		Required: req,
 		Title:    title,
 		Type:     Text,
-		FlagName: DeriveFlagName(title),
+		FlagName: uniques.DeriveFlagName(title),
 		Order:    order}
 	return f
 }
@@ -63,18 +63,12 @@ func (f *Field) Valid() error {
 	return nil
 }
 
-// Returns a consistent name, usable as a flag name.
-// Default Field.Flagname if unset.
-func DeriveFlagName(title string) string {
-	return strings.Replace(title, " ", "-", -1)
-}
-
 // Returns a FlagSet built from the given flagmap
 func installFlagsFromFields(fields Config) pflag.FlagSet {
 	var flags pflag.FlagSet
 	for _, f := range fields {
 		if f.FlagName == "" {
-			f.FlagName = DeriveFlagName(f.Title)
+			f.FlagName = uniques.DeriveFlagName(f.Title)
 		}
 
 		// map fields to their flags
