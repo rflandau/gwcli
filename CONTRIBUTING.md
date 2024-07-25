@@ -129,7 +129,8 @@ Actions must satisfy the `action.Model` interface to be able to supplant Mother 
 
 `Reset() error` is called by Mother *after* `Done()` returns true. It resets the child to a clean state so it can be called again later.
 
-`SetArgs([]string) (string, []tea.Cmd, error)` sets fields in the child that manipulate its next run. It is called when Mother *first enters handoff mode* for a child. It returns, respectively: the reason this argument set is invalid (or ""), tea.Cmds the child needs run on startup (eg: right now), errors outside of the users control. The startup Cmds somewhat take the place of tea.Model.Init().
+`SetArgs(*pflag.FlagSet, []string) (string, []tea.Cmd, error)` sets fields in the child that manipulate its next run. It is called when Mother *first enters handoff mode* for a child. It provides the flagset this action inherited from its ancestors as well as all tokens remaining *after* the action invocation. The former is likely to be unused (but provided just in case) and the former is pre-split by shlex (shell-splitting rules).
+It returns, respectively: the reason this argument set is invalid (or ""), tea.Cmds the child needs run on startup (eg: right now), errors outside of the users control. The startup Cmd somewhat takes the place of tea.Model.Init().
 
 ```mermaid
 flowchart
