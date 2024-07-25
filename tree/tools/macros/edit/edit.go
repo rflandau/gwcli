@@ -2,12 +2,18 @@ package edit
 
 import (
 	"gwcli/action"
+	"gwcli/clilog"
 	"gwcli/connection"
+	"gwcli/stylesheet"
+	"gwcli/stylesheet/colorizer"
 	"gwcli/utilities/treeutils"
 	"gwcli/utilities/uniques"
+	"strings"
 
 	"github.com/charmbracelet/bubbles/list"
+	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/charmbracelet/lipgloss"
 	"github.com/gravwell/gravwell/v3/client/types"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
@@ -24,6 +30,16 @@ import (
 // update
 
 // combination of delete's listing/selection capabilities and create's TI interface
+
+const listHeightMax = 40 // lines
+
+// #region local styles
+var (
+	tiFieldRequiredSty = stylesheet.Header1Style
+	tiFieldOptionalSty = stylesheet.Header2Style
+)
+
+// #endregion
 
 type fetchFunc = func() ([]types.SearchMacro, error)
 
@@ -55,20 +71,45 @@ const (
 	idle                  // inactive
 )
 
+type titledTI struct {
+	title    string          // field name to display next to the TI
+	ti       textinput.Model // ti for user modifications
+	required bool            // this field must not be empty
+}
+
 type editModel struct {
 	mode mode // current program state
 
+	width, height int
+
 	fchFunc func() ([]types.SearchMacro, error) // func to retrieve each editable item
 	data    []types.SearchMacro                 // data retrieved by fchFunc
-	list    list.Model                          // list displayed during `selecting` mode
 
+	// selecting mode
+	list    list.Model // list displayed during `selecting` mode
+	listErr string     // error occurred in list mode
+
+	// editting mode
+	ttis         []titledTI        // TIs will be displayed in array order
+	tiIndex      int               // array index of active TI
+	tiCount      int               // len(ttis)
+	selectedData types.SearchMacro // item chosen from the list
+	inputErr     string            // input is erroneous
+	updateErr    string            // error occured performing the update
 }
 
 func newEditModel(fchFunc fetchFunc) *editModel {
-	return &editModel{fchFunc: fchFunc}
+	return &editModel{mode: idle, fchFunc: fchFunc}
 }
 
 func (em *editModel) Update(msg tea.Msg) tea.Cmd {
+	if msg, ok := msg.(tea.WindowSizeMsg); ok {
+		em.width = msg.Width
+		em.height = msg.Height
+		em.list.SetSize(em.width, min(msg.Height-2, listHeightMax))
+	}
+
+	var cmd tea.Cmd
 	// switch handling based on mode
 	switch em.mode {
 	case quitting:
@@ -76,20 +117,171 @@ func (em *editModel) Update(msg tea.Msg) tea.Cmd {
 	case selecting:
 		// switch on message type
 		switch msg := msg.(type) {
-		case tea.WindowSizeMsg:
-			// TODO if the user is able to return to selection, this must update no matter the mode
-			em.list.SetSize(msg.Width, msg.Height)
+		case tea.KeyMsg:
+			em.listErr = "" // clear lingering errors
+			if msg.Type == tea.KeySpace || msg.Type == tea.KeyEnter {
+				em.selectedData = em.data[em.list.Index()]
+				clilog.Writer.Debugf("editting macro %v", em.selectedData.Name)
+
+				// transmute the selected item into a series of TIs
+				em.ttis = transmuteStruct(em.selectedData)
+				em.tiCount = len(em.ttis)
+				if em.tiCount < 1 {
+					str := "no tis created by transmutation"
+					clilog.Writer.Warnf(str)
+					return nil
+				}
+
+				em.ttis[0].ti.Focus() // focus the first TI
+
+				em.mode = editting
+				return textinput.Blink
+			}
 		}
-		var cmd tea.Cmd
 		em.list, cmd = em.list.Update(msg)
-		return cmd
+	case editting:
+		// check for a submission via alt+enter
+		if keymsg, ok := msg.(tea.KeyMsg); ok {
+			switch keymsg.Type {
+			case tea.KeyEnter:
+				if keymsg.Alt {
+					var populated bool = true
+					for _, tti := range em.ttis { // check all required fields are populated
+						if tti.required && strings.TrimSpace(tti.ti.Value()) == "" {
+							em.inputErr = tti.title + " is required"
+							populated = false
+							break
+						}
+					}
+					if populated {
+						if invalMsg, err := upd(em.ttis, em.selectedData); err != nil {
+							em.updateErr = err.Error()
+						} else if invalMsg != "" {
+							em.inputErr = invalMsg
+						} else {
+							// successfully updated; print a message and die
+							em.mode = quitting
+							return tea.Printf("Successfully updated %v %v",
+								"macro", em.selectedData.Name)
+						}
+					}
+					// if not populated, will fall through to normal update
+				} else {
+					em.nextTI()
+				}
+			case tea.KeyUp:
+				em.previousTI()
+			case tea.KeyDown:
+				em.nextTI()
+			}
+		}
+
+		// update tis
+		cmds := make([]tea.Cmd, len(em.ttis))
+		for i, tti := range em.ttis {
+			em.ttis[i].ti, cmds[i] = tti.ti.Update(msg)
+		}
+		cmd = tea.Batch(cmds...)
 	}
 
-	return nil
+	return cmd
+}
+
+// Blur existing TI, select and focus previous (higher) TI
+func (em *editModel) previousTI() {
+	em.ttis[em.tiIndex].ti.Blur()
+	em.tiIndex -= 1
+	if em.tiIndex < 0 {
+		em.tiIndex = em.tiCount - 1
+	}
+	em.ttis[em.tiIndex].ti.Focus()
+}
+
+// Blur existing TI, select and focus next (lower) TI
+func (em *editModel) nextTI() {
+	em.ttis[em.tiIndex].ti.Blur()
+	em.tiIndex += 1
+	if em.tiIndex >= em.tiCount {
+		em.tiIndex = 0
+	}
+	em.ttis[em.tiIndex].ti.Focus()
+}
+
+// Takes the struct associated to the selected list item and transform its edit-able fields into a
+// list of TIs.
+func transmuteStruct(data types.SearchMacro) []titledTI {
+	var tis []titledTI = make([]titledTI, 3)
+
+	tis[0] = titledTI{ // name
+		title:    "Name",
+		ti:       stylesheet.NewTI(data.Name, false),
+		required: true,
+	}
+
+	tis[1] = titledTI{ // description
+		title:    "Description",
+		ti:       stylesheet.NewTI(data.Description, false),
+		required: true,
+	}
+	tis[2] = titledTI{ // description
+		title:    "Expansion",
+		ti:       stylesheet.NewTI(data.Expansion, false),
+		required: true,
+	}
+
+	return tis
+}
+
+// Takes the populated TIs, validates their input, and updates the gravwell backend.
+func upd(ttis []titledTI, data types.SearchMacro) (invalMsg string, err error) {
+	// no need to nil check; all required fields are checked already
+
+	// rebuild the struct for the update call
+	for i, tti := range ttis {
+		switch tti.title {
+		case "Name":
+			data.Name = strings.ToUpper(tti.ti.Value()) // name must always be uppercase
+			ttis[i].ti.SetValue(data.Name)              // update it in case we return invalid or err
+		case "Description":
+			data.Description = tti.ti.Value()
+		case "Expansion":
+			data.Expansion = tti.ti.Value()
+		}
+	}
+
+	// submit the updated struct
+	return "", connection.Client.UpdateMacro(data)
 }
 
 func (em *editModel) View() string {
-	return ""
+	var str string
+
+	switch em.mode {
+	case quitting:
+		return ""
+	case selecting:
+		str = em.list.View() + "\n" +
+			stylesheet.ErrStyle.Render(em.listErr) + "\n" +
+			lipgloss.NewStyle().
+				AlignHorizontal(lipgloss.Center).
+				Width(em.width).
+				Foreground(stylesheet.TertiaryColor).
+				Render("Press enter to select")
+	case editting:
+		var sb strings.Builder
+		for _, tti := range em.ttis {
+			// color the title appropriately
+			if tti.required {
+				sb.WriteString(tiFieldRequiredSty.Render(tti.title + ": "))
+			} else {
+				sb.WriteString(tiFieldOptionalSty.Render(tti.title + ": "))
+			}
+			sb.WriteString(tti.ti.View() + "\n")
+		}
+		sb.WriteString(colorizer.SubmitString("alt+enter", em.inputErr, "", em.width))
+		str = sb.String()
+	}
+	return str
 }
 
 func (em *editModel) Done() bool {
@@ -99,7 +291,18 @@ func (em *editModel) Done() bool {
 func (em *editModel) Reset() error {
 	em.mode = idle
 	em.data = nil
+
+	// selecting mode
 	em.list = list.Model{}
+	em.listErr = ""
+
+	// editting mode
+	em.ttis = nil
+	em.tiIndex = 0
+	em.tiCount = 0
+	em.selectedData = types.SearchMacro{}
+	em.inputErr = ""
+	em.updateErr = ""
 
 	return nil
 }
@@ -116,6 +319,7 @@ func (em *editModel) SetArgs(*pflag.FlagSet, []string) (
 
 	// check for a lack of data
 	if dataCount < 1 { // die
+		em.mode = quitting
 		return "", tea.Println("You have no macros that can be editted"), nil
 	}
 
@@ -129,7 +333,9 @@ func (em *editModel) SetArgs(*pflag.FlagSet, []string) (
 	}
 
 	// generatelist
-	em.list = list.New(itms, list.NewDefaultDelegate(), 80, 40)
+	em.list = list.New(itms, list.NewDefaultDelegate(), 80, listHeightMax)
+
+	em.mode = selecting
 
 	return "", uniques.FetchWindowSize, nil
 }
