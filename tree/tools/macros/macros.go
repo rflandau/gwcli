@@ -4,6 +4,7 @@ import (
 	"gwcli/action"
 	"gwcli/tree/tools/macros/create"
 	"gwcli/tree/tools/macros/delete"
+	"gwcli/tree/tools/macros/edit"
 	"gwcli/tree/tools/macros/list"
 	"gwcli/utilities/treeutils"
 
@@ -19,5 +20,8 @@ var (
 
 func NewMacrosNav() *cobra.Command {
 	return treeutils.GenerateNav(use, short, long, aliases, []*cobra.Command{},
-		[]action.Pair{list.NewMacroListAction(), create.NewMacroCreateAction(), delete.NewMacroDeleteAction()})
+		[]action.Pair{list.NewMacroListAction(),
+			create.NewMacroCreateAction(),
+			delete.NewMacroDeleteAction(),
+			edit.NewMacroEditAction()})
 }
