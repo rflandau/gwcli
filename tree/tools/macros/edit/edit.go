@@ -1,6 +1,8 @@
 package edit
 
 import (
+	"errors"
+	"fmt"
 	"gwcli/action"
 	"gwcli/clilog"
 	"gwcli/connection"
@@ -33,6 +35,13 @@ import (
 
 const listHeightMax = 40 // lines
 
+//#region function signatures
+
+type getFunction = func(id uint64) (item types.SearchMacro, err error)
+type fetchFunction = func() ([]types.SearchMacro, error)
+
+//#endregion
+
 // #region local styles
 var (
 	tiFieldRequiredSty = stylesheet.Header1Style
@@ -40,8 +49,6 @@ var (
 )
 
 // #endregion
-
-type fetchFunc = func() ([]types.SearchMacro, error)
 
 func NewMacroEditAction() action.Pair {
 	cmd := treeutils.NewActionCommand("edit", "edit a macro", "edit/alter an existing macro",
@@ -57,10 +64,19 @@ func NewMacroEditAction() action.Pair {
 		return connection.Client.GetUserMacros(connection.MyInfo.UID)
 	}
 
-	aflags := addtlFlags()
+	// assign base flags
+	flags, aflags := flags(), addtlFlags()
+	cmd.Flags().AddFlagSet(&flags)
 	cmd.Flags().AddFlagSet(&aflags)
 
-	return treeutils.GenerateAction(cmd, newEditModel(fchFunc, addtlFlags))
+	return treeutils.GenerateAction(cmd, newEditModel(fchFunc, connection.Client.GetMacro, addtlFlags))
+}
+
+// base flagset always available to edit actions
+func flags() pflag.FlagSet {
+	fs := pflag.FlagSet{}
+	fs.Uint64("id", 0, "id of the macro to edit")
+	return fs
 }
 
 func addtlFlags() pflag.FlagSet {
@@ -95,11 +111,12 @@ type editModel struct {
 	fs            pflag.FlagSet        // current state of the flagset
 	width, height int
 
-	fchFunc func() ([]types.SearchMacro, error) // func to retrieve each editable item
-	data    []types.SearchMacro                 // data retrieved by fchFunc
+	data    []types.SearchMacro // data retrieved by fchFunc
+	getFunc getFunction         // func to retrieve a specified editable item
 
 	// selecting mode
-	list list.Model // list displayed during `selecting` mode
+	fchFunc fetchFunction // func to retrieve each editable item
+	list    list.Model    // list displayed during `selecting` mode
 
 	// editting mode
 	ttis         []titledTI        // TIs will be displayed in array order
@@ -114,9 +131,20 @@ type editModel struct {
 //
 // fchFunc must be a function that returns an array of editable structs.
 //
+// getFunc must be the function for getting a single struct, given id.
+//
 // addtlFlagFunc may be nil or a function that returns a new flagset to parse/extract values from.
-func newEditModel(fchFunc fetchFunc, addtlFlagFunc func() pflag.FlagSet) *editModel {
-	em := &editModel{mode: idle, fchFunc: fchFunc, addtlFlagFunc: addtlFlagFunc}
+func newEditModel(fchFunc fetchFunction, getFunc getFunction, addtlFlagFunc func() pflag.FlagSet) *editModel {
+	// sanity check required arguments
+	if fchFunc == nil {
+		panic("fetch function cannot be nil")
+	}
+
+	if getFunc == nil {
+		panic("get function cannot be nil")
+	}
+
+	em := &editModel{mode: idle, fchFunc: fchFunc, addtlFlagFunc: addtlFlagFunc, getFunc: getFunc}
 	if em.addtlFlagFunc != nil {
 		em.fs = em.addtlFlagFunc()
 	} else {
@@ -146,20 +174,11 @@ func (em *editModel) Update(msg tea.Msg) tea.Cmd {
 		case tea.KeyMsg:
 			if msg.Type == tea.KeySpace || msg.Type == tea.KeyEnter {
 				em.selectedData = em.data[em.list.Index()]
-				clilog.Writer.Debugf("editting macro %v", em.selectedData.Name)
-
-				// transmute the selected item into a series of TIs
-				em.ttis = transmuteStruct(em.selectedData, em.fs)
-				em.tiCount = len(em.ttis)
-				if em.tiCount < 1 {
-					str := "no tis created by transmutation"
-					clilog.Writer.Warnf(str)
-					return nil
+				if err := em.enterEditMode(); err != nil {
+					em.mode = quitting
+					clilog.Writer.Errorf("%v", err)
+					return tea.Println(err.Error())
 				}
-
-				em.ttis[0].ti.Focus() // focus the first TI
-
-				em.mode = editting
 				return textinput.Blink
 			}
 		}
@@ -336,10 +355,10 @@ func (em *editModel) Done() bool {
 func (em *editModel) Reset() error {
 	em.mode = idle
 	em.data = nil
+	em.fs = flags()
 	if em.addtlFlagFunc != nil {
-		em.fs = em.addtlFlagFunc()
-	} else {
-		em.fs = pflag.FlagSet{}
+		aflags := em.addtlFlagFunc()
+		em.fs.AddFlagSet(&aflags)
 	}
 
 	// selecting mode
@@ -362,6 +381,24 @@ func (em *editModel) SetArgs(_ *pflag.FlagSet, tokens []string) (
 	// parse the flags, save them for later, when TIs are created
 	if err := em.fs.Parse(tokens); err != nil {
 		return "", nil, err
+	}
+
+	// check for an explicit macro id
+	if id, err := em.fs.GetUint64("id"); err != nil {
+		return "", nil, err
+	} else if em.fs.Changed("id") {
+		if em.selectedData, err = em.getFunc(id); err != nil {
+			// treat this as an invalid argument
+			return fmt.Sprintf("failed to fetch macro by id (%v): %v", id, err), nil, nil
+		}
+		// we can jump directly to editting phase on start
+		if err := em.enterEditMode(); err != nil {
+			em.mode = quitting
+			clilog.Writer.Errorf("%v", err)
+			return "", nil, err
+		}
+
+		return "", nil, nil
 	}
 
 	// fetch edit-able macros
@@ -392,6 +429,24 @@ func (em *editModel) SetArgs(_ *pflag.FlagSet, tokens []string) (
 	em.mode = selecting
 
 	return "", uniques.FetchWindowSize, nil
+}
+
+// Triggers the edit model to enter editting mode.
+// This transmutes selectedData, and otherwise prepares the TIs, in the process.
+func (em *editModel) enterEditMode() error {
+	clilog.Writer.Debugf("editting macro %v", em.selectedData.Name)
+
+	// transmute the selected item into a series of TIs
+	em.ttis = transmuteStruct(em.selectedData, em.fs)
+	em.tiCount = len(em.ttis)
+	if em.tiCount < 1 {
+		return errors.New("no TIs created by transmutation")
+	}
+
+	em.ttis[0].ti.Focus() // focus the first TI
+
+	em.mode = editting
+	return nil
 }
 
 //#endregion interactive mode (model) implementation
