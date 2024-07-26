@@ -70,7 +70,23 @@ func NewMacroEditAction() action.Pair {
 			Required: true,
 			Title:    "Name",
 			Usage:    stylesheet.FlagDescMacroName,
-			FlagName: uniques.DeriveFlagName("Name")},
+			FlagName: uniques.DeriveFlagName("name"),
+			Order:    100,
+		},
+		"description": Field{
+			Required: true,
+			Title:    "Description",
+			Usage:    stylesheet.FlagDescMacroDesc,
+			FlagName: uniques.DeriveFlagName("description"),
+			Order:    80,
+		},
+		"expansion": Field{
+			Required: true,
+			Title:    "Expansion",
+			Usage:    stylesheet.FlagDescMacroExpansion,
+			FlagName: uniques.DeriveFlagName("expansion"),
+			Order:    60,
+		},
 	}
 	fchFunc := func() ([]types.SearchMacro, error) {
 		return connection.Client.GetUserMacros(connection.MyInfo.UID)
@@ -192,13 +208,12 @@ func newEditModel(config Config,
 		cfg:           config,
 		fchFunc:       fchFunc,
 		addtlFlagFunc: addtlFlagFunc,
-		getFunc:       getFunc}
+		getFunc:       getFunc,
+		transFunc:     transFunc}
+	em.fs = flags()
 	if em.addtlFlagFunc != nil {
-		em.fs = em.addtlFlagFunc()
-	} else {
-		// set em.fs to the empty flagset
-		clilog.Writer.Warnf("no flags were given to edit model")
-		em.fs = pflag.FlagSet{}
+		aflags := em.addtlFlagFunc()
+		em.fs.AddFlagSet(&aflags)
 	}
 
 	return em
@@ -246,7 +261,7 @@ func (em *editModel) Update(msg tea.Msg) tea.Cmd {
 						}
 					}
 					if populated {
-						if invalMsg, err := upd(em.orderedKTIs, em.selectedData); err != nil {
+						if invalMsg, err := upd(em.orderedKTIs, &em.selectedData); err != nil {
 							em.updateErr = err.Error()
 						} else if invalMsg != "" {
 							em.inputErr = invalMsg
@@ -344,7 +359,7 @@ func transmuteStruct(data types.SearchMacro,
 		} else {
 			// if this flag was not set,
 			// the implementor must map it to the corresponding struct field
-			clilog.Writer.Debugf("field %v requires translation", k)
+			clilog.Writer.Debugf("field '%v' requires translation", k)
 			if t, err := translateFunc(data, k); err != nil {
 				return nil, err
 			} else {
@@ -353,8 +368,10 @@ func transmuteStruct(data types.SearchMacro,
 		}
 
 		// add the TI to the list
-		i += 1
 		orderedKTIs[i] = keyedTI{key: k, ti: ti}
+
+		// iterate
+		i += 1
 	}
 
 	// with TIs built, sort them by order
@@ -366,24 +383,24 @@ func transmuteStruct(data types.SearchMacro,
 }
 
 // Takes the populated TIs, validates their input, and updates the gravwell backend.
-func upd(ttis []keyedTI, data types.SearchMacro) (invalMsg string, err error) {
+func upd(ttis []keyedTI, data *types.SearchMacro) (invalMsg string, err error) {
 	// no need to nil check; all required fields are checked already
 
 	// rebuild the struct for the update call
 	for i, tti := range ttis {
 		switch tti.key {
-		case "Name":
+		case "name":
 			data.Name = strings.ToUpper(tti.ti.Value()) // name must always be uppercase
 			ttis[i].ti.SetValue(data.Name)              // update it in case we return invalid or err
-		case "Description":
+		case "description":
 			data.Description = tti.ti.Value()
-		case "Expansion":
+		case "expansion":
 			data.Expansion = tti.ti.Value()
 		}
 	}
 
 	// submit the updated struct
-	return "", connection.Client.UpdateMacro(data)
+	return "", connection.Client.UpdateMacro(*data)
 }
 
 func (em *editModel) View() string {
@@ -506,7 +523,8 @@ func (em *editModel) enterEditMode() error {
 
 	// transmute the selected item into a series of TIs
 	var err error
-	if em.orderedKTIs, err = transmuteStruct(em.selectedData, em.fs); err != nil {
+	if em.orderedKTIs, err = transmuteStruct(em.selectedData, em.fs,
+		em.cfg, em.transFunc); err != nil {
 		return err
 	}
 	em.tiCount = len(em.orderedKTIs)
