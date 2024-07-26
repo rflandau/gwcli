@@ -8,7 +8,6 @@ import (
 
 	"github.com/charmbracelet/bubbles/list"
 	tea "github.com/charmbracelet/bubbletea"
-	"github.com/charmbracelet/lipgloss"
 )
 
 // the base functions a delete action must provide on the type it wants deleted
@@ -18,9 +17,6 @@ type Item[I id_t] interface {
 	Title() string       // one-line representation of the item
 	Details() string     // displayed beneath item # and title for additional details
 }
-
-var itemStyle = stylesheet.Composable.Unfocused.PaddingLeft(2)
-var selectedItemStyle = lipgloss.NewStyle().PaddingLeft(2).Foreground(stylesheet.PrimaryColor)
 
 const (
 	defaultItemHeight  = 2
