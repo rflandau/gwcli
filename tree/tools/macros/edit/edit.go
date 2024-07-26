@@ -72,6 +72,10 @@ func NewMacroEditAction() action.Pair {
 			}
 			return "", nil
 		},
+		GetTitleSub: func(item types.SearchMacro) string {
+			return fmt.Sprintf("%s -> %v", item.Name, item.Expansion)
+		},
+		GetDescriptionSub: func(item types.SearchMacro) string { return item.Description },
 		UpdateSub: func(data *types.SearchMacro) (identifier string, err error) {
 			if err := connection.Client.UpdateMacro(*data); err != nil {
 				return "", err
