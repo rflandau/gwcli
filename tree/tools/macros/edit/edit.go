@@ -6,6 +6,7 @@ import (
 	"gwcli/action"
 	"gwcli/clilog"
 	"gwcli/connection"
+	"gwcli/mother"
 	"gwcli/stylesheet"
 	"gwcli/stylesheet/colorizer"
 	"gwcli/utilities/treeutils"
@@ -187,6 +188,8 @@ func NewMacroEditAction() action.Pair {
 		}
 		if script {
 			runNonInteractive(cmd, cfg, funcs)
+		} else {
+			runInteractive(cmd, args)
 		}
 	}
 
@@ -276,6 +279,16 @@ func runNonInteractive(cmd *cobra.Command, cfg Config, funcs functionSet) {
 
 }
 
+func runInteractive(cmd *cobra.Command, args []string) {
+	// we have no way of knowing if the user has passed enough data to make the edit autonomously
+	// ex: they provided one flag, but are they only planning to edit one flag?
+	// therefore, just spawn mother; she is smart enough to handle the flags naturally
+	if err := mother.Spawn(cmd.Root(), cmd, args); err != nil {
+		clilog.Writer.Critical(err.Error())
+	}
+	return
+}
+
 // base flagset always available to edit actions
 func flags() pflag.FlagSet {
 	fs := pflag.FlagSet{}
@@ -324,7 +337,8 @@ type editModel struct {
 	data []types.SearchMacro // data retrieved by fchFunc
 
 	// selecting mode
-	list list.Model // list displayed during `selecting` mode
+	list            list.Model // list displayed during `selecting` mode
+	listInitialized bool
 
 	// editting mode
 	orderedKTIs  []keyedTI         // TIs will be displayed in array order
@@ -415,7 +429,7 @@ func (em *editModel) SetArgs(_ *pflag.FlagSet, tokens []string) (
 
 	// generatelist
 	em.list = list.New(itms, list.NewDefaultDelegate(), 80, listHeightMax)
-
+	em.listInitialized = true
 	em.mode = selecting
 
 	return "", uniques.FetchWindowSize, nil
@@ -425,7 +439,10 @@ func (em *editModel) Update(msg tea.Msg) tea.Cmd {
 	if msg, ok := msg.(tea.WindowSizeMsg); ok {
 		em.width = msg.Width
 		em.height = msg.Height
-		em.list.SetSize(em.width, min(msg.Height-2, listHeightMax))
+		// if we skipped directly to edit mode, list will be nil
+		if em.listInitialized {
+			em.list.SetSize(em.width, min(msg.Height-2, listHeightMax))
+		}
 	}
 
 	// switch handling based on mode
@@ -608,6 +625,7 @@ func (em *editModel) Reset() error {
 
 	// selecting mode
 	em.list = list.Model{}
+	em.listInitialized = false
 
 	// editting mode
 	em.orderedKTIs = nil
