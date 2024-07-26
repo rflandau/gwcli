@@ -69,6 +69,13 @@ func FetchWindowSize() tea.Msg {
 
 // Returns a consistent, sanitized string, usable as a flag name.
 func DeriveFlagName(title string) string {
-	// TODO remove flag unfriendly inputs (/ ' " \ |)
-	return strings.Replace(title, " ", "-", -1)
+	title = strings.ToLower(title)
+	title = strings.Map(func(r rune) rune {
+		switch r {
+		case '/', '\'', '"', '|', ' ':
+			return '-'
+		}
+		return r
+	}, title)
+	return title
 }
