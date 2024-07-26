@@ -36,9 +36,11 @@ import (
 	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
+	"github.com/google/uuid"
 	"github.com/gravwell/gravwell/v3/client/types"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
+	"golang.org/x/exp/constraints"
 )
 
 const (
@@ -49,6 +51,10 @@ const ( // local flag values
 	flagIDName   = "id"
 	flagIDUsageF = "id of the %v to edit"
 )
+
+type id_t interface {
+	constraints.Integer | uuid.UUID
+}
 
 // #region local styles
 var (
@@ -120,12 +126,12 @@ func generateFlagSet(cfg Config, singular string) pflag.FlagSet {
 // runNonInteractive is the --script portion of edit's runFunc.
 // It requires --id be set and is ineffectual if an addtl/field flag was no given.
 // Prints and error handles on its own; the program is expected to exit on its compeltion.
-func runNonInteractive(cmd *cobra.Command, cfg Config, funcs SubroutineSet, singular string) {
+func runNonInteractive[S any, I id_t](cmd *cobra.Command, cfg Config, funcs SubroutineSet, singular string) {
 	var err error
 	var (
-		id   uint64
-		zero uint64
-		itm  types.SearchMacro
+		id   I
+		zero I
+		itm  S
 	)
 	if id, err = cmd.Flags().GetUint64(flagIDName); err != nil {
 		clilog.Tee(clilog.ERROR, cmd.ErrOrStderr(), err.Error()+"\n")
