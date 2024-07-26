@@ -33,7 +33,7 @@ type selectFunction = func(id uint64) (
 
 // function to fetch all edit-able structs
 type fetchAllFunction = func() (
-	[]types.SearchMacro, error,
+	items []types.SearchMacro, err error,
 )
 
 // Function to retrieve the struct value associated to the field key without reflection.
@@ -41,27 +41,30 @@ type fetchAllFunction = func() (
 //
 // Sister to setFieldFunction.
 type getFieldFunction = func(item types.SearchMacro, fieldKey string) (
-	string, error,
+	value string, err error,
 )
 
 // Function to set the struct value associated to the field key without reflection.
 // This is probably a switch statement that maps (key -> item.X).
+// Returns invalid if the value is invalid for the keyed field and err on an unrecoverable error.
 //
 // Sister to getFieldFunction.
-type setFieldFunction = func(item *types.SearchMacro, fieldKey, val string) error
+type setFieldFunction = func(item *types.SearchMacro, fieldKey, val string) (
+	invalid string, err error,
+)
 
 // function to perform the actual update of the data on the GW instance
 type updateStructFunction = func(data *types.SearchMacro) (
-	title, invalidMsg string, err error,
+	identifier string, err error,
 )
 
 // Set of all functions, to make it easier to pass them around internally.
 // All fields are required.
 type functionSet struct {
-	sel  selectFunction   // fetch a specific editable struct
-	fch  fetchAllFunction // used in interactive mode to fetch all editable structs
-	getF getFieldFunction // get a value within the struct
-	setF setFieldFunction
+	sel  selectFunction       // fetch a specific editable struct
+	fch  fetchAllFunction     // used in interactive mode to fetch all editable structs
+	getF getFieldFunction     // get a value within the struct
+	setF setFieldFunction     // set a value within the struct
 	upd  updateStructFunction // submit the struct as updated
 }
 
@@ -87,7 +90,7 @@ func (funcs *functionSet) guarantee() {
 
 //#endregion
 
-type Config = map[string]Field
+type Config = map[string]*Field
 
 // #region local styles
 var (
@@ -98,7 +101,30 @@ var (
 // #endregion
 
 func NewMacroEditAction() action.Pair {
-	// TODO passed as parameter
+	// TODO replace these with parameters
+	cfg := Config{
+		"name": &Field{
+			Required: true,
+			Title:    "Name",
+			Usage:    stylesheet.FlagDescMacroName,
+			FlagName: uniques.DeriveFlagName("name"),
+			Order:    100,
+		},
+		"description": &Field{
+			Required: true,
+			Title:    "Description",
+			Usage:    stylesheet.FlagDescMacroDesc,
+			FlagName: uniques.DeriveFlagName("description"),
+			Order:    80,
+		},
+		"expansion": &Field{
+			Required: true,
+			Title:    "Expansion",
+			Usage:    stylesheet.FlagDescMacroExpansion,
+			FlagName: uniques.DeriveFlagName("expansion"),
+			Order:    60,
+		},
+	}
 	funcs := functionSet{
 		sel: getMacro,
 		fch: func() ([]types.SearchMacro, error) {
@@ -116,50 +142,31 @@ func NewMacroEditAction() action.Pair {
 
 			return "", fmt.Errorf("unknown field key: %v", fieldKey)
 		},
-		setF: func(item *types.SearchMacro, fieldKey, val string) error {
+		setF: func(item *types.SearchMacro, fieldKey, val string) (string, error) {
 			switch fieldKey {
 			case "name":
+				if strings.Contains(val, " ") {
+					return "name may not contain spaces", nil
+				}
+				val = strings.ToUpper(val)
 				item.Name = val
 			case "description":
 				item.Description = val
 			case "expansion":
 				item.Expansion = val
 			default:
-				return fmt.Errorf("unknown field key: %v", fieldKey)
+				return "", fmt.Errorf("unknown field key: %v", fieldKey)
 			}
-			return nil
+			return "", nil
 		},
 	}
-	// check that all functions are given
-	funcs.guarantee()
+	funcs.guarantee() // check that all functions are given
+	if len(cfg) < 1 { // check that config has fields in it
+		panic("cannot edit with no fields defined")
+	}
 
 	cmd := treeutils.NewActionCommand("edit", "edit a macro", "edit/alter an existing macro",
 		[]string{"e"}, func(c *cobra.Command, s []string) {})
-
-	// TODO temporary
-	cfg := Config{
-		"name": Field{
-			Required: true,
-			Title:    "Name",
-			Usage:    stylesheet.FlagDescMacroName,
-			FlagName: uniques.DeriveFlagName("name"),
-			Order:    100,
-		},
-		"description": Field{
-			Required: true,
-			Title:    "Description",
-			Usage:    stylesheet.FlagDescMacroDesc,
-			FlagName: uniques.DeriveFlagName("description"),
-			Order:    80,
-		},
-		"expansion": Field{
-			Required: true,
-			Title:    "Expansion",
-			Usage:    stylesheet.FlagDescMacroExpansion,
-			FlagName: uniques.DeriveFlagName("expansion"),
-			Order:    60,
-		},
-	}
 
 	cmd.Run = func(cmd *cobra.Command, args []string) {
 		var err error
@@ -407,7 +414,6 @@ func (em *editModel) Update(msg tea.Msg) tea.Cmd {
 		em.list.SetSize(em.width, min(msg.Height-2, listHeightMax))
 	}
 
-	var cmd tea.Cmd
 	// switch handling based on mode
 	switch em.mode {
 	case quitting:
@@ -415,52 +421,14 @@ func (em *editModel) Update(msg tea.Msg) tea.Cmd {
 	case selecting:
 		return em.updateSelecting(msg)
 	case editting:
-		// check for a submission via alt+enter
-		if keymsg, ok := msg.(tea.KeyMsg); ok {
-			em.inputErr = "" // clear input errors on new key input
-			switch keymsg.Type {
-			case tea.KeyEnter:
-				if keymsg.Alt {
-					var populated bool = true
-					for _, kti := range em.orderedKTIs { // check all required fields are populated
-						if em.cfg[kti.key].Required && strings.TrimSpace(kti.ti.Value()) == "" {
-							em.inputErr = kti.key + " is required"
-							populated = false
-							break
-						}
-					}
-					if populated {
-						if invalMsg, err := upd(em.orderedKTIs, &em.selectedData); err != nil {
-							em.updateErr = err.Error()
-						} else if invalMsg != "" {
-							em.inputErr = invalMsg
-						} else {
-							// successfully updated; print a message and die
-							em.mode = quitting
-							return tea.Printf("Successfully updated %v %v",
-								"macro", em.selectedData.Name)
-						}
-					}
-					// if not populated, will fall through to normal update
-				} else {
-					em.nextTI()
-				}
-			case tea.KeyUp:
-				em.previousTI()
-			case tea.KeyDown:
-				em.nextTI()
-			}
-		}
-
-		// update tis
-		cmds := make([]tea.Cmd, len(em.orderedKTIs))
-		for i, tti := range em.orderedKTIs {
-			em.orderedKTIs[i].ti, cmds[i] = tti.ti.Update(msg)
-		}
-		cmd = tea.Batch(cmds...)
+		return em.updateEditting(msg)
+	default:
+		clilog.Writer.Criticalf("unknown edit mode %v.", em.mode)
+		clilog.Writer.Debugf("model dump: %#v.", em)
+		clilog.Writer.Info("Returning control to Mother...")
+		em.mode = quitting
+		return textinput.Blink
 	}
-
-	return cmd
 }
 
 // Update() handling for selecting mode.
@@ -482,6 +450,71 @@ func (em *editModel) updateSelecting(msg tea.Msg) tea.Cmd {
 	var cmd tea.Cmd
 	em.list, cmd = em.list.Update(msg)
 	return cmd
+}
+
+func (em *editModel) updateEditting(msg tea.Msg) tea.Cmd {
+	if keymsg, ok := msg.(tea.KeyMsg); ok {
+		em.inputErr = "" // clear input errors on new key input
+		switch keymsg.Type {
+		case tea.KeyEnter:
+			if keymsg.Alt { // check for a submission via alt+enter
+				em.updateErr = "" // clear existing updateErr
+
+				var missing []string
+				for _, kti := range em.orderedKTIs { // check all required fields are populated
+					if em.cfg[kti.key].Required && strings.TrimSpace(kti.ti.Value()) == "" {
+						missing = append(missing, kti.key)
+					}
+				}
+
+				// if fields are missing, warn and do not submit
+				if len(missing) > 0 {
+					imploded := strings.Join(missing, ", ")
+					copula := "is"
+					if len(missing) > 1 {
+						copula = "are"
+					}
+					em.inputErr = fmt.Sprintf("%v %v required", imploded, copula)
+					return textinput.Blink
+				}
+
+				for _, kti := range em.orderedKTIs {
+					// yank the TI values and reinstall them into a data structure to update against
+					if inv, err := em.funcs.setF(&em.selectedData, kti.key, kti.ti.Value()); err != nil {
+						em.mode = quitting
+						return tea.Println(err, "\n", "no changes made")
+					} else if inv != "" {
+						em.inputErr = inv
+						return textinput.Blink
+					}
+				}
+
+				// perform the update
+				identifier, err := em.funcs.upd(&em.selectedData)
+				if err != nil {
+					em.updateErr = err.Error()
+					return textinput.Blink
+				}
+				// success
+				em.mode = quitting
+				tea.Printf("Successfully updated %v %v ", "macro", identifier)
+				return textinput.Blink
+			} else {
+				em.nextTI()
+			}
+		case tea.KeyUp:
+			em.previousTI()
+		case tea.KeyDown:
+			em.nextTI()
+		}
+	}
+
+	// update tis
+	cmds := make([]tea.Cmd, len(em.orderedKTIs))
+	for i, tti := range em.orderedKTIs {
+		em.orderedKTIs[i].ti, cmds[i] = tti.ti.Update(msg)
+	}
+	return tea.Batch(cmds...)
 }
 
 // Blur existing TI, select and focus previous (higher) TI
@@ -611,7 +644,7 @@ func (em *editModel) View() string {
 				AlignHorizontal(lipgloss.Center).
 				Width(em.width).
 				Foreground(stylesheet.TertiaryColor).
-				Render("Press enter to select")
+				Render("Press space or enter to select")
 	case editting:
 		var sb strings.Builder
 		for _, kti := range em.orderedKTIs {
@@ -656,32 +689,55 @@ func (em *editModel) Reset() error {
 	return nil
 }
 
-// Triggers the edit model to enter editting mode.
-// This transmutes selectedData, and otherwise prepares the TIs, in the process.
+// Triggers the edit model to enter editting mode, performing all required data setup.
 func (em *editModel) enterEditMode() error {
 	clilog.Writer.Debugf("editting macro %v", em.selectedData.Name)
-	var err error
 
-	// use the get function to pull current values for each field and display them as TI default
-	// values
+	// prepare list
+	em.orderedKTIs = make([]keyedTI, len(em.cfg))
+
+	// use the get function to pull current values for each field and display them in their
+	// respective TIs
+	var i uint8 = 0
 	for k, field := range em.cfg {
-		// request the value of this field
-		curVal, err := em.funcs.getF(em.selectedData, k)
-		if err != nil {
-			return err
+		// create the ti
+		var ti textinput.Model
+		if field.CustomTIFuncInit != nil {
+			ti = field.CustomTIFuncInit()
+		} else {
+			ti = stylesheet.NewTI(*field.value, field.Required)
 		}
-		em.cfg[k].value = &curVal
+
+		var setByFlag bool
+		if em.fs.Changed(field.FlagName) { // prefer flag value
+			if x, err := em.fs.GetString(field.FlagName); err == nil {
+				ti.SetValue(x)
+				setByFlag = true
+			}
+		}
+
+		if !setByFlag { // fallback to current value
+			curVal, err := em.funcs.getF(em.selectedData, k)
+			if err != nil {
+				return err
+			}
+			ti.SetValue(curVal)
+		}
+
+		// attach TI to list
+		em.orderedKTIs[i] = keyedTI{key: k, ti: ti}
+		i += 1
 	}
 
-	// transmute the selected item into a series of TIs
-	if em.orderedKTIs, err = transmuteStruct(em.selectedData, em.fs,
-		em.cfg, em.transFunc); err != nil {
-		return err
-	}
 	em.tiCount = len(em.orderedKTIs)
 	if em.tiCount < 1 {
 		return errors.New("no TIs created by transmutation")
 	}
+
+	// order TIs from highest to lowest orders
+	slices.SortFunc(em.orderedKTIs, func(a, b keyedTI) int {
+		return em.cfg[b.key].Order - em.cfg[a.key].Order
+	})
 
 	em.orderedKTIs[0].ti.Focus() // focus the first TI
 
