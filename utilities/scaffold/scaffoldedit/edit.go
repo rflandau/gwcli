@@ -42,7 +42,7 @@ import (
 
 const (
 	listHeightMax  = 40 // lines
-	successStringF = "Successfully updated %v %v "
+	successStringF = "Successfully updated %v %v"
 )
 const ( // local flag values
 	flagIDName   = "id"
