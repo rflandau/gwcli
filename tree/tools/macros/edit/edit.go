@@ -159,6 +159,12 @@ func NewMacroEditAction() action.Pair {
 			}
 			return "", nil
 		},
+		upd: func(data *types.SearchMacro) (identifier string, err error) {
+			if err := connection.Client.UpdateMacro(*data); err != nil {
+				return "", err
+			}
+			return data.Name, nil
+		},
 	}
 	funcs.guarantee() // check that all functions are given
 	if len(cfg) < 1 { // check that config has fields in it
@@ -177,7 +183,7 @@ func NewMacroEditAction() action.Pair {
 			return
 		}
 		if script {
-			runNonInteractive(cmd, args, getMacro, macroTranslation, upd, cfg)
+			//runNonInteractive(cmd, args, getMacro, macroTranslation, upd, cfg)
 		}
 	}
 
@@ -188,9 +194,7 @@ func NewMacroEditAction() action.Pair {
 
 	return treeutils.GenerateAction(cmd, newEditModel(
 		cfg,
-		fchFunc,
-		getMacro,
-		macroTranslation,
+		funcs,
 		addtlFlags))
 }
 
@@ -201,7 +205,7 @@ const ( // local flag names
 // run helper function
 // runNonInteractive is the --script portion of edit's runFunc.
 // It requires --id be set and is ineffectual if an addtl/field flag was no given.
-func runNonInteractive(cmd *cobra.Command, args []string,
+func runNonInteractive(cmd *cobra.Command,
 	selectFunc selectFunction, getFFunc getFieldFunction,
 	updFunc updateStructFunction, cfg Config) {
 	var err error
@@ -265,7 +269,7 @@ func runNonInteractive(cmd *cobra.Command, args []string,
 // base flagset always available to edit actions
 func flags() pflag.FlagSet {
 	fs := pflag.FlagSet{}
-	fs.Uint64("id", 0, "id of the macro to edit")
+	fs.Uint64(flagID, 0, "id of the macro to edit")
 	return fs
 }
 
@@ -497,8 +501,7 @@ func (em *editModel) updateEditting(msg tea.Msg) tea.Cmd {
 				}
 				// success
 				em.mode = quitting
-				tea.Printf("Successfully updated %v %v ", "macro", identifier)
-				return textinput.Blink
+				return tea.Printf("Successfully updated %v %v ", "macro", identifier)
 			} else {
 				em.nextTI()
 			}
@@ -607,31 +610,6 @@ func transmuteStruct(data types.SearchMacro,
 	return orderedKTIs, nil
 }
 
-// Takes the populated TIs, validates their input, and updates the gravwell backend.
-func upd(ttis []keyedTI, data *types.SearchMacro) (title, invalMsg string, err error) {
-	// no need to nil check; all required fields are checked already
-
-	// rebuild the struct for the update call
-	for i, tti := range ttis {
-		switch tti.key {
-		case "name":
-			data.Name = strings.ToUpper(tti.ti.Value()) // name must always be uppercase
-			ttis[i].ti.SetValue(data.Name)              // update it in case we return invalid or err
-			// validate
-			if strings.Contains(data.Name, " ") {
-				return "name may not contains spaces", nil
-			}
-		case "description":
-			data.Description = tti.ti.Value()
-		case "expansion":
-			data.Expansion = tti.ti.Value()
-		}
-	}
-
-	// submit the updated struct
-	return "", connection.Client.UpdateMacro(*data)
-}
-
 func (em *editModel) View() string {
 	var str string
 
@@ -705,7 +683,7 @@ func (em *editModel) enterEditMode() error {
 		if field.CustomTIFuncInit != nil {
 			ti = field.CustomTIFuncInit()
 		} else {
-			ti = stylesheet.NewTI(*field.value, field.Required)
+			ti = stylesheet.NewTI("", field.Required)
 		}
 
 		var setByFlag bool
