@@ -58,11 +58,31 @@ type updateStructFunction = func(data *types.SearchMacro) (
 // Set of all functions, to make it easier to pass them around internally.
 // All fields are required.
 type functionSet struct {
-	selectFunc selectFunction
-	fchFunc    fetchAllFunction
-	getFunc    getFieldFunction
-	setFunc    setFieldFunction
-	updFunc    updateStructFunction
+	sel  selectFunction   // fetch a specific editable struct
+	fch  fetchAllFunction // used in interactive mode to fetch all editable structs
+	getF getFieldFunction // get a value within the struct
+	setF setFieldFunction
+	upd  updateStructFunction // submit the struct as updated
+}
+
+// Validates that all functions were set.
+// Panics if any are missing.
+func (funcs *functionSet) guarantee() {
+	if funcs.sel == nil {
+		panic("select function is required")
+	}
+	if funcs.fch == nil {
+		panic("fetch all function is required")
+	}
+	if funcs.getF == nil {
+		panic("get field function is required")
+	}
+	if funcs.setF == nil {
+		panic("set field function is required")
+	}
+	if funcs.upd == nil {
+		panic("update struct function is required")
+	}
 }
 
 //#endregion
@@ -80,11 +100,11 @@ var (
 func NewMacroEditAction() action.Pair {
 	// TODO passed as parameter
 	funcs := functionSet{
-		selectFunc: getMacro,
-		fchFunc: func() ([]types.SearchMacro, error) {
+		sel: getMacro,
+		fch: func() ([]types.SearchMacro, error) {
 			return connection.Client.GetUserMacros(connection.MyInfo.UID)
 		},
-		getFunc: func(item types.SearchMacro, fieldKey string) (string, error) {
+		getF: func(item types.SearchMacro, fieldKey string) (string, error) {
 			switch fieldKey {
 			case "name":
 				return item.Name, nil
@@ -96,7 +116,7 @@ func NewMacroEditAction() action.Pair {
 
 			return "", fmt.Errorf("unknown field key: %v", fieldKey)
 		},
-		setFunc: func(item *types.SearchMacro, fieldKey, val string) error {
+		setF: func(item *types.SearchMacro, fieldKey, val string) error {
 			switch fieldKey {
 			case "name":
 				item.Name = val
@@ -111,6 +131,7 @@ func NewMacroEditAction() action.Pair {
 		},
 	}
 	// check that all functions are given
+	funcs.guarantee()
 
 	cmd := treeutils.NewActionCommand("edit", "edit a macro", "edit/alter an existing macro",
 		[]string{"e"}, func(c *cobra.Command, s []string) {})
@@ -230,7 +251,7 @@ func runNonInteractive(cmd *cobra.Command, args []string,
 	}
 
 	// perform the actual update
-	updFunc()
+	// TODO
 
 }
 
@@ -274,17 +295,15 @@ type editModel struct {
 	mode          mode                 // current program state
 	addtlFlagFunc func() pflag.FlagSet // function to generate flagset to parse field flags
 	fs            pflag.FlagSet        // current state of the flagset
-	width, height int
+	width, height int                  // tty dimensions, queried by SetArgs()
+	funcs         functionSet          // functions provided by implementor
 
 	cfg Config // RO configuration provided by the caller
 
-	data      []types.SearchMacro // data retrieved by fchFunc
-	getFunc   selectFunction      // func to retrieve a specified editable item
-	transFunc getFieldFunction    // func to retrieve field values from a struct
+	data []types.SearchMacro // data retrieved by fchFunc
 
 	// selecting mode
-	fchFunc fetchAllFunction // func to retrieve each editable item
-	list    list.Model       // list displayed during `selecting` mode
+	list list.Model // list displayed during `selecting` mode
 
 	// editting mode
 	orderedKTIs  []keyedTI         // TIs will be displayed in array order
@@ -303,33 +322,19 @@ type editModel struct {
 //
 // addtlFlagFunc may be nil or a function that returns a new flagset to parse/extract values from.
 func newEditModel(cfg Config,
-	fchFunc fetchAllFunction,
-	selectFunc selectFunction,
-	getFFunc getFieldFunction,
-	updFunc updateStructFunction,
+	funcs functionSet,
 	addtlFlagFunc func() pflag.FlagSet) *editModel {
 	// sanity check required arguments
 	if cfg == nil {
 		panic("Configuration cannot be nil")
 	}
-	if fchFunc == nil {
-		panic("fetch function cannot be nil")
-	}
 
-	if selectFunc == nil {
-		panic("get function cannot be nil")
-	}
-
-	if getFFunc == nil {
-		panic("translation function cannot be nil")
-	}
-
-	em := &editModel{mode: idle,
+	em := &editModel{
+		mode:          idle,
 		cfg:           cfg,
-		fchFunc:       fchFunc,
+		funcs:         funcs,
 		addtlFlagFunc: addtlFlagFunc,
-		getFunc:       selectFunc,
-		transFunc:     getFFunc}
+	}
 	em.fs = flags()
 	if em.addtlFlagFunc != nil {
 		aflags := em.addtlFlagFunc()
@@ -337,6 +342,62 @@ func newEditModel(cfg Config,
 	}
 
 	return em
+}
+
+func (em *editModel) SetArgs(_ *pflag.FlagSet, tokens []string) (
+	invalid string, onStart tea.Cmd, err error,
+) {
+	// parse the flags, save them for later, when TIs are created
+	if err := em.fs.Parse(tokens); err != nil {
+		return "", nil, err
+	}
+
+	// check for an explicit macro id
+	if id, err := em.fs.GetUint64("id"); err != nil {
+		return "", nil, err
+	} else if em.fs.Changed("id") {
+		if em.selectedData, err = em.funcs.sel(id); err != nil {
+			// treat this as an invalid argument
+			return fmt.Sprintf("failed to fetch macro by id (%v): %v", id, err), nil, nil
+		}
+		// we can jump directly to editting phase on start
+		if err := em.enterEditMode(); err != nil {
+			em.mode = quitting
+			clilog.Writer.Errorf("%v", err)
+			return "", nil, err
+		}
+
+		return "", nil, nil
+	}
+
+	// fetch edit-able macros
+	if em.data, err = em.funcs.fch(); err != nil {
+		return
+	}
+
+	var dataCount = len(em.data)
+
+	// check for a lack of data
+	if dataCount < 1 { // die
+		em.mode = quitting
+		return "", tea.Printf("You have no %v that can be editted", "macros"), nil
+	}
+
+	// transmute data into list items
+	var itms []list.Item = make([]list.Item, dataCount)
+	for i, m := range em.data {
+		itms[i] = macroItem{
+			title:       m.Name,
+			description: m.Description,
+		}
+	}
+
+	// generatelist
+	em.list = list.New(itms, list.NewDefaultDelegate(), 80, listHeightMax)
+
+	em.mode = selecting
+
+	return "", uniques.FetchWindowSize, nil
 }
 
 func (em *editModel) Update(msg tea.Msg) tea.Cmd {
@@ -352,20 +413,7 @@ func (em *editModel) Update(msg tea.Msg) tea.Cmd {
 	case quitting:
 		return nil
 	case selecting:
-		// switch on message type
-		switch msg := msg.(type) {
-		case tea.KeyMsg:
-			if msg.Type == tea.KeySpace || msg.Type == tea.KeyEnter {
-				em.selectedData = em.data[em.list.Index()]
-				if err := em.enterEditMode(); err != nil {
-					em.mode = quitting
-					clilog.Writer.Errorf("%v", err)
-					return tea.Println(err.Error())
-				}
-				return textinput.Blink
-			}
-		}
-		em.list, cmd = em.list.Update(msg)
+		return em.updateSelecting(msg)
 	case editting:
 		// check for a submission via alt+enter
 		if keymsg, ok := msg.(tea.KeyMsg); ok {
@@ -412,6 +460,27 @@ func (em *editModel) Update(msg tea.Msg) tea.Cmd {
 		cmd = tea.Batch(cmds...)
 	}
 
+	return cmd
+}
+
+// Update() handling for selecting mode.
+// Updates the list and transitions to editting mode if an item is selected.
+func (em *editModel) updateSelecting(msg tea.Msg) tea.Cmd {
+	// switch on message type
+	switch msg := msg.(type) {
+	case tea.KeyMsg:
+		if msg.Type == tea.KeySpace || msg.Type == tea.KeyEnter {
+			em.selectedData = em.data[em.list.Index()]
+			if err := em.enterEditMode(); err != nil {
+				em.mode = quitting
+				clilog.Writer.Errorf("%v", err)
+				return tea.Println(err.Error())
+			}
+			return textinput.Blink
+		}
+	}
+	var cmd tea.Cmd
+	em.list, cmd = em.list.Update(msg)
 	return cmd
 }
 
@@ -587,69 +656,24 @@ func (em *editModel) Reset() error {
 	return nil
 }
 
-func (em *editModel) SetArgs(_ *pflag.FlagSet, tokens []string) (
-	invalid string, onStart tea.Cmd, err error,
-) {
-	// parse the flags, save them for later, when TIs are created
-	if err := em.fs.Parse(tokens); err != nil {
-		return "", nil, err
-	}
-
-	// check for an explicit macro id
-	if id, err := em.fs.GetUint64("id"); err != nil {
-		return "", nil, err
-	} else if em.fs.Changed("id") {
-		if em.selectedData, err = em.getFunc(id); err != nil {
-			// treat this as an invalid argument
-			return fmt.Sprintf("failed to fetch macro by id (%v): %v", id, err), nil, nil
-		}
-		// we can jump directly to editting phase on start
-		if err := em.enterEditMode(); err != nil {
-			em.mode = quitting
-			clilog.Writer.Errorf("%v", err)
-			return "", nil, err
-		}
-
-		return "", nil, nil
-	}
-
-	// fetch edit-able macros
-	if em.data, err = em.fchFunc(); err != nil {
-		return
-	}
-
-	var dataCount = len(em.data)
-
-	// check for a lack of data
-	if dataCount < 1 { // die
-		em.mode = quitting
-		return "", tea.Println("You have no macros that can be editted"), nil
-	}
-
-	// transmute data into list items
-	var itms []list.Item = make([]list.Item, dataCount)
-	for i, m := range em.data {
-		itms[i] = macroItem{
-			title:       m.Name,
-			description: m.Description,
-		}
-	}
-
-	// generatelist
-	em.list = list.New(itms, list.NewDefaultDelegate(), 80, listHeightMax)
-
-	em.mode = selecting
-
-	return "", uniques.FetchWindowSize, nil
-}
-
 // Triggers the edit model to enter editting mode.
 // This transmutes selectedData, and otherwise prepares the TIs, in the process.
 func (em *editModel) enterEditMode() error {
 	clilog.Writer.Debugf("editting macro %v", em.selectedData.Name)
+	var err error
+
+	// use the get function to pull current values for each field and display them as TI default
+	// values
+	for k, field := range em.cfg {
+		// request the value of this field
+		curVal, err := em.funcs.getF(em.selectedData, k)
+		if err != nil {
+			return err
+		}
+		em.cfg[k].value = &curVal
+	}
 
 	// transmute the selected item into a series of TIs
-	var err error
 	if em.orderedKTIs, err = transmuteStruct(em.selectedData, em.fs,
 		em.cfg, em.transFunc); err != nil {
 		return err
