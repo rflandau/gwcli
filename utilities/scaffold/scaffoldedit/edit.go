@@ -44,8 +44,9 @@ const (
 	listHeightMax  = 40 // lines
 	successStringF = "Successfully updated %v %v "
 )
-const ( // local flag names
-	flagID = "id"
+const ( // local flag values
+	flagIDName   = "id"
+	flagIDUsageF = "id of the %v to edit"
 )
 
 // #region local styles
@@ -62,8 +63,14 @@ func NewEditAction(singular, plural string, cfg Config, funcs SubroutineSet) act
 		panic("cannot edit with no fields defined")
 	}
 
-	cmd := treeutils.NewActionCommand("edit", "edit a macro", "edit/alter an existing macro",
-		[]string{"e"}, func(cmd *cobra.Command, args []string) {
+	var fs pflag.FlagSet = generateFlagSet(cfg, singular)
+
+	cmd := treeutils.NewActionCommand(
+		"edit",                             // use
+		"edit a "+singular,                 // short
+		"edit/alter an existing "+singular, // long
+		[]string{"e"},                      // aliases
+		func(cmd *cobra.Command, args []string) {
 			var err error
 			// hard branch on script mode
 			var script bool
@@ -72,35 +79,54 @@ func NewEditAction(singular, plural string, cfg Config, funcs SubroutineSet) act
 				return
 			}
 			if script {
-				runNonInteractive(cmd, cfg, funcs)
+				runNonInteractive(cmd, cfg, funcs, singular)
 			} else {
 				runInteractive(cmd, args)
 			}
 		})
 
-	// assign base flags
-	flags, aflags := flags(), addtlFlags()
-	cmd.Flags().AddFlagSet(&flags)
-	cmd.Flags().AddFlagSet(&aflags)
+	// attach flags to cmd
+	cmd.Flags().AddFlagSet(&fs)
 
-	return treeutils.GenerateAction(cmd, newEditModel(
-		cfg,
-		funcs,
-		addtlFlags))
+	return treeutils.GenerateAction(cmd,
+		newEditModel(cfg, singular, plural, funcs, fs),
+	)
 }
 
-// run helper function
+// Generates a flagset from the given configuration and appends flags native to scaffoldedit.
+func generateFlagSet(cfg Config, singular string) pflag.FlagSet {
+	var fs pflag.FlagSet
+	for _, field := range cfg {
+		if field.FlagName == "" {
+			field.FlagName = uniques.DeriveFlagName(field.Title)
+		}
+
+		// map fields to their flags
+		if field.FlagShorthand != 0 {
+			fs.StringP(field.FlagName, string(field.FlagShorthand), "", field.Usage)
+		} else {
+			fs.String(field.FlagName, "", field.Usage)
+		}
+	}
+
+	// attach native flags
+	fs.Uint64P(flagIDName, "i", 0, fmt.Sprintf(flagIDUsageF, singular))
+
+	return fs
+}
+
+// run helper function.
 // runNonInteractive is the --script portion of edit's runFunc.
 // It requires --id be set and is ineffectual if an addtl/field flag was no given.
 // Prints and error handles on its own; the program is expected to exit on its compeltion.
-func runNonInteractive(cmd *cobra.Command, cfg Config, funcs SubroutineSet) {
+func runNonInteractive(cmd *cobra.Command, cfg Config, funcs SubroutineSet, singular string) {
 	var err error
 	var (
 		id   uint64
 		zero uint64
 		itm  types.SearchMacro
 	)
-	if id, err = cmd.Flags().GetUint64(flagID); err != nil {
+	if id, err = cmd.Flags().GetUint64(flagIDName); err != nil {
 		clilog.Tee(clilog.ERROR, cmd.ErrOrStderr(), err.Error()+"\n")
 		return
 	}
@@ -109,7 +135,7 @@ func runNonInteractive(cmd *cobra.Command, cfg Config, funcs SubroutineSet) {
 		return
 	}
 
-	// get the macro to edit
+	// get the item to edit
 	if itm, err = funcs.SelectSub(id); err != nil {
 		clilog.Tee(clilog.ERROR, cmd.ErrOrStderr(), err.Error()+"\n")
 		return
@@ -156,10 +182,12 @@ func runNonInteractive(cmd *cobra.Command, cfg Config, funcs SubroutineSet) {
 		clilog.Tee(clilog.ERROR, cmd.ErrOrStderr(), err.Error()+"\n")
 		return
 	}
-	fmt.Fprintf(cmd.OutOrStdout(), successStringF+"\n", "macro", identifier)
+	fmt.Fprintf(cmd.OutOrStdout(), successStringF+"\n", singular, identifier)
 
 }
 
+// run helper function.
+// Prints and error handles on its own; the program is expected to exit on its compeltion.
 func runInteractive(cmd *cobra.Command, args []string) {
 	// we have no way of knowing if the user has passed enough data to make the edit autonomously
 	// ex: they provided one flag, but are they only planning to edit one flag?
@@ -167,23 +195,6 @@ func runInteractive(cmd *cobra.Command, args []string) {
 	if err := mother.Spawn(cmd.Root(), cmd, args); err != nil {
 		clilog.Writer.Critical(err.Error())
 	}
-	return
-}
-
-// base flagset always available to edit actions
-func flags() pflag.FlagSet {
-	fs := pflag.FlagSet{}
-	fs.Uint64(flagID, 0, "id of the macro to edit")
-	return fs
-}
-
-func addtlFlags() pflag.FlagSet {
-	fs := pflag.FlagSet{}
-	fs.String(stylesheet.FlagNameMacroName, "", stylesheet.FlagDescMacroName)
-	fs.String(stylesheet.FlagNameMacroDesc, "", stylesheet.FlagDescMacroDesc)
-	fs.String(stylesheet.FlagNameMacroExpansion, "", stylesheet.FlagDescMacroExpansion)
-
-	return fs
 }
 
 //#region interactive mode (model) implementation
@@ -203,11 +214,11 @@ type keyedTI struct {
 }
 
 type editModel struct {
-	mode          mode                 // current program state
-	addtlFlagFunc func() pflag.FlagSet // function to generate flagset to parse field flags
-	fs            pflag.FlagSet        // current state of the flagset
-	width, height int                  // tty dimensions, queried by SetArgs()
-	funcs         SubroutineSet        // functions provided by implementor
+	mode             mode          // current program state
+	fs               pflag.FlagSet // current state of the flagset
+	singular, plural string        // forms of the noun
+	width, height    int           // tty dimensions, queried by SetArgs()
+	funcs            SubroutineSet // functions provided by implementor
 
 	cfg Config // RO configuration provided by the caller
 
@@ -227,30 +238,15 @@ type editModel struct {
 }
 
 // Creates and returns a new edit model, ready for intreactive use.
-//
-// fchFunc must be a function that returns an array of editable structs.
-//
-// getFunc must be the function for getting a single struct, given id.
-//
-// addtlFlagFunc may be nil or a function that returns a new flagset to parse/extract values from.
-func newEditModel(cfg Config,
-	funcs SubroutineSet,
-	addtlFlagFunc func() pflag.FlagSet) *editModel {
-	// sanity check required arguments
-	if cfg == nil {
-		panic("Configuration cannot be nil")
-	}
-
+func newEditModel(cfg Config, singular, plural string,
+	funcs SubroutineSet, initialFS pflag.FlagSet) *editModel {
 	em := &editModel{
-		mode:          idle,
-		cfg:           cfg,
-		funcs:         funcs,
-		addtlFlagFunc: addtlFlagFunc,
-	}
-	em.fs = flags()
-	if em.addtlFlagFunc != nil {
-		aflags := em.addtlFlagFunc()
-		em.fs.AddFlagSet(&aflags)
+		mode:     idle,
+		fs:       initialFS,
+		singular: singular,
+		plural:   plural,
+		cfg:      cfg,
+		funcs:    funcs,
 	}
 
 	return em
@@ -264,13 +260,13 @@ func (em *editModel) SetArgs(_ *pflag.FlagSet, tokens []string) (
 		return "", nil, err
 	}
 
-	// check for an explicit macro id
+	// check for an explicit id
 	if id, err := em.fs.GetUint64("id"); err != nil {
 		return "", nil, err
 	} else if em.fs.Changed("id") {
 		if em.selectedData, err = em.funcs.SelectSub(id); err != nil {
 			// treat this as an invalid argument
-			return fmt.Sprintf("failed to fetch macro by id (%v): %v", id, err), nil, nil
+			return fmt.Sprintf("failed to fetch %s by id (%v): %v", em.singular, id, err), nil, nil
 		}
 		// we can jump directly to editting phase on start
 		if err := em.enterEditMode(); err != nil {
@@ -282,7 +278,7 @@ func (em *editModel) SetArgs(_ *pflag.FlagSet, tokens []string) (
 		return "", nil, nil
 	}
 
-	// fetch edit-able macros
+	// fetch edit-able items
 	if em.data, err = em.funcs.FetchSub(); err != nil {
 		return
 	}
@@ -292,15 +288,15 @@ func (em *editModel) SetArgs(_ *pflag.FlagSet, tokens []string) (
 	// check for a lack of data
 	if dataCount < 1 { // die
 		em.mode = quitting
-		return "", tea.Printf("You have no %v that can be editted", "macros"), nil
+		return "", tea.Printf("You have no %v that can be editted", em.plural), nil
 	}
 
 	// transmute data into list items
 	var itms []list.Item = make([]list.Item, dataCount)
-	for i, m := range em.data {
-		itms[i] = macroItem{
-			title:       m.Name,
-			description: m.Description,
+	for i, s := range em.data {
+		itms[i] = listItem{
+			title:       em.funcs.GetTitleSub(s),
+			description: em.funcs.GetDescriptionSub(s),
 		}
 	}
 
@@ -405,7 +401,7 @@ func (em *editModel) updateEditting(msg tea.Msg) tea.Cmd {
 				}
 				// success
 				em.mode = quitting
-				return tea.Printf(successStringF, "macro", identifier)
+				return tea.Printf(successStringF, em.singular, identifier)
 			} else {
 				em.nextTI()
 			}
@@ -481,11 +477,7 @@ func (em *editModel) Done() bool {
 func (em *editModel) Reset() error {
 	em.mode = idle
 	em.data = nil
-	em.fs = flags()
-	if em.addtlFlagFunc != nil {
-		aflags := em.addtlFlagFunc()
-		em.fs.AddFlagSet(&aflags)
-	}
+	em.fs = generateFlagSet(em.cfg, em.singular)
 
 	// selecting mode
 	em.list = list.Model{}
@@ -504,8 +496,6 @@ func (em *editModel) Reset() error {
 
 // Triggers the edit model to enter editting mode, performing all required data setup.
 func (em *editModel) enterEditMode() error {
-	clilog.Writer.Debugf("editting macro %v", em.selectedData.Name)
-
 	// prepare list
 	em.orderedKTIs = make([]keyedTI, len(em.cfg))
 
@@ -560,12 +550,12 @@ func (em *editModel) enterEditMode() error {
 
 //#endregion interactive mode (model) implementation
 
-type macroItem struct {
+type listItem struct {
 	title, description string
 }
 
-var _ list.DefaultItem = macroItem{}
+var _ list.DefaultItem = listItem{}
 
-func (mi macroItem) FilterValue() string { return mi.title }
-func (mi macroItem) Title() string       { return mi.title }
-func (mi macroItem) Description() string { return mi.description }
+func (mi listItem) FilterValue() string { return mi.title }
+func (mi listItem) Title() string       { return mi.title }
+func (mi listItem) Description() string { return mi.description }

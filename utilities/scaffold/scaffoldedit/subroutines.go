@@ -20,6 +20,14 @@ type GetFieldSubroutine = func(item types.SearchMacro, fieldKey string) (
 	value string, err error,
 )
 
+// Subroutine to fetch a title to be displayed for this item in the list.
+// This will be called in a loop when building the list.
+type GetTitleSubroutine = func(item types.SearchMacro) string
+
+// Subroutine to fetch a description to be displayed under this item in the list.
+// This will be called in a loop when building the list.
+type GetDescriptionSubroutine = func(item types.SearchMacro) string
+
 // Function to set the struct value associated to the field key without reflection.
 // This is probably a switch statement that maps (key -> item.X).
 // Returns invalid if the value is invalid for the keyed field and err on an unrecoverable error.
@@ -38,11 +46,16 @@ type UpdateStructSubroutine = func(data *types.SearchMacro) (
 //
 // ! AddEditAction will panic if any subroutine is nil
 type SubroutineSet struct {
-	SelectSub   SelectSubroutine       // fetch a specific editable struct
-	FetchSub    FetchAllSubroutine     // used in interactive mode to fetch all editable structs
-	GetFieldSub GetFieldSubroutine     // get a value within the struct
-	SetFieldSub SetFieldSubroutine     // set a value within the struct
-	UpdateSub   UpdateStructSubroutine // submit the struct as updated
+	SelectSub SelectSubroutine // fetch a specific editable struct
+	// used in interactive mode to fetch all editable structs
+	FetchSub    FetchAllSubroutine
+	GetFieldSub GetFieldSubroutine // get a value within the struct
+	SetFieldSub SetFieldSubroutine // set a value within the struct
+	// special get function to retrieve a title for the list entry
+	GetTitleSub GetTitleSubroutine
+	// special function to retrieve a description for the list entry
+	GetDescriptionSub GetDescriptionSubroutine
+	UpdateSub         UpdateStructSubroutine // submit the struct as updated
 }
 
 // Validates that all functions were set.
@@ -59,6 +72,12 @@ func (funcs *SubroutineSet) guarantee() {
 	}
 	if funcs.SetFieldSub == nil {
 		panic("set field function is required")
+	}
+	if funcs.GetTitleSub == nil {
+		panic("get title function is required")
+	}
+	if funcs.GetDescriptionSub == nil {
+		panic("get description function is required")
 	}
 	if funcs.UpdateSub == nil {
 		panic("update struct function is required")
