@@ -26,6 +26,7 @@ import (
 	"gwcli/mother"
 	"gwcli/stylesheet"
 	"gwcli/stylesheet/colorizer"
+	"gwcli/utilities/keymaps"
 	"gwcli/utilities/treeutils"
 	"gwcli/utilities/uniques"
 	"slices"
@@ -302,6 +303,7 @@ func (em *editModel) SetArgs(_ *pflag.FlagSet, tokens []string) (
 
 	// generatelist
 	em.list = list.New(itms, list.NewDefaultDelegate(), 80, listHeightMax)
+	em.list.KeyMap = keymaps.ListKeyMap()
 	em.listInitialized = true
 	em.mode = selecting
 

@@ -52,6 +52,7 @@ import (
 	"gwcli/action"
 	"gwcli/clilog"
 	"gwcli/mother"
+	"gwcli/utilities/keymaps"
 	"gwcli/utilities/treeutils"
 	"strconv"
 
@@ -389,6 +390,7 @@ func (d *deleteModel[I]) SetArgs(_ *pflag.FlagSet, tokens []string) (invalid str
 
 	// create list from the generated delegate
 	d.list = list.New(simpleitems, d.delegate, 80, 40)
+	d.list.KeyMap = keymaps.ListKeyMap()
 	d.list.Title = "Select a " + d.itemSingular + " to delete"
 	d.list.SetFilteringEnabled(true)
 
