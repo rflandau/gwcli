@@ -10,9 +10,9 @@ const ( // standardized flag description text for local flags "shared" across ac
 	FlagDryrunDesc = "feigns action, descibing what result would have taken place"
 
 	// Macros
-	FlagDescMacroName      = "name of the macro"
-	FlagDescMacroDesc      = "flavour description of the macro"
-	FlagDescMacroExpansion = "value for the macro to expand to"
+	FlagUsageMacroName      = "name of the macro"
+	FlagUsageMacroDesc      = "flavour description of the macro"
+	FlagUsageMacroExpansion = "value for the macro to expand to"
 )
 
 const ( // description that require further formatting

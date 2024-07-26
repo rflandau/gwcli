@@ -23,7 +23,7 @@ func NewMacroCreateAction() action.Pair {
 		"exp": scaffoldcreate.Field{
 			Required:      true,
 			Title:         "expansion",
-			Usage:         stylesheet.FlagDescMacroExpansion,
+			Usage:         stylesheet.FlagUsageMacroExpansion,
 			Type:          scaffoldcreate.Text,
 			FlagName:      stylesheet.FlagNameMacroExpansion,
 			FlagShorthand: 'e',
