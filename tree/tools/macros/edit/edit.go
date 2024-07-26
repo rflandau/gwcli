@@ -6,7 +6,6 @@ import (
 	"gwcli/connection"
 	"gwcli/stylesheet"
 	"gwcli/utilities/scaffold/scaffoldedit"
-	"gwcli/utilities/uniques"
 	"strings"
 
 	"github.com/gravwell/gravwell/v3/client/types"
@@ -17,22 +16,22 @@ func NewMacroEditAction() action.Pair {
 		"name": &scaffoldedit.Field{
 			Required: true,
 			Title:    "Name",
-			Usage:    stylesheet.FlagDescMacroName,
-			FlagName: uniques.DeriveFlagName("name"),
+			Usage:    stylesheet.FlagUsageMacroName,
+			FlagName: stylesheet.FlagNameMacroName,
 			Order:    100,
 		},
 		"description": &scaffoldedit.Field{
 			Required: true,
 			Title:    "Description",
-			Usage:    stylesheet.FlagDescMacroDesc,
-			FlagName: uniques.DeriveFlagName("description"),
+			Usage:    stylesheet.FlagUsageMacroDesc,
+			FlagName: stylesheet.FlagNameMacroDesc,
 			Order:    80,
 		},
 		"expansion": &scaffoldedit.Field{
 			Required: true,
 			Title:    "Expansion",
-			Usage:    stylesheet.FlagDescMacroExpansion,
-			FlagName: uniques.DeriveFlagName("expansion"),
+			Usage:    stylesheet.FlagUsageMacroExpansion,
+			FlagName: stylesheet.FlagNameMacroExpansion,
 			Order:    60,
 		},
 	}
