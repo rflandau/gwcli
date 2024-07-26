@@ -63,22 +63,20 @@ func NewEditAction(singular, plural string, cfg Config, funcs SubroutineSet) act
 	}
 
 	cmd := treeutils.NewActionCommand("edit", "edit a macro", "edit/alter an existing macro",
-		[]string{"e"}, func(c *cobra.Command, s []string) {})
-
-	cmd.Run = func(cmd *cobra.Command, args []string) {
-		var err error
-		// hard branch on script mode
-		var script bool
-		if script, err = cmd.Flags().GetBool("script"); err != nil {
-			clilog.Tee(clilog.ERROR, cmd.ErrOrStderr(), err.Error()+"\n")
-			return
-		}
-		if script {
-			runNonInteractive(cmd, cfg, funcs)
-		} else {
-			runInteractive(cmd, args)
-		}
-	}
+		[]string{"e"}, func(cmd *cobra.Command, args []string) {
+			var err error
+			// hard branch on script mode
+			var script bool
+			if script, err = cmd.Flags().GetBool("script"); err != nil {
+				clilog.Tee(clilog.ERROR, cmd.ErrOrStderr(), err.Error()+"\n")
+				return
+			}
+			if script {
+				runNonInteractive(cmd, cfg, funcs)
+			} else {
+				runInteractive(cmd, args)
+			}
+		})
 
 	// assign base flags
 	flags, aflags := flags(), addtlFlags()
