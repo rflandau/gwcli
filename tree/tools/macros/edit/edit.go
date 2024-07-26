@@ -22,25 +22,48 @@ import (
 	"github.com/spf13/pflag"
 )
 
-// user must select a macro to edit
-// -> list all macros or provide ID by flag
-// display one TI per edittable field
-// -> prepopulate current information in each field
-// -> may need a mapperFunc so a user can transmute values from fecth func into TI values
-// user makes whatever edits are necessary and submits
-// -> basically identically to a pre-populated create
-// transmute data in TIs back into the original struct
-// update
-
-// combination of delete's listing/selection capabilities and create's TI interface
-
 const listHeightMax = 40 // lines
 
 //#region function signatures
 
-type getFunction = func(id uint64) (item types.SearchMacro, err error)
-type fetchFunction = func() ([]types.SearchMacro, error)
-type translateFunction = func(item types.SearchMacro, fieldKey string) (string, error)
+// function to get the specific, edit-able struct and skip list/selecting mode.
+type selectFunction = func(id uint64) (
+	item types.SearchMacro, err error,
+)
+
+// function to fetch all edit-able structs
+type fetchAllFunction = func() (
+	[]types.SearchMacro, error,
+)
+
+// Function to retrieve the struct value associated to the field key without reflection.
+// This is probably a switch statement that maps (key -> item.X).
+//
+// Sister to setFieldFunction.
+type getFieldFunction = func(item types.SearchMacro, fieldKey string) (
+	string, error,
+)
+
+// Function to set the struct value associated to the field key without reflection.
+// This is probably a switch statement that maps (key -> item.X).
+//
+// Sister to getFieldFunction.
+type setFieldFunction = func(item *types.SearchMacro, fieldKey, val string) error
+
+// function to perform the actual update of the data on the GW instance
+type updateStructFunction = func(data *types.SearchMacro) (
+	title, invalidMsg string, err error,
+)
+
+// Set of all functions, to make it easier to pass them around internally.
+// All fields are required.
+type functionSet struct {
+	selectFunc selectFunction
+	fchFunc    fetchAllFunction
+	getFunc    getFieldFunction
+	setFunc    setFieldFunction
+	updFunc    updateStructFunction
+}
 
 //#endregion
 
@@ -55,14 +78,42 @@ var (
 // #endregion
 
 func NewMacroEditAction() action.Pair {
+	// TODO passed as parameter
+	funcs := functionSet{
+		selectFunc: getMacro,
+		fchFunc: func() ([]types.SearchMacro, error) {
+			return connection.Client.GetUserMacros(connection.MyInfo.UID)
+		},
+		getFunc: func(item types.SearchMacro, fieldKey string) (string, error) {
+			switch fieldKey {
+			case "name":
+				return item.Name, nil
+			case "description":
+				return item.Description, nil
+			case "expansion":
+				return item.Expansion, nil
+			}
+
+			return "", fmt.Errorf("unknown field key: %v", fieldKey)
+		},
+		setFunc: func(item *types.SearchMacro, fieldKey, val string) error {
+			switch fieldKey {
+			case "name":
+				item.Name = val
+			case "description":
+				item.Description = val
+			case "expansion":
+				item.Expansion = val
+			default:
+				return fmt.Errorf("unknown field key: %v", fieldKey)
+			}
+			return nil
+		},
+	}
+	// check that all functions are given
+
 	cmd := treeutils.NewActionCommand("edit", "edit a macro", "edit/alter an existing macro",
 		[]string{"e"}, func(c *cobra.Command, s []string) {})
-
-	// need one flag per edittable field
-	// TODO
-
-	// fetch available macros in SetArgs or run, in case macros are updated prior to usage
-	// TODO run fetch in run() if an explicit ID is not given
 
 	// TODO temporary
 	cfg := Config{
@@ -88,8 +139,18 @@ func NewMacroEditAction() action.Pair {
 			Order:    60,
 		},
 	}
-	fchFunc := func() ([]types.SearchMacro, error) {
-		return connection.Client.GetUserMacros(connection.MyInfo.UID)
+
+	cmd.Run = func(cmd *cobra.Command, args []string) {
+		var err error
+		// hard branch on script mode
+		var script bool
+		if script, err = cmd.Flags().GetBool("script"); err != nil {
+			clilog.Tee(clilog.ERROR, cmd.ErrOrStderr(), err.Error()+"\n")
+			return
+		}
+		if script {
+			runNonInteractive(cmd, args, getMacro, macroTranslation, upd, cfg)
+		}
 	}
 
 	// assign base flags
@@ -100,9 +161,77 @@ func NewMacroEditAction() action.Pair {
 	return treeutils.GenerateAction(cmd, newEditModel(
 		cfg,
 		fchFunc,
-		connection.Client.GetMacro,
+		getMacro,
 		macroTranslation,
 		addtlFlags))
+}
+
+const ( // local flag names
+	flagID = "id"
+)
+
+// run helper function
+// runNonInteractive is the --script portion of edit's runFunc.
+// It requires --id be set and is ineffectual if an addtl/field flag was no given.
+func runNonInteractive(cmd *cobra.Command, args []string,
+	selectFunc selectFunction, getFFunc getFieldFunction,
+	updFunc updateStructFunction, cfg Config) {
+	var err error
+	var (
+		id   uint64
+		zero uint64
+		itm  types.SearchMacro
+	)
+	if id, err = cmd.Flags().GetUint64(flagID); err != nil {
+		clilog.Tee(clilog.ERROR, cmd.ErrOrStderr(), err.Error()+"\n")
+		return
+	}
+	if id == zero { // id was not given
+		fmt.Fprintln(cmd.OutOrStdout(), "--id is required in script mode")
+		return
+	}
+	// check for other flags; no point in updating if there is nothing to change
+	// TODO
+
+	// get the macro to edit
+	if itm, err = selectFunc(id); err != nil {
+		clilog.Tee(clilog.ERROR, cmd.ErrOrStderr(), err.Error()+"\n")
+		return
+	}
+
+	var fieldUpdated bool   // was a value actually changed?
+	for k, v := range cfg { // edit each field using their flag value
+		// get current value
+		curVal, err := getFFunc(itm, k)
+		if err != nil {
+			clilog.Tee(clilog.ERROR, cmd.ErrOrStderr(), err.Error()+"\n")
+			return
+		}
+		var newVal string = curVal
+		if cmd.Flags().Changed(v.FlagName) { // flag presumably updates the field
+			if x, err := cmd.Flags().GetString(v.FlagName); err != nil {
+				clilog.Tee(clilog.ERROR, cmd.ErrOrStderr(), err.Error()+"\n")
+				return
+			} else {
+				newVal = x
+			}
+		}
+
+		if newVal != curVal { // update the struct
+			fieldUpdated = true // note if a change occured
+
+		}
+
+	}
+
+	if !fieldUpdated { // only bother to update if at least one field was changed
+		clilog.Tee(clilog.INFO, cmd.OutOrStdout(), "no field would be updated; quitting...")
+		return
+	}
+
+	// perform the actual update
+	updFunc()
+
 }
 
 // base flagset always available to edit actions
@@ -121,18 +250,8 @@ func addtlFlags() pflag.FlagSet {
 	return fs
 }
 
-// translate fields keys into their value in the given item
-func macroTranslation(item types.SearchMacro, fieldKey string) (string, error) {
-	switch fieldKey {
-	case "name":
-		return item.Name, nil
-	case "description":
-		return item.Description, nil
-	case "expansion":
-		return item.Expansion, nil
-	}
-
-	return "", fmt.Errorf("unknown field key: %v", fieldKey)
+func getMacro(id uint64) (types.SearchMacro, error) {
+	return connection.Client.GetMacro(id)
 }
 
 //#region interactive mode (model) implementation
@@ -160,12 +279,12 @@ type editModel struct {
 	cfg Config // RO configuration provided by the caller
 
 	data      []types.SearchMacro // data retrieved by fchFunc
-	getFunc   getFunction         // func to retrieve a specified editable item
-	transFunc translateFunction   // func to retrieve field values from a struct
+	getFunc   selectFunction      // func to retrieve a specified editable item
+	transFunc getFieldFunction    // func to retrieve field values from a struct
 
 	// selecting mode
-	fchFunc fetchFunction // func to retrieve each editable item
-	list    list.Model    // list displayed during `selecting` mode
+	fchFunc fetchAllFunction // func to retrieve each editable item
+	list    list.Model       // list displayed during `selecting` mode
 
 	// editting mode
 	orderedKTIs  []keyedTI         // TIs will be displayed in array order
@@ -183,33 +302,34 @@ type editModel struct {
 // getFunc must be the function for getting a single struct, given id.
 //
 // addtlFlagFunc may be nil or a function that returns a new flagset to parse/extract values from.
-func newEditModel(config Config,
-	fchFunc fetchFunction,
-	getFunc getFunction,
-	transFunc translateFunction,
+func newEditModel(cfg Config,
+	fchFunc fetchAllFunction,
+	selectFunc selectFunction,
+	getFFunc getFieldFunction,
+	updFunc updateStructFunction,
 	addtlFlagFunc func() pflag.FlagSet) *editModel {
 	// sanity check required arguments
-	if config == nil {
+	if cfg == nil {
 		panic("Configuration cannot be nil")
 	}
 	if fchFunc == nil {
 		panic("fetch function cannot be nil")
 	}
 
-	if getFunc == nil {
+	if selectFunc == nil {
 		panic("get function cannot be nil")
 	}
 
-	if transFunc == nil {
+	if getFFunc == nil {
 		panic("translation function cannot be nil")
 	}
 
 	em := &editModel{mode: idle,
-		cfg:           config,
+		cfg:           cfg,
 		fchFunc:       fchFunc,
 		addtlFlagFunc: addtlFlagFunc,
-		getFunc:       getFunc,
-		transFunc:     transFunc}
+		getFunc:       selectFunc,
+		transFunc:     getFFunc}
 	em.fs = flags()
 	if em.addtlFlagFunc != nil {
 		aflags := em.addtlFlagFunc()
@@ -249,6 +369,7 @@ func (em *editModel) Update(msg tea.Msg) tea.Cmd {
 	case editting:
 		// check for a submission via alt+enter
 		if keymsg, ok := msg.(tea.KeyMsg); ok {
+			em.inputErr = "" // clear input errors on new key input
 			switch keymsg.Type {
 			case tea.KeyEnter:
 				if keymsg.Alt {
@@ -325,6 +446,8 @@ type Field struct {
 	// OPTIONAL.
 	// Called once, at program start to generate a TI instead of using a generalize newTI()
 	CustomTIFuncInit func() textinput.Model
+
+	value *string // value of this field, set by flag or TI
 }
 
 // Transmute generates the list of TIs using the provided Field configuration. Fields with changed
@@ -333,7 +456,7 @@ type Field struct {
 func transmuteStruct(data types.SearchMacro,
 	fs pflag.FlagSet,
 	cfg Config,
-	translateFunc translateFunction) (
+	translateFunc getFieldFunction) (
 	[]keyedTI, error,
 ) {
 	var orderedKTIs []keyedTI = make([]keyedTI, len(cfg))
@@ -383,7 +506,7 @@ func transmuteStruct(data types.SearchMacro,
 }
 
 // Takes the populated TIs, validates their input, and updates the gravwell backend.
-func upd(ttis []keyedTI, data *types.SearchMacro) (invalMsg string, err error) {
+func upd(ttis []keyedTI, data *types.SearchMacro) (title, invalMsg string, err error) {
 	// no need to nil check; all required fields are checked already
 
 	// rebuild the struct for the update call
@@ -392,6 +515,10 @@ func upd(ttis []keyedTI, data *types.SearchMacro) (invalMsg string, err error) {
 		case "name":
 			data.Name = strings.ToUpper(tti.ti.Value()) // name must always be uppercase
 			ttis[i].ti.SetValue(data.Name)              // update it in case we return invalid or err
+			// validate
+			if strings.Contains(data.Name, " ") {
+				return "name may not contains spaces", nil
+			}
 		case "description":
 			data.Description = tti.ti.Value()
 		case "expansion":
@@ -427,7 +554,7 @@ func (em *editModel) View() string {
 			}
 			sb.WriteString(kti.ti.View() + "\n")
 		}
-		sb.WriteString(colorizer.SubmitString("alt+enter", em.inputErr, "", em.width))
+		sb.WriteString(colorizer.SubmitString("alt+enter", em.inputErr, em.updateErr, em.width))
 		str = sb.String()
 	}
 	return str
