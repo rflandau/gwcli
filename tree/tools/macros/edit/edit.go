@@ -22,7 +22,10 @@ import (
 	"github.com/spf13/pflag"
 )
 
-const listHeightMax = 40 // lines
+const (
+	listHeightMax  = 40 // lines
+	successStringF = "Successfully updated %v %v "
+)
 
 //#region function signatures
 
@@ -183,7 +186,7 @@ func NewMacroEditAction() action.Pair {
 			return
 		}
 		if script {
-			//runNonInteractive(cmd, args, getMacro, macroTranslation, upd, cfg)
+			runNonInteractive(cmd, cfg, funcs)
 		}
 	}
 
@@ -205,9 +208,8 @@ const ( // local flag names
 // run helper function
 // runNonInteractive is the --script portion of edit's runFunc.
 // It requires --id be set and is ineffectual if an addtl/field flag was no given.
-func runNonInteractive(cmd *cobra.Command,
-	selectFunc selectFunction, getFFunc getFieldFunction,
-	updFunc updateStructFunction, cfg Config) {
+// Prints and error handles on its own; the program is expected to exit on its compeltion.
+func runNonInteractive(cmd *cobra.Command, cfg Config, funcs functionSet) {
 	var err error
 	var (
 		id   uint64
@@ -222,25 +224,23 @@ func runNonInteractive(cmd *cobra.Command,
 		fmt.Fprintln(cmd.OutOrStdout(), "--id is required in script mode")
 		return
 	}
-	// check for other flags; no point in updating if there is nothing to change
-	// TODO
 
 	// get the macro to edit
-	if itm, err = selectFunc(id); err != nil {
+	if itm, err = funcs.sel(id); err != nil {
 		clilog.Tee(clilog.ERROR, cmd.ErrOrStderr(), err.Error()+"\n")
 		return
 	}
 
 	var fieldUpdated bool   // was a value actually changed?
-	for k, v := range cfg { // edit each field using their flag value
+	for k, v := range cfg { // check each field for updates to be made
 		// get current value
-		curVal, err := getFFunc(itm, k)
+		curVal, err := funcs.getF(itm, k)
 		if err != nil {
 			clilog.Tee(clilog.ERROR, cmd.ErrOrStderr(), err.Error()+"\n")
 			return
 		}
 		var newVal string = curVal
-		if cmd.Flags().Changed(v.FlagName) { // flag presumably updates the field
+		if cmd.Flags().Changed(v.FlagName) { // flag *presumably* updates the field
 			if x, err := cmd.Flags().GetString(v.FlagName); err != nil {
 				clilog.Tee(clilog.ERROR, cmd.ErrOrStderr(), err.Error()+"\n")
 				return
@@ -251,18 +251,28 @@ func runNonInteractive(cmd *cobra.Command,
 
 		if newVal != curVal { // update the struct
 			fieldUpdated = true // note if a change occured
-
+			if inv, err := funcs.setF(&itm, k, newVal); err != nil {
+				clilog.Tee(clilog.ERROR, cmd.ErrOrStderr(), err.Error()+"\n")
+				return
+			} else if inv != "" {
+				fmt.Fprintln(cmd.OutOrStdout(), inv)
+				return
+			}
 		}
-
 	}
 
 	if !fieldUpdated { // only bother to update if at least one field was changed
-		clilog.Tee(clilog.INFO, cmd.OutOrStdout(), "no field would be updated; quitting...")
+		clilog.Tee(clilog.INFO, cmd.OutOrStdout(), "no field would be updated; quitting...\n")
 		return
 	}
 
 	// perform the actual update
-	// TODO
+	identifier, err := funcs.upd(&itm)
+	if err != nil {
+		clilog.Tee(clilog.ERROR, cmd.ErrOrStderr(), err.Error()+"\n")
+		return
+	}
+	fmt.Fprintf(cmd.OutOrStdout(), successStringF+"\n", "macro", identifier)
 
 }
 
@@ -501,7 +511,7 @@ func (em *editModel) updateEditting(msg tea.Msg) tea.Cmd {
 				}
 				// success
 				em.mode = quitting
-				return tea.Printf("Successfully updated %v %v ", "macro", identifier)
+				return tea.Printf(successStringF, "macro", identifier)
 			} else {
 				em.nextTI()
 			}
@@ -551,63 +561,6 @@ type Field struct {
 	// OPTIONAL.
 	// Called once, at program start to generate a TI instead of using a generalize newTI()
 	CustomTIFuncInit func() textinput.Model
-
-	value *string // value of this field, set by flag or TI
-}
-
-// Transmute generates the list of TIs using the provided Field configuration. Fields with changed
-// flags have their default set to the flags values. Fields without are given to the implementor to
-// manually populate their default values from data's fields (see translate()).
-func transmuteStruct(data types.SearchMacro,
-	fs pflag.FlagSet,
-	cfg Config,
-	translateFunc getFieldFunction) (
-	[]keyedTI, error,
-) {
-	var orderedKTIs []keyedTI = make([]keyedTI, len(cfg))
-
-	var i uint8 = 0
-
-	for k, v := range cfg {
-		// create the TI, using the custom creation function if defined
-		var ti textinput.Model
-		if v.CustomTIFuncInit != nil {
-			ti = v.CustomTIFuncInit()
-		} else {
-			ti = stylesheet.NewTI("", v.Required)
-		}
-
-		if fs.Changed(v.FlagName) { // if this field's flag was changed, update its default value
-			// fetch the value
-			if x, err := fs.GetString(v.FlagName); err != nil {
-				return nil, err
-			} else {
-				ti.SetValue(x)
-			}
-		} else {
-			// if this flag was not set,
-			// the implementor must map it to the corresponding struct field
-			clilog.Writer.Debugf("field '%v' requires translation", k)
-			if t, err := translateFunc(data, k); err != nil {
-				return nil, err
-			} else {
-				ti.SetValue(t)
-			}
-		}
-
-		// add the TI to the list
-		orderedKTIs[i] = keyedTI{key: k, ti: ti}
-
-		// iterate
-		i += 1
-	}
-
-	// with TIs built, sort them by order
-	slices.SortFunc(orderedKTIs, func(a, b keyedTI) int {
-		return cfg[b.key].Order - cfg[a.key].Order
-	})
-
-	return orderedKTIs, nil
 }
 
 func (em *editModel) View() string {
