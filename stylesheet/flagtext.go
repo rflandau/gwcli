@@ -13,6 +13,12 @@ const ( // standardized flag description text for local flags "shared" across ac
 	FlagUsageMacroName      = "name of the macro"
 	FlagUsageMacroDesc      = "flavour description of the macro"
 	FlagUsageMacroExpansion = "value for the macro to expand to"
+
+	// Scheduled Search
+	FlagUsageScheduledSearchName     = "name of the scheduled search"
+	FlagUsageScheduledSearchDesc     = "flavour description of the scheduled search"
+	FlagUsageScheduledSearchQuery    = "query executed by this scheduled search"
+	FlagUsageScheduledSearchSchedule = "cron-5-style execution frequency"
 )
 
 const ( // description that require further formatting
@@ -23,7 +29,7 @@ const ( // description that require further formatting
 
 const ( // flag name uniformity, a la descriptions
 	FlagNameDryrun         = "dryrun"
-	FlagNameMacroName      = "name"
-	FlagNameMacroDesc      = "description"
+	FlagNameName           = "name"
+	FlagNameDesc           = "description"
 	FlagNameMacroExpansion = "expansion"
 )

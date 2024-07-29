@@ -4,6 +4,7 @@ import (
 	"gwcli/action"
 	"gwcli/tree/tools/queries/scheduled/create"
 	"gwcli/tree/tools/queries/scheduled/delete"
+	"gwcli/tree/tools/queries/scheduled/edit"
 	"gwcli/tree/tools/queries/scheduled/list"
 
 	"gwcli/utilities/treeutils"
@@ -25,5 +26,6 @@ func NewScheduledNav() *cobra.Command {
 			create.NewQueriesScheduledCreateAction(),
 			list.NewScheduledQueriesListAction(),
 			delete.NewQueriesScheduledDeleteAction(),
+			edit.NewQueriesScheduledEditAction(),
 		})
 }

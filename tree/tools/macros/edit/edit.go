@@ -17,14 +17,14 @@ func NewMacroEditAction() action.Pair {
 			Required: true,
 			Title:    "Name",
 			Usage:    stylesheet.FlagUsageMacroName,
-			FlagName: stylesheet.FlagNameMacroName,
+			FlagName: stylesheet.FlagNameName,
 			Order:    100,
 		},
 		"description": &scaffoldedit.Field{
 			Required: false,
 			Title:    "Description",
 			Usage:    stylesheet.FlagUsageMacroDesc,
-			FlagName: stylesheet.FlagNameMacroDesc,
+			FlagName: stylesheet.FlagNameDesc,
 			Order:    80,
 		},
 		"expansion": &scaffoldedit.Field{
