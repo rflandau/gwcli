@@ -1,12 +1,28 @@
-// Busywait provides a unified spinner to displaying while waiting for async
-// operations. Do not use in a script context.
-//
-// When Mother is not running (actions invoked in a Cobra.Run func):
-// Call New() to get a program, p.Run() to allow the program to take over the terminal (after
-// spinning up the reaper goroutine), and p.Quit() from the reaper when done waiting.
-//
-// The spinner can also use be used by Mother to ensure consistency in appearance.
-// Use NewSpinner if Mother is active.
+/*
+Busywait provides a unified spinner to display while waiting for async operations.
+Do not use in a script context.
+
+# When Mother is not running (invocation via a Cobra.Run func):
+
+Call CobraNew() to get a program, p.Run() to allow the program to take over the terminal (after
+spinning up the reaper goroutine), and p.Quit() from the reaper when done waiting.
+
+# When Mother is running:
+
+The spinner can also use be used by Mother to ensure consistency in appearance.
+Use NewSpinner if Mother is active.
+
+# Example
+
+	spnrP := busywait.CobraNew()
+	go func() {
+		SomeLongAsyncOperation()
+		spnrP.Quit()
+	}()
+	if _, err := spnrP.Run(); err != nil {
+			return err
+	}
+*/
 package busywait
 
 import (
