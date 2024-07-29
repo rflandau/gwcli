@@ -53,87 +53,24 @@ import (
 	"gwcli/clilog"
 	"gwcli/mother"
 	"gwcli/utilities/keymaps"
+	"gwcli/utilities/scaffold"
 	"gwcli/utilities/treeutils"
-	"strconv"
 
 	"github.com/charmbracelet/bubbles/list"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
-	"github.com/google/uuid"
 	"github.com/gravwell/gravwell/v3/client"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
-	"golang.org/x/exp/constraints"
 )
-
-type id_t interface {
-	constraints.Integer | uuid.UUID
-}
-
-// Returns str converted to an id of type I.
-// All hail the modern Library of Alexandira (https://stackoverflow.com/a/71048872).
-func FromString[I id_t](str string) (I, error) {
-	var (
-		err error
-		ret I
-	)
-
-	switch p := any(&ret).(type) {
-	case *uuid.UUID:
-		var u uuid.UUID
-		u, err = uuid.Parse(str)
-		*p = u
-	case *uint:
-		var i uint64
-		i, err = strconv.ParseUint(str, 10, 64)
-		*p = uint(i)
-	case *uint8:
-		var i uint64
-		i, err = strconv.ParseUint(str, 10, 8)
-		*p = uint8(i)
-	case *uint16:
-		var i uint64
-		i, err = strconv.ParseUint(str, 10, 16)
-		*p = uint16(i)
-	case *uint32:
-		var i uint64
-		i, err = strconv.ParseUint(str, 10, 32)
-		*p = uint32(i)
-	case *uint64:
-		var i uint64
-		i, err = strconv.ParseUint(str, 10, 64)
-		*p = uint64(i)
-	case *int:
-		*p, err = strconv.Atoi(str)
-	case *int8:
-		var i int64
-		i, err = strconv.ParseInt(str, 10, 8)
-		*p = int8(i)
-	case *int16:
-		var i int64
-		i, err = strconv.ParseInt(str, 10, 16)
-		*p = int16(i)
-	case *int32:
-		var i int64
-		i, err = strconv.ParseInt(str, 10, 32)
-		*p = int32(i)
-	case *int64:
-		var i int64
-		i, err = strconv.ParseInt(str, 10, 64)
-		*p = int64(i)
-	default:
-		return ret, fmt.Errorf("unknown id type %#v", p)
-	}
-	return ret, err
-}
 
 // A function that performs the (faux-, on dryrun) deletion once an item is picked
 // only returns a value if the delete (or select, on dry run) failed
-type deleteFunc[I id_t] func(dryrun bool, id I) error
+type deleteFunc[I scaffold.Id_t] func(dryrun bool, id I) error
 
 // A function that fetches and formats the list of delete-able items.
 // It must return an array of a struct that implements the Item interface.
-type fetchFunc[I id_t] func() ([]Item[I], error)
+type fetchFunc[I scaffold.Id_t] func() ([]Item[I], error)
 
 // text to display when deletion is skipped due to error
 const (
@@ -161,7 +98,7 @@ const (
 // dopts allows you to modify how each item is displayed in the list of delete-able items.
 // While you could provide your own renderer via WithRender(), this is discouraged in order to
 // maintain style uniformity.
-func NewDeleteAction[I id_t](aliases []string, singular, plural string,
+func NewDeleteAction[I scaffold.Id_t](aliases []string, singular, plural string,
 	del deleteFunc[I], fch fetchFunc[I],
 	dopts ...DelegateOption[I]) action.Pair {
 	cmd := treeutils.NewActionCommand(
@@ -223,11 +160,11 @@ func flags() pflag.FlagSet {
 }
 
 // helper function for getting and casting flag values
-func fetchFlagValues[I id_t](fs *pflag.FlagSet) (id I, dryrun bool, _ error) {
+func fetchFlagValues[I scaffold.Id_t](fs *pflag.FlagSet) (id I, dryrun bool, _ error) {
 	if strid, err := fs.GetString("id"); err != nil {
 		return id, false, err
 	} else if strid != "" {
-		id, err = FromString[I](strid)
+		id, err = scaffold.FromString[I](strid)
 		if err != nil {
 			return id, dryrun, err
 		}
@@ -250,7 +187,7 @@ const (
 	quitting
 )
 
-type deleteModel[I id_t] struct {
+type deleteModel[I scaffold.Id_t] struct {
 	itemSingular string // "macro", "kit", "query"
 	itemPlural   string // "macros", "kits", "queries"
 	mode         mode   // current mode
@@ -264,7 +201,7 @@ type deleteModel[I id_t] struct {
 	delegate *defaultDelegate[I] // delegate for displaying items in the list
 }
 
-func newDeleteModel[I id_t](del deleteFunc[I], fch fetchFunc[I], dopts []DelegateOption[I]) *deleteModel[I] {
+func newDeleteModel[I scaffold.Id_t](del deleteFunc[I], fch fetchFunc[I], dopts []DelegateOption[I]) *deleteModel[I] {
 	d := &deleteModel[I]{mode: selecting}
 	d.flagset = flags()
 
