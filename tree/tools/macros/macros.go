@@ -11,12 +11,13 @@ import (
 	"github.com/spf13/cobra"
 )
 
-var (
-	use     string   = "macros"
-	short   string   = "Macro management submenu"
-	long    string   = "Create, delete, and manage macros"
-	aliases []string = []string{"macro"}
+const (
+	use   string = "macros"
+	short string = "Macro management submenu"
+	long  string = "Create, delete, and manage macros"
 )
+
+var aliases []string = []string{"macro"}
 
 func NewMacrosNav() *cobra.Command {
 	return treeutils.GenerateNav(use, short, long, aliases, []*cobra.Command{},

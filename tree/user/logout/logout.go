@@ -11,12 +11,13 @@ import (
 	"github.com/spf13/pflag"
 )
 
-var (
-	use     string   = "logout"
-	short   string   = "Logout and end the session"
-	long    string   = "Ends your current session and invalids your login token."
-	aliases []string = []string{}
+const (
+	use   string = "logout"
+	short string = "Logout and end the session"
+	long  string = "Ends your current session and invalids your login token."
 )
+
+var aliases []string = []string{}
 
 func NewUserLogoutAction() action.Pair {
 	return scaffold.NewBasicAction(use, short, long, aliases,

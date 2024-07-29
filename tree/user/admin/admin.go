@@ -12,12 +12,13 @@ import (
 	"github.com/spf13/pflag"
 )
 
-var (
-	use     string   = "admin"
-	short   string   = "Prints your admin status"
-	long    string   = "Displays whether or not your current user has admin permissions"
-	aliases []string = []string{}
+const (
+	use   string = "admin"
+	short string = "Prints your admin status"
+	long  string = "Displays whether or not your current user has admin permissions"
 )
+
+var aliases []string = []string{}
 
 func NewUserAdminAction() action.Pair {
 	p := scaffold.NewBasicAction(use, short, long, aliases,

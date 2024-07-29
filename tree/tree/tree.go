@@ -17,13 +17,14 @@ import (
 	"github.com/spf13/pflag"
 )
 
-var (
+const (
 	use   string = "tree"
 	short string = "display all commands as a tree"
 	long  string = "Displays a directory-tree showing the full structure of gwcli and all" +
 		"available actions"
-	aliases []string = []string{}
 )
+
+var aliases []string = []string{}
 
 func NewTreeAction() action.Pair {
 	return scaffold.NewBasicAction(use, short, long, aliases,

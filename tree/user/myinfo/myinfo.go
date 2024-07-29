@@ -15,12 +15,13 @@ import (
 	"github.com/spf13/pflag"
 )
 
-var (
-	use     string   = "myinfo"
-	short   string   = "Information about the current user and session"
-	long    string   = "Displays your accounts information and capabilities"
-	aliases []string = []string{}
+const (
+	use   string = "myinfo"
+	short string = "Information about the current user and session"
+	long  string = "Displays your accounts information and capabilities"
 )
+
+var aliases []string = []string{}
 
 func NewUserMyInfoAction() action.Pair {
 

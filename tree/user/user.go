@@ -11,12 +11,13 @@ import (
 	"github.com/spf13/cobra"
 )
 
-var (
-	use     string   = "user"
-	short   string   = "Manage your user and profile"
-	long    string   = "View and edit properties of your current, logged in user."
-	aliases []string = []string{"self"}
+const (
+	use   string = "user"
+	short string = "Manage your user and profile"
+	long  string = "View and edit properties of your current, logged in user."
 )
+
+var aliases []string = []string{"self"}
 
 func NewUserNav() *cobra.Command {
 	return treeutils.GenerateNav(use, short, long, aliases, nil,

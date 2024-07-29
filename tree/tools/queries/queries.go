@@ -12,13 +12,14 @@ import (
 	"github.com/spf13/cobra"
 )
 
-var (
+const (
 	use   string = "queries"
 	short string = "List, delete, and manage existing and past queries"
 	long  string = "Queries contians utilities for managing auxillary query actions." +
 		"Query creation is handled by the top-level `query` action."
-	aliases []string = []string{"searches"}
 )
+
+var aliases []string = []string{"searches"}
 
 func NewQueriesNav() *cobra.Command {
 	return treeutils.GenerateNav(use, short, long, aliases,

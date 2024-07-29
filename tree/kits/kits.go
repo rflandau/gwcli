@@ -8,12 +8,13 @@ import (
 	"github.com/spf13/cobra"
 )
 
-var (
-	use     string   = "kits"
-	short   string   = "List and manipulate kits"
-	long    string   = "..."
-	aliases []string = []string{"kit"}
+const (
+	use   string = "kits"
+	short string = "List and manipulate kits"
+	long  string = "..."
 )
+
+var aliases []string = []string{"kit"}
 
 func NewKitsNav() *cobra.Command {
 	return treeutils.GenerateNav(use, short, long, aliases,
