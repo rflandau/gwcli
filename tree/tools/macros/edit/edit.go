@@ -36,7 +36,7 @@ func NewMacroEditAction() action.Pair {
 		},
 	}
 
-	funcs := scaffoldedit.SubroutineSet{
+	funcs := scaffoldedit.SubroutineSet[uint64, types.SearchMacro]{
 		SelectSub: func(id uint64) (item types.SearchMacro, err error) {
 			return connection.Client.GetMacro(id)
 		},
