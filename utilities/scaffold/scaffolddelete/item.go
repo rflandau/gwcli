@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"gwcli/stylesheet"
 	"gwcli/stylesheet/colorizer"
+	"gwcli/utilities/scaffold"
 	"io"
 
 	"github.com/charmbracelet/bubbles/list"
@@ -11,7 +12,7 @@ import (
 )
 
 // the base functions a delete action must provide on the type it wants deleted
-type Item[I id_t] interface {
+type Item[I scaffold.Id_t] interface {
 	ID() I               // value passed to the delete function
 	FilterValue() string // value to compare against for filtration
 	Title() string       // one-line representation of the item
@@ -24,7 +25,7 @@ const (
 )
 
 // the item delegate defines display format of an item in the list
-type defaultDelegate[I id_t] struct {
+type defaultDelegate[I scaffold.Id_t] struct {
 	height     int
 	spacing    int
 	renderFunc func(w io.Writer, m list.Model, index int, listItem list.Item)
@@ -38,7 +39,7 @@ func (dd defaultDelegate[I]) Render(w io.Writer, m list.Model, index int, listIt
 }
 
 // default renderFunc used by the delegate if not overwritten by WithRender()
-func defaultRender[I id_t](w io.Writer, m list.Model, index int, listItem list.Item) {
+func defaultRender[I scaffold.Id_t](w io.Writer, m list.Model, index int, listItem list.Item) {
 	i, ok := listItem.(Item[I])
 	if !ok {
 		return
@@ -53,22 +54,22 @@ func defaultRender[I id_t](w io.Writer, m list.Model, index int, listItem list.I
 }
 
 // modifiers on the item delegate, usable by implementations of scaffolddelete
-type DelegateOption[I id_t] func(*defaultDelegate[I])
+type DelegateOption[I scaffold.Id_t] func(*defaultDelegate[I])
 
 // Alter the number of lines allocated to each item.
 // Height should be set equal to 1 + the lipgloss.Height of your Item.Details (1+ for Title) if
 // using the default render function.
 // Values above or below that can have... unpredictable... results.
-func WithHeight[I id_t](h int) DelegateOption[I] {
+func WithHeight[I scaffold.Id_t](h int) DelegateOption[I] {
 	return func(dd *defaultDelegate[I]) { dd.height = h }
 }
 
 // Alter the number of lines between each item
-func WithSpacing[I id_t](s int) DelegateOption[I] {
+func WithSpacing[I scaffold.Id_t](s int) DelegateOption[I] {
 	return func(dd *defaultDelegate[I]) { dd.spacing = s }
 }
 
 // Alter how each item is displayed in the list of delete-able items
-func WithRender[I id_t](f func(w io.Writer, m list.Model, index int, listItem list.Item)) DelegateOption[I] {
+func WithRender[I scaffold.Id_t](f func(w io.Writer, m list.Model, index int, listItem list.Item)) DelegateOption[I] {
 	return func(dd *defaultDelegate[I]) { dd.renderFunc = f }
 }
