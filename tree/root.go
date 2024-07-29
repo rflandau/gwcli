@@ -7,6 +7,7 @@
 package tree
 
 import (
+	"errors"
 	"gwcli/action"
 	"gwcli/clilog"
 	"gwcli/connection"
@@ -21,6 +22,7 @@ import (
 	"gwcli/utilities/cfgdir"
 	"gwcli/utilities/treeutils"
 	"gwcli/utilities/usage"
+	"strings"
 	"time"
 
 	"github.com/spf13/cobra"
@@ -94,6 +96,10 @@ func EnforceLogin(cmd *cobra.Command, args []string) error {
 	}
 
 	if err := connection.Login(cred, script); err != nil {
+		// coarsely check for invalid credentials
+		if strings.Contains(err.Error(), "401") {
+			return errors.New("failed to login with given credentials")
+		}
 		return err
 	}
 
