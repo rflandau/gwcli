@@ -1,9 +1,10 @@
-/**
- * Singleton instantiation of the gravwell client library.
- * The client is instantiated and exported in this package so it can be shared
- * by the rest of the application without trying to pass pointers through cobra
- * subroutine signatures.
- */
+/*
+Singleton instantiation of the gravwell client library. All calls to the Gravwell instances should
+be called via this singleton.
+
+This package also contains some wrapper functions for grav.Client calls where we want to ensure
+consistent access and parameters.
+*/
 
 package connection
 
@@ -68,6 +69,7 @@ func Initialize(conn string, UseHttps, InsecureNoEnforceCerts bool, restLogPath 
 	return nil
 }
 
+// struct for passing credentials into Login
 type Credentials struct {
 	Username     string
 	Password     string
