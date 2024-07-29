@@ -27,6 +27,7 @@ import (
 	"gwcli/stylesheet"
 	"gwcli/stylesheet/colorizer"
 	"gwcli/utilities/keymaps"
+	"gwcli/utilities/scaffold"
 	"gwcli/utilities/treeutils"
 	"gwcli/utilities/uniques"
 	"slices"
@@ -37,7 +38,6 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/google/uuid"
-	"github.com/gravwell/gravwell/v3/client/types"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 	"golang.org/x/exp/constraints"
@@ -57,14 +57,17 @@ type id_t interface {
 }
 
 // #region local styles
+
 var (
+	// TI field marked as required
 	tiFieldRequiredSty = stylesheet.Header1Style
+	// TI field marked as optional
 	tiFieldOptionalSty = stylesheet.Header2Style
 )
 
 // #endregion
 
-func NewEditAction(singular, plural string, cfg Config, funcs SubroutineSet) action.Pair {
+func NewEditAction[I id_t, S any](singular, plural string, cfg Config, funcs SubroutineSet[I, S]) action.Pair {
 	funcs.guarantee() // check that all functions are given
 	if len(cfg) < 1 { // check that config has fields in it
 		panic("cannot edit with no fields defined")
@@ -86,7 +89,7 @@ func NewEditAction(singular, plural string, cfg Config, funcs SubroutineSet) act
 				return
 			}
 			if script {
-				runNonInteractive(cmd, cfg, funcs, singular)
+				runNonInteractive[I, S](cmd, cfg, funcs, singular)
 			} else {
 				runInteractive(cmd, args)
 			}
@@ -117,7 +120,7 @@ func generateFlagSet(cfg Config, singular string) pflag.FlagSet {
 	}
 
 	// attach native flags
-	fs.Uint64P(flagIDName, "i", 0, fmt.Sprintf(flagIDUsageF, singular))
+	fs.StringP(flagIDName, "i", "", fmt.Sprintf(flagIDUsageF, singular))
 
 	return fs
 }
@@ -126,16 +129,22 @@ func generateFlagSet(cfg Config, singular string) pflag.FlagSet {
 // runNonInteractive is the --script portion of edit's runFunc.
 // It requires --id be set and is ineffectual if an addtl/field flag was no given.
 // Prints and error handles on its own; the program is expected to exit on its compeltion.
-func runNonInteractive[S any, I id_t](cmd *cobra.Command, cfg Config, funcs SubroutineSet, singular string) {
+func runNonInteractive[I id_t, S any](cmd *cobra.Command, cfg Config, funcs SubroutineSet[I, S], singular string) {
 	var err error
 	var (
 		id   I
 		zero I
 		itm  S
 	)
-	if id, err = cmd.Flags().GetUint64(flagIDName); err != nil {
+	if strid, err := cmd.Flags().GetString(flagIDName); err != nil {
 		clilog.Tee(clilog.ERROR, cmd.ErrOrStderr(), err.Error()+"\n")
 		return
+	} else {
+		id, err = scaffold.FromString[I](strid)
+		if err != nil {
+			clilog.Tee(clilog.ERROR, cmd.ErrOrStderr(), err.Error()+"\n")
+			return
+		}
 	}
 	if id == zero { // id was not given
 		fmt.Fprintln(cmd.OutOrStdout(), "--id is required in script mode")
@@ -220,34 +229,34 @@ type keyedTI struct {
 	ti  textinput.Model // ti for user modifications
 }
 
-type editModel struct {
-	mode             mode          // current program state
-	fs               pflag.FlagSet // current state of the flagset
-	singular, plural string        // forms of the noun
-	width, height    int           // tty dimensions, queried by SetArgs()
-	funcs            SubroutineSet // functions provided by implementor
+type editModel[I id_t, S any] struct {
+	mode             mode                // current program state
+	fs               pflag.FlagSet       // current state of the flagset
+	singular, plural string              // forms of the noun
+	width, height    int                 // tty dimensions, queried by SetArgs()
+	funcs            SubroutineSet[I, S] // functions provided by implementor
 
 	cfg Config // RO configuration provided by the caller
 
-	data []types.SearchMacro // data retrieved by fchFunc
+	data []S // data retrieved by fchFunc
 
 	// selecting mode
 	list            list.Model // list displayed during `selecting` mode
 	listInitialized bool
 
 	// editting mode
-	orderedKTIs  []keyedTI         // TIs will be displayed in array order
-	tiIndex      int               // array index of active TI
-	tiCount      int               // len(ttis)
-	selectedData types.SearchMacro // item chosen from the list
-	inputErr     string            // input is erroneous
-	updateErr    string            // error occured performing the update
+	orderedKTIs  []keyedTI // TIs will be displayed in array order
+	tiIndex      int       // array index of active TI
+	tiCount      int       // len(ttis)
+	selectedData S         // item chosen from the list
+	inputErr     string    // input is erroneous
+	updateErr    string    // error occured performing the update
 }
 
 // Creates and returns a new edit model, ready for intreactive use.
-func newEditModel(cfg Config, singular, plural string,
-	funcs SubroutineSet, initialFS pflag.FlagSet) *editModel {
-	em := &editModel{
+func newEditModel[I id_t, S any](cfg Config, singular, plural string,
+	funcs SubroutineSet[I, S], initialFS pflag.FlagSet) *editModel[I, S] {
+	em := &editModel[I, S]{
 		mode:     idle,
 		fs:       initialFS,
 		singular: singular,
@@ -259,7 +268,7 @@ func newEditModel(cfg Config, singular, plural string,
 	return em
 }
 
-func (em *editModel) SetArgs(_ *pflag.FlagSet, tokens []string) (
+func (em *editModel[I, S]) SetArgs(_ *pflag.FlagSet, tokens []string) (
 	invalid string, onStart tea.Cmd, err error,
 ) {
 	// parse the flags, save them for later, when TIs are created
@@ -267,10 +276,19 @@ func (em *editModel) SetArgs(_ *pflag.FlagSet, tokens []string) (
 		return "", nil, err
 	}
 
-	// check for an explicit id
-	if id, err := em.fs.GetUint64("id"); err != nil {
-		return "", nil, err
-	} else if em.fs.Changed("id") {
+	// check for an explicit ID
+	if em.fs.Changed("id") {
+		var id I
+		if strid, err := em.fs.GetString(flagIDName); err != nil {
+			return "", nil, err
+		} else {
+			id, err = scaffold.FromString[I](strid)
+			if err != nil {
+				return "failed to parse id from " + strid, nil, nil
+			}
+		}
+
+		// select the item associated to the id
 		if em.selectedData, err = em.funcs.SelectSub(id); err != nil {
 			// treat this as an invalid argument
 			return fmt.Sprintf("failed to fetch %s by id (%v): %v", em.singular, id, err), nil, nil
@@ -283,6 +301,7 @@ func (em *editModel) SetArgs(_ *pflag.FlagSet, tokens []string) (
 		}
 
 		return "", nil, nil
+
 	}
 
 	// fetch edit-able items
@@ -316,7 +335,7 @@ func (em *editModel) SetArgs(_ *pflag.FlagSet, tokens []string) (
 	return "", uniques.FetchWindowSize, nil
 }
 
-func (em *editModel) Update(msg tea.Msg) tea.Cmd {
+func (em *editModel[I, S]) Update(msg tea.Msg) tea.Cmd {
 	if msg, ok := msg.(tea.WindowSizeMsg); ok {
 		em.width = msg.Width
 		em.height = msg.Height
@@ -345,7 +364,7 @@ func (em *editModel) Update(msg tea.Msg) tea.Cmd {
 
 // Update() handling for selecting mode.
 // Updates the list and transitions to editting mode if an item is selected.
-func (em *editModel) updateSelecting(msg tea.Msg) tea.Cmd {
+func (em *editModel[I, S]) updateSelecting(msg tea.Msg) tea.Cmd {
 	// switch on message type
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
@@ -364,7 +383,7 @@ func (em *editModel) updateSelecting(msg tea.Msg) tea.Cmd {
 	return cmd
 }
 
-func (em *editModel) updateEditting(msg tea.Msg) tea.Cmd {
+func (em *editModel[I, S]) updateEditting(msg tea.Msg) tea.Cmd {
 	if keymsg, ok := msg.(tea.KeyMsg); ok {
 		em.inputErr = "" // clear input errors on new key input
 		switch keymsg.Type {
@@ -429,7 +448,7 @@ func (em *editModel) updateEditting(msg tea.Msg) tea.Cmd {
 }
 
 // Blur existing TI, select and focus previous (higher) TI
-func (em *editModel) previousTI() {
+func (em *editModel[I, S]) previousTI() {
 	em.orderedKTIs[em.tiIndex].ti.Blur()
 	em.tiIndex -= 1
 	if em.tiIndex < 0 {
@@ -439,7 +458,7 @@ func (em *editModel) previousTI() {
 }
 
 // Blur existing TI, select and focus next (lower) TI
-func (em *editModel) nextTI() {
+func (em *editModel[I, S]) nextTI() {
 	em.orderedKTIs[em.tiIndex].ti.Blur()
 	em.tiIndex += 1
 	if em.tiIndex >= em.tiCount {
@@ -448,7 +467,7 @@ func (em *editModel) nextTI() {
 	em.orderedKTIs[em.tiIndex].ti.Focus()
 }
 
-func (em *editModel) View() string {
+func (em *editModel[I, S]) View() string {
 	var str string
 
 	switch em.mode {
@@ -478,11 +497,13 @@ func (em *editModel) View() string {
 	return str
 }
 
-func (em *editModel) Done() bool {
+func (em *editModel[I, S]) Done() bool {
 	return em.mode == quitting
 }
 
-func (em *editModel) Reset() error {
+func (em *editModel[I, S]) Reset() error {
+	var zero S
+
 	em.mode = idle
 	em.data = nil
 	em.fs = generateFlagSet(em.cfg, em.singular)
@@ -495,7 +516,7 @@ func (em *editModel) Reset() error {
 	em.orderedKTIs = nil
 	em.tiIndex = 0
 	em.tiCount = 0
-	em.selectedData = types.SearchMacro{}
+	em.selectedData = zero
 	em.inputErr = ""
 	em.updateErr = ""
 
@@ -503,7 +524,7 @@ func (em *editModel) Reset() error {
 }
 
 // Triggers the edit model to enter editting mode, performing all required data setup.
-func (em *editModel) enterEditMode() error {
+func (em *editModel[I, S]) enterEditMode() error {
 	// prepare list
 	em.orderedKTIs = make([]keyedTI, len(em.cfg))
 
