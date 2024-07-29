@@ -5,26 +5,29 @@ import (
 	"gwcli/action"
 	"gwcli/connection"
 	"gwcli/stylesheet"
+	ft "gwcli/stylesheet/flagtext"
 	"gwcli/utilities/scaffold/scaffoldedit"
 	"strings"
 
 	"github.com/gravwell/gravwell/v3/client/types"
 )
 
+const singular string = "macro"
+
 func NewMacroEditAction() action.Pair {
 	cfg := scaffoldedit.Config{
 		"name": &scaffoldedit.Field{
 			Required: true,
 			Title:    "Name",
-			Usage:    stylesheet.FlagUsageMacroName,
-			FlagName: stylesheet.FlagNameName,
+			Usage:    ft.Usage.Name(singular),
+			FlagName: ft.Name.Name,
 			Order:    100,
 		},
 		"description": &scaffoldedit.Field{
 			Required: false,
 			Title:    "Description",
-			Usage:    stylesheet.FlagUsageMacroDesc,
-			FlagName: stylesheet.FlagNameDesc,
+			Usage:    ft.Usage.Desc(singular),
+			FlagName: ft.Name.Desc,
 			Order:    80,
 		},
 		"expansion": &scaffoldedit.Field{
@@ -84,5 +87,5 @@ func NewMacroEditAction() action.Pair {
 		},
 	}
 
-	return scaffoldedit.NewEditAction("macro", "macros", cfg, funcs)
+	return scaffoldedit.NewEditAction(singular, "macros", cfg, funcs)
 }

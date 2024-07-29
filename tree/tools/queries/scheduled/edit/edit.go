@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"gwcli/action"
 	"gwcli/connection"
-	"gwcli/stylesheet"
+	ft "gwcli/stylesheet/flagtext"
 	"gwcli/utilities/scaffold/scaffoldedit"
 
 	"github.com/gravwell/gravwell/v3/client/types"
@@ -17,33 +17,35 @@ const ( // field keys
 	kschedule = "schedule"
 )
 
+const singular string = "scheduled search"
+
 func NewQueriesScheduledEditAction() action.Pair {
 	cfg := scaffoldedit.Config{
 		kname: &scaffoldedit.Field{
 			Required: true,
 			Title:    "Name",
-			Usage:    stylesheet.FlagUsageScheduledSearchName,
-			FlagName: stylesheet.FlagNameName,
+			Usage:    ft.Usage.Name(singular),
+			FlagName: ft.Name.Name,
 			Order:    100,
 		},
 		kdesc: &scaffoldedit.Field{
 			Required: true,
 			Title:    "Description",
-			Usage:    stylesheet.FlagUsageScheduledSearchDesc,
-			FlagName: stylesheet.FlagNameDesc,
+			Usage:    ft.Usage.Desc(singular),
+			FlagName: ft.Name.Desc,
 			Order:    80,
 		},
 		ksearch: &scaffoldedit.Field{
 			Required: true,
 			Title:    "Query",
-			Usage:    stylesheet.FlagUsageScheduledSearchDesc,
-			FlagName: "query",
+			Usage:    "the query executed by this scheduled search",
+			FlagName: ft.Name.Query,
 			Order:    60,
 		},
 		kschedule: &scaffoldedit.Field{
 			Required: true,
 			Title:    "Schedule",
-			Usage:    stylesheet.FlagUsageScheduledSearchSchedule,
+			Usage:    ft.Usage.CronFreq,
 			FlagName: "schedule",
 			Order:    40,
 		},
@@ -99,5 +101,5 @@ func NewQueriesScheduledEditAction() action.Pair {
 		},
 	}
 
-	return scaffoldedit.NewEditAction("scheduled search", "scheduled searches", cfg, funcs)
+	return scaffoldedit.NewEditAction(singular, "scheduled searches", cfg, funcs)
 }
