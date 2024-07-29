@@ -15,6 +15,8 @@ See the Design block below for why.
 are destructive by design.
 
 Implementations will resemble scaffoldcreate implementations with the addition of a SubroutineSet.
+An example implementation doesn't really make sense for how much scaffoldedit requires from the
+implementor; instead take a look at the macro edit action implementation. That is fairly simple.
 */
 package scaffoldedit
 
