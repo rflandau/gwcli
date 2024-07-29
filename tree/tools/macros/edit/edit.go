@@ -21,7 +21,7 @@ func NewMacroEditAction() action.Pair {
 			Order:    100,
 		},
 		"description": &scaffoldedit.Field{
-			Required: true,
+			Required: false,
 			Title:    "Description",
 			Usage:    stylesheet.FlagUsageMacroDesc,
 			FlagName: stylesheet.FlagNameMacroDesc,
