@@ -12,12 +12,8 @@ import (
 	"github.com/gravwell/gravwell/v3/client/types"
 )
 
-var (
-	aliases []string = []string{}
-)
-
 func NewQueriesScheduledDeleteAction() action.Pair {
-	return scaffolddelete.NewDeleteAction(aliases,
+	return scaffolddelete.NewDeleteAction(
 		"query", "queries", del, func() ([]scaffolddelete.Item[int32], error) {
 			ss, err := connection.Client.GetScheduledSearchList()
 			if err != nil {

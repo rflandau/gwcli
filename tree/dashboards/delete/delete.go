@@ -9,7 +9,7 @@ import (
 )
 
 func NewDashboardDeleteAction() action.Pair {
-	return scaffolddelete.NewDeleteAction([]string{}, "dashboard", "dashboards",
+	return scaffolddelete.NewDeleteAction("dashboard", "dashboards",
 		del, fch)
 }
 

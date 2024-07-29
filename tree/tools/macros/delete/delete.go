@@ -13,12 +13,8 @@ import (
 	"github.com/gravwell/gravwell/v3/client/types"
 )
 
-var (
-	aliases []string = []string{}
-)
-
 func NewMacroDeleteAction() action.Pair {
-	return scaffolddelete.NewDeleteAction(aliases, "macro", "macros", del,
+	return scaffolddelete.NewDeleteAction("macro", "macros", del,
 		func() ([]scaffolddelete.Item[uint64], error) {
 			ms, err := connection.Client.GetUserGroupsMacros()
 			if err != nil {

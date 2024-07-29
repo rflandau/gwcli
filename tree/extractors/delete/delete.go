@@ -17,7 +17,7 @@ import (
 )
 
 func NewExtractorDeleteAction() action.Pair {
-	return scaffolddelete.NewDeleteAction([]string{}, "extractor", "extractors",
+	return scaffolddelete.NewDeleteAction("extractor", "extractors",
 		del, fetch,
 		scaffolddelete.WithHeight[uuid.UUID](lipgloss.Height(axItem{}.Details())+1))
 }

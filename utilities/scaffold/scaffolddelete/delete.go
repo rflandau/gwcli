@@ -98,14 +98,14 @@ const (
 // dopts allows you to modify how each item is displayed in the list of delete-able items.
 // While you could provide your own renderer via WithRender(), this is discouraged in order to
 // maintain style uniformity.
-func NewDeleteAction[I scaffold.Id_t](aliases []string, singular, plural string,
+func NewDeleteAction[I scaffold.Id_t](singular, plural string,
 	del deleteFunc[I], fch fetchFunc[I],
 	dopts ...DelegateOption[I]) action.Pair {
 	cmd := treeutils.NewActionCommand(
 		"delete",
 		"delete a "+singular,
 		"delete a "+singular+" by id or selection",
-		aliases,
+		[]string{},
 		func(c *cobra.Command, s []string) {
 			// fetch values from flags
 			id, dryrun, err := fetchFlagValues[I](c.Flags())
