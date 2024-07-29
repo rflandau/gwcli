@@ -53,7 +53,7 @@ import (
 	"gwcli/clilog"
 	"gwcli/mother"
 	ft "gwcli/stylesheet/flagtext"
-	"gwcli/utilities/keymaps"
+	"gwcli/utilities/listsupport"
 	"gwcli/utilities/scaffold"
 	"gwcli/utilities/treeutils"
 
@@ -98,9 +98,10 @@ const (
 // dopts allows you to modify how each item is displayed in the list of delete-able items.
 // While you could provide your own renderer via WithRender(), this is discouraged in order to
 // maintain style uniformity.
-func NewDeleteAction[I scaffold.Id_t](singular, plural string,
-	del deleteFunc[I], fch fetchFunc[I],
-	dopts ...DelegateOption[I]) action.Pair {
+func NewDeleteAction[I scaffold.Id_t](
+	singular, plural string,
+	del deleteFunc[I],
+	fch fetchFunc[I]) action.Pair {
 	cmd := treeutils.NewActionCommand(
 		"delete",
 		"delete a "+singular,
@@ -144,7 +145,7 @@ func NewDeleteAction[I scaffold.Id_t](singular, plural string,
 		})
 	fs := flags()
 	cmd.Flags().AddFlagSet(&fs)
-	d := newDeleteModel[I](del, fch, dopts)
+	d := newDeleteModel(del, fch)
 	d.itemSingular = singular
 	d.itemPlural = plural
 	return treeutils.GenerateAction(cmd, d)
@@ -195,33 +196,16 @@ type deleteModel[I scaffold.Id_t] struct {
 	flagset pflag.FlagSet // parsed flag values (set in SetArgs)
 	dryrun  bool
 
-	df       deleteFunc[I]       // function to delete an item
-	ff       fetchFunc[I]        // function to get all delete-able items
-	delegate *defaultDelegate[I] // delegate for displaying items in the list
+	df deleteFunc[I] // function to delete an item
+	ff fetchFunc[I]  // function to get all delete-able items
 }
 
-func newDeleteModel[I scaffold.Id_t](del deleteFunc[I], fch fetchFunc[I], dopts []DelegateOption[I]) *deleteModel[I] {
+func newDeleteModel[I scaffold.Id_t](del deleteFunc[I], fch fetchFunc[I]) *deleteModel[I] {
 	d := &deleteModel[I]{mode: selecting}
 	d.flagset = flags()
 
 	d.df = del
 	d.ff = fch
-
-	// base delegate
-	delegate := defaultDelegate[I]{
-		height:     defaultItemHeight,
-		spacing:    defaultItemSpacing,
-		renderFunc: defaultRender[I],
-	}
-
-	// apply delegate options
-	for _, opt := range dopts {
-		if opt != nil {
-			opt(&delegate)
-		}
-	}
-
-	d.delegate = &delegate
 
 	return d
 }
@@ -325,8 +309,7 @@ func (d *deleteModel[I]) SetArgs(_ *pflag.FlagSet, tokens []string) (invalid str
 	}
 
 	// create list from the generated delegate
-	d.list = list.New(simpleitems, d.delegate, 80, 40)
-	d.list.KeyMap = keymaps.ListKeyMap()
+	d.list = listsupport.NewList(simpleitems, 80, 40)
 	d.list.Title = "Select a " + d.itemSingular + " to delete"
 	d.list.SetFilteringEnabled(true)
 

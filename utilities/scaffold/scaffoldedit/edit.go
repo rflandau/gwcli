@@ -353,10 +353,7 @@ func (em *editModel[I, S]) SetArgs(_ *pflag.FlagSet, tokens []string) (
 	// transmute data into list items
 	var itms []list.Item = make([]list.Item, dataCount)
 	for i, s := range em.data {
-		itms[i] = listsupport.Entry{
-			Name:    em.funcs.GetTitleSub(s),
-			Details: em.funcs.GetDescriptionSub(s),
-		}
+		itms[i] = listsupport.NewEntry(em.funcs.GetTitleSub(s), em.funcs.GetDescriptionSub(s))
 	}
 
 	// generate list
@@ -612,13 +609,3 @@ func (em *editModel[I, S]) enterEditMode() error {
 }
 
 //#endregion interactive mode (model) implementation
-
-type listItem struct {
-	title, description string
-}
-
-var _ list.DefaultItem = listItem{}
-
-func (mi listItem) FilterValue() string { return mi.title }
-func (mi listItem) Title() string       { return mi.title }
-func (mi listItem) Description() string { return mi.description }

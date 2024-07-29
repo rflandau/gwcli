@@ -9,7 +9,6 @@ import (
 	"slices"
 	"strings"
 
-	"github.com/charmbracelet/lipgloss"
 	"github.com/gravwell/gravwell/v3/client/types"
 )
 
@@ -33,7 +32,7 @@ func NewMacroDeleteAction() action.Pair {
 				}
 			}
 			return items, nil
-		}, scaffolddelete.WithHeight[uint64](lipgloss.Height(macroItem{}.Details())+1))
+		})
 }
 
 func del(dryrun bool, id uint64) error {

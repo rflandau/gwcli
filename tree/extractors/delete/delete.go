@@ -11,15 +11,13 @@ import (
 	"slices"
 	"strings"
 
-	"github.com/charmbracelet/lipgloss"
 	"github.com/google/uuid"
 	"github.com/gravwell/gravwell/v3/client/types"
 )
 
 func NewExtractorDeleteAction() action.Pair {
 	return scaffolddelete.NewDeleteAction("extractor", "extractors",
-		del, fetch,
-		scaffolddelete.WithHeight[uuid.UUID](lipgloss.Height(axItem{}.Details())+1))
+		del, fetch)
 }
 
 func del(dryrun bool, id uuid.UUID) error {
