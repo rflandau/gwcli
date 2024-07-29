@@ -1,21 +1,18 @@
-/**
- * The action package tests and maintains the action map, which bolts
- * subroutines onto Actions (leaves) in the cobra command tree so Mother can
- * call them interactively. The action map is not utilized when gwcli is run
- * from a Cobra context/non-interactively.
- *
- * Each Action's Model is implemented and *instantiated* in its own package
- * (ex: tree/tools/macros/create) and added to the map as part of the
- * tree's assembly.
- * When that cobra.Command is invoked interactively, Mother uses the action map
- * to find the bolted-on subroutines to supplant her own Update and View
- * subroutines until the action is `Done()`.
- * Reset() is used to clear the done status and any other no-longer-relevant
- * data so the action can be invoked again cleanly. This is required because
- * actions are only ever instantiated once, each, at start up.
- *
- * Utilize the boilerplate actions in utilities/scaffold where possible.
- */
+/*
+The action package tests and maintains the action map, which bolts subroutines onto Actions (leaves)
+in the cobra command tree so Mother can call them interactively. The action map is not utilized when
+gwcli is run from a Cobra context/non-interactively.
+
+Each Action's Model is implemented and *instantiated* in its own package
+(ex: tree/tools/macros/create) and added to the map as part of the tree's assembly.
+
+When that cobra.Command is invoked interactively, Mother uses the action map to find the bolted-on
+subroutines to supplant her own Update and View subroutines until the action is `Done()`. Reset() is
+used to clear the done status and any other no-longer-relevant data so the action can be invoked
+again cleanly. This is required because actions are only ever instantiated once, each, at start up.
+
+Utilize the boilerplate actions in utilities/scaffold where possible.
+*/
 package action
 
 import (
@@ -27,14 +24,11 @@ import (
 	"github.com/spf13/pflag"
 )
 
-//#regions errors
-
 var (
 	ErrNotAnAction = errors.New("given command is not an action")
 )
 
-//#endregion
-
+// See CONTRIBUTING.md for more information on each of these subroutines.
 type Model interface {
 	Update(msg tea.Msg) tea.Cmd // action processing
 	View() string               // action displaying
@@ -44,7 +38,7 @@ type Model interface {
 }
 
 // Duple used to construct the Action Map.
-// Associates the Action command with its bolted-on Update/View subroutines.
+// Associates the Action command with its bolted-on Model subroutines to facillitate interactivity.
 type Pair struct {
 	Action *cobra.Command // the base model
 	Model  Model          // our bolted-on interactivity
@@ -52,7 +46,7 @@ type Pair struct {
 
 //#region action map
 
-// Our singleton variable, accessed via Public subrotuines below.
+// Our singleton variable, accessed via Public subrotines below.
 // Maps key(command) -> Model.
 var actions = map[string]Model{}
 
