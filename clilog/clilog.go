@@ -1,11 +1,10 @@
-/**
- * clilog provides the logger for gwcli in the form of a logging singleton:
- * Writer.
- *
- * It is basically a singleton wrapper of the gravwell ingest logger.
- * While the underlying ingest logger appears to be thread-safe, clilog's helper
- * functions are not necessarily.
- */
+/*
+clilog provides the logger for gwcli in the form of a logging singleton: Writer.
+
+It is basically a singleton wrapper of the gravwell ingest logger.
+While the underlying ingest logger appears to be thread-safe, clilog's helper functions are not
+necessarily.
+*/
 package clilog
 
 import (
@@ -14,7 +13,7 @@ import (
 	"github.com/gravwell/gravwell/v3/ingest/log"
 )
 
-// recreate log.Level so other packages do not have to import it
+// recreate log.Level so other packages do not have to import the ingest logger
 type Level int
 
 const (
@@ -76,6 +75,7 @@ func Tee(lvl Level, alt io.Writer, str string) {
 	}
 }
 
+// Returns whether or not the given level is currently enabled (<= log.Level)
 func Active(lvl Level) bool {
 	return Writer.GetLevel() <= log.Level(lvl)
 }
