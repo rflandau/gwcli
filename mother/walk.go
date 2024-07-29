@@ -1,12 +1,12 @@
-/**
- * Walk is the beefy boy that enables dynamic path-finding through the tree.
- * It recusively walks a series of tokens, determining what to do at each step
- * until an acceptable endpoint is reached
- * (e.g. an executable action, a nav, an error).
- * It is both used directly for Mother traversal of the command tree as well as
- * determining the validity of a proposed path.
- */
 package mother
+
+/*
+Walk is the beefy boy that enables dynamic path-finding through the tree.
+It recusively walks a series of tokens, determining what to do at each step until an acceptable
+endpoint is reached (e.g. an executable action, a nav, an error).
+It is both used directly for Mother traversal of the command tree as well as determining the
+validity of a proposed path.
+*/
 
 import (
 	"fmt"
@@ -18,7 +18,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
-type walkStatus int
+type walkStatus int // how to read the returned walkResult
 
 const (
 	invalidCommand walkStatus = iota
@@ -39,11 +39,16 @@ type walkResult struct {
 	remainingString string // any tokens remaining for later processing by walk caller
 }
 
-// Recursively walk the tokens of the exploded user input until we run out or
-// find a valid destination.
-// Returns the relevant command (ending Nav destination or action to invoke),
-// the type of the command (action, nav, invalid), a list of commands to pass to
-// tea, and an error (if one occurred).
+/*
+Recursively walk the tokens of the exploded user input until we run out or find a valid
+destination.
+
+Returns a walkResult struct with:
+  - the relevant command (ending Nav destination or action to invoke)
+  - the type of the command (action, nav, invalid)
+  - a list of commands to pass to Bubble Tea
+  - and an error (if one occurred)
+*/
 func walk(dir *cobra.Command, tokens []string) walkResult {
 	if len(tokens) == 0 {
 		// only move if the final command was a nav

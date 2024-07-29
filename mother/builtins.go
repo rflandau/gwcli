@@ -1,8 +1,8 @@
-/**
- * Builtins are special, meta actions users can invoke from Mother's prompt, no
- * matter their pwd.
- */
 package mother
+
+/*
+Builtins are special, meta actions users can invoke from Mother's prompt, no matter their pwd.
+*/
 
 import (
 	"gwcli/clilog"
@@ -71,6 +71,7 @@ func contextHelp(m *Mother, args []string) tea.Cmd {
 	return nil
 }
 
+// Returns a print tea.Cmd to display records from oldest (top) to newest (bottom).
 func listHistory(m *Mother, _ []string) tea.Cmd {
 	toPrint := strings.Builder{}
 	rs := m.history.getAllRecords()

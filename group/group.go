@@ -1,4 +1,5 @@
-/* The group pkg enforces consistent IDs and Titles by centralizing them */
+// This pkg enforces consistent IDs and Titles by centralizing them.
+// It was born out of avoiding import cycles
 package group
 
 import "github.com/spf13/cobra"

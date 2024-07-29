@@ -1,7 +1,6 @@
-/**
- * Valid modes for mother
- */
 package mother
+
+// Valid modes for mother
 
 import "fmt"
 

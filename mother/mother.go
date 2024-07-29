@@ -1,14 +1,14 @@
-/**
- * Mother is the heart and brain of the interactive functionality of gwcli.
- * It is the top-level implementation of tea.Model and drives interactive tree
- * navigation as well as managing of child processing (Actions).
- * Almost all interactivity flows through Mother, even when a child is in
- * control (aka: Mother is in handoff mode); Mother's Update() and View() are
- * still called every cycle, but control rapidly passes to the child's Update()
- * and View().
- * Mother also manages the top-level prompt.
- */
+/*
+Mother is the heart and brain of the interactive functionality of gwcli.
+It is the top-level implementation of tea.Model and drives interactive tree navigation as well as
+managing of child processing (Actions).
 
+Almost all interactivity flows through Mother, even when a child is in control (aka: Mother is in
+handoff mode); Mother's Update() and View() are still called every cycle, but control rapidly passes
+to the child's Update() and View().
+
+Mother also manages the top-level prompt.
+*/
 package mother
 
 import (

@@ -1,15 +1,15 @@
-/**
- * The history struct is used for managing the historical record of user input
- * and facillitating their retrieval.
- * It stores a list of commands and handles efficiently retreiving local
- * commands for quick reuse.
- *
- * NOTE: The array is self-destructive; once the cap is reached, the array will
- * begin to overwrite its oldest commands.
- *
- * Newer commands have higher indices.
- */
 package mother
+
+/*
+The history struct is used for managing the historical record of user input and facillitating their
+retrieval.
+It stores a list of commands and handles efficiently retreiving them for quick reuse.
+
+NOTE: The array is self-destructive; once the cap is reached, the array will begin to overwrite its
+oldest commands.
+
+Newer commands have higher indices.
+*/
 
 import (
 	"math"
@@ -49,7 +49,7 @@ func (h *history) insert(record string) {
 
 // Starting at the newest record, returns progressively older records for each successive call.
 // Stops progressing successive calls after returning an empty record.
-// Call `.UnsetFetch` to restart at the newest record.
+// Call `.unsetFetch` to restart at the newest record.
 func (h *history) getOlderRecord() string {
 	if h.fetchedIndex == unset {
 		h.fetchedIndex = decrement(h.insertionIndex)
@@ -67,7 +67,7 @@ func (h *history) getOlderRecord() string {
 	return h.commands[h.fetchedIndex]
 }
 
-// Flipside to primary command GetOlderRecord.
+// Flip side to primary command GetOlderRecord.
 func (h *history) getNewerRecord() string {
 	if h.fetchedIndex == unset {
 		h.fetchedIndex = increment(h.insertionIndex)
@@ -91,8 +91,8 @@ func (h *history) unsetFetch() {
 	h.fetchedIndex = unset
 }
 
-// Returns all history records, ordered from [0]newest to [len-1]oldest
-// NOTE: this is a destructive call in that it will reset current GetRecord index
+// Returns all history records, ordered from [0]newest to [len-1]oldest.
+// NOTE: this is a destructive call: it will reset unset the fetch index.
 func (h *history) getAllRecords() (records []string) {
 	records = make([]string, arraySize)
 	var i uint16
@@ -110,7 +110,7 @@ func (h *history) getAllRecords() (records []string) {
 	return records[:i] // clip length
 }
 
-// Decrements the given number, underflowing around arraysize
+// Decrements the given number, underflows around arraysize
 func decrement(i uint16) uint16 {
 	if i == 0 {
 		i = arrayEnd
