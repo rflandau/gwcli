@@ -8,11 +8,22 @@ package listsupport
 import (
 	"github.com/charmbracelet/bubbles/key"
 	"github.com/charmbracelet/bubbles/list"
+	"github.com/charmbracelet/bubbles/spinner"
 )
 
-func NewList(items []list.Item, width, height int) list.Model {
-	l := list.New(items, list.NewDefaultDelegate(), width, height)
+func NewList(items []list.Item, width, height int, singular, plural string) list.Model {
+	// update the styles on the default delegate to wrap properly
+	dlg := list.NewDefaultDelegate()
+	//	dlg.Styles.NormalDesc = dlg.Styles.NormalDesc.Width(width)
+	//	dlg.Styles.DimmedDesc = dlg.Styles.DimmedDesc.Width(width)
+	dlg.Styles.SelectedDesc = dlg.Styles.SelectedDesc.Width(width)
+	dlg.Styles.SelectedTitle = dlg.Styles.SelectedTitle.Width(width)
+
+	l := list.New(items, dlg, 200, height)
 	l.KeyMap = keyMap()
+	l.SetSpinner(spinner.Moon)
+	l.SetStatusBarItemName(singular, plural)
+	l.SetShowTitle(false)
 	return l
 }
 

@@ -357,7 +357,7 @@ func (em *editModel[I, S]) SetArgs(_ *pflag.FlagSet, tokens []string) (
 	}
 
 	// generate list
-	em.list = listsupport.NewList(itms, 80, listHeightMax)
+	em.list = listsupport.NewList(itms, 80, listHeightMax, em.singular, em.plural)
 	em.listInitialized = true
 	em.mode = selecting
 
@@ -370,7 +370,7 @@ func (em *editModel[I, S]) Update(msg tea.Msg) tea.Cmd {
 		em.height = msg.Height
 		// if we skipped directly to edit mode, list will be nil
 		if em.listInitialized {
-			em.list.SetSize(em.width, min(msg.Height-2, listHeightMax))
+			em.list.SetHeight(min(msg.Height-2, listHeightMax))
 		}
 	}
 

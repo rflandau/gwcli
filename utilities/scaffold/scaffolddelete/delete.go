@@ -309,7 +309,7 @@ func (d *deleteModel[I]) SetArgs(_ *pflag.FlagSet, tokens []string) (invalid str
 	}
 
 	// create list from the generated delegate
-	d.list = listsupport.NewList(simpleitems, 80, 40)
+	d.list = listsupport.NewList(simpleitems, 80, 40, d.itemSingular, d.itemPlural)
 	d.list.Title = "Select a " + d.itemSingular + " to delete"
 	d.list.SetFilteringEnabled(true)
 
