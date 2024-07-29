@@ -50,7 +50,7 @@ import (
 	"gwcli/stylesheet"
 	"gwcli/stylesheet/colorizer"
 	ft "gwcli/stylesheet/flagtext"
-	"gwcli/utilities/keymaps"
+	"gwcli/utilities/listsupport"
 	"gwcli/utilities/scaffold"
 	"gwcli/utilities/treeutils"
 	"gwcli/utilities/uniques"
@@ -353,15 +353,14 @@ func (em *editModel[I, S]) SetArgs(_ *pflag.FlagSet, tokens []string) (
 	// transmute data into list items
 	var itms []list.Item = make([]list.Item, dataCount)
 	for i, s := range em.data {
-		itms[i] = listItem{
-			title:       em.funcs.GetTitleSub(s),
-			description: em.funcs.GetDescriptionSub(s),
+		itms[i] = listsupport.Entry{
+			Name:    em.funcs.GetTitleSub(s),
+			Details: em.funcs.GetDescriptionSub(s),
 		}
 	}
 
 	// generate list
-	em.list = list.New(itms, list.NewDefaultDelegate(), 80, listHeightMax)
-	em.list.KeyMap = keymaps.ListKeyMap()
+	em.list = listsupport.NewList(itms, 80, listHeightMax)
 	em.listInitialized = true
 	em.mode = selecting
 
