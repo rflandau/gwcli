@@ -523,7 +523,8 @@ func (em *editModel[I, S]) Reset() error {
 	return nil
 }
 
-// Triggers the edit model to enter editting mode, performing all required data setup.
+// Triggers the edit model to enter editting mode, establishing and displaying a TI for each field
+// and sorting them into an ordered array.
 func (em *editModel[I, S]) enterEditMode() error {
 	// prepare list
 	em.orderedKTIs = make([]keyedTI, len(em.cfg))
@@ -537,7 +538,7 @@ func (em *editModel[I, S]) enterEditMode() error {
 		if field.CustomTIFuncInit != nil {
 			ti = field.CustomTIFuncInit()
 		} else {
-			ti = stylesheet.NewTI("", field.Required)
+			ti = stylesheet.NewTI("", !field.Required)
 		}
 
 		var setByFlag bool
