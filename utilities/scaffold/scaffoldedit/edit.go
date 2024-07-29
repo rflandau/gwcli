@@ -1,3 +1,21 @@
+/*
+An edit action allows the user to select an entity from a list of all avaialble entities, modify its
+fields (as interfaced by the implementor), and reflect the changes to the server.
+
+Implementors provide a struct of subroutines and a map of manipulate-able Fields to be displayed
+after an item is selected. The subroutines provide methods for scaffoldedit to find and manipulate
+data, including translation services for plucking specific fields out of the generic data struct.
+
+This scaffold is notably more complex to modify and heavier to implement than the other scaffolds.
+See the Design block below for why.
+
+! Once a Config is given by the implementor, it should be considered ReadOnly.
+
+! Note that some subs in the SubroutineSet explicitly pass pointers as parameters; these subroutines
+are destructive by design.
+
+Implementations will resemble scaffoldcreate implementations with the addition of a SubroutineSet.
+*/
 package scaffoldedit
 
 /**
@@ -5,7 +23,10 @@ package scaffoldedit
  * Edit is definitely the most complex of the scaffolds, requiring components of both Create
  * (arbitrary TIs) and Delete (list possible structs/items).
  * By virtue of passing around structs and ids, it was always going to require multiple generics.
- * However, the decision to not use reflection was made fairly early.
+ * As implemented, it uses I to represent a singular, generally-numeric ID and S to represent a
+ * single instance of the struct we are/will be editting.
+ * The use of reflection to reduce the complexity of the SubroutineSet, thereby reducing implementor
+ * load, was considered, but ditched fairly early.
  * I figured that reflection is
  * 1) slow
  * 2) error-prone (needing to look up qualified field names given by the implementor)
@@ -67,10 +88,18 @@ var (
 
 // #endregion
 
+// Create a new edit action, returning its cobra.Command and action model pair.
+// This is the function implementations should call as their action implementation.
+// This function panics if any parameters are missing.
 func NewEditAction[I id_t, S any](singular, plural string, cfg Config, funcs SubroutineSet[I, S]) action.Pair {
 	funcs.guarantee() // check that all functions are given
 	if len(cfg) < 1 { // check that config has fields in it
 		panic("cannot edit with no fields defined")
+	}
+	if strings.TrimSpace(singular) == "" {
+		panic("singular form of the noun cannot be empty")
+	} else if strings.TrimSpace(plural) == "" {
+		panic("plural form of the noun cannot be empty")
 	}
 
 	var fs pflag.FlagSet = generateFlagSet(cfg, singular)
@@ -127,7 +156,7 @@ func generateFlagSet(cfg Config, singular string) pflag.FlagSet {
 
 // run helper function.
 // runNonInteractive is the --script portion of edit's runFunc.
-// It requires --id be set and is ineffectual if an addtl/field flag was no given.
+// It requires --id be set and is ineffectual if no other flags were given.
 // Prints and error handles on its own; the program is expected to exit on its compeltion.
 func runNonInteractive[I id_t, S any](cmd *cobra.Command, cfg Config, funcs SubroutineSet[I, S], singular string) {
 	var err error
@@ -205,7 +234,7 @@ func runNonInteractive[I id_t, S any](cmd *cobra.Command, cfg Config, funcs Subr
 }
 
 // run helper function.
-// Prints and error handles on its own; the program is expected to exit on its compeltion.
+// Boots Mother, allowing her to handle the request.
 func runInteractive(cmd *cobra.Command, args []string) {
 	// we have no way of knowing if the user has passed enough data to make the edit autonomously
 	// ex: they provided one flag, but are they only planning to edit one flag?
@@ -217,6 +246,7 @@ func runInteractive(cmd *cobra.Command, args []string) {
 
 //#region interactive mode (model) implementation
 
+// the possible modes editModel can be in
 type mode = uint8
 
 const (
@@ -226,6 +256,7 @@ const (
 	idle                  // inactive
 )
 
+// a tuple for associating a TI with its field key
 type keyedTI struct {
 	key string          // key to look up the related field in the Config
 	ti  textinput.Model // ti for user modifications
@@ -240,14 +271,12 @@ type editModel[I id_t, S any] struct {
 
 	cfg Config // RO configuration provided by the caller
 
-	data []S // data retrieved by fchFunc
+	data []S // full, raw data retrieved by fchFunc
 
-	// selecting mode
 	list            list.Model // list displayed during `selecting` mode
-	listInitialized bool
+	listInitialized bool       // check before accessing the list, in case the user skipped to edit mode
 
-	// editting mode
-	orderedKTIs  []keyedTI // TIs will be displayed in array order
+	orderedKTIs  []keyedTI // TIs will be displayed in array order, as sorted on population
 	tiIndex      int       // array index of active TI
 	tiCount      int       // len(ttis)
 	selectedData S         // item chosen from the list
@@ -328,7 +357,7 @@ func (em *editModel[I, S]) SetArgs(_ *pflag.FlagSet, tokens []string) (
 		}
 	}
 
-	// generatelist
+	// generate list
 	em.list = list.New(itms, list.NewDefaultDelegate(), 80, listHeightMax)
 	em.list.KeyMap = keymaps.ListKeyMap()
 	em.listInitialized = true
@@ -367,7 +396,6 @@ func (em *editModel[I, S]) Update(msg tea.Msg) tea.Cmd {
 // Update() handling for selecting mode.
 // Updates the list and transitions to editting mode if an item is selected.
 func (em *editModel[I, S]) updateSelecting(msg tea.Msg) tea.Cmd {
-	// switch on message type
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
 		if msg.Type == tea.KeySpace || msg.Type == tea.KeyEnter {
@@ -385,6 +413,8 @@ func (em *editModel[I, S]) updateSelecting(msg tea.Msg) tea.Cmd {
 	return cmd
 }
 
+// Update() handling for editting mode.
+// Updates the TIs and performs data transumtation and submission if user confirms changes.
 func (em *editModel[I, S]) updateEditting(msg tea.Msg) tea.Cmd {
 	if keymsg, ok := msg.(tea.KeyMsg); ok {
 		em.inputErr = "" // clear input errors on new key input
@@ -411,8 +441,8 @@ func (em *editModel[I, S]) updateEditting(msg tea.Msg) tea.Cmd {
 					return textinput.Blink
 				}
 
+				// yank the TI values and reinstall them into a data structure to update against
 				for _, kti := range em.orderedKTIs {
-					// yank the TI values and reinstall them into a data structure to update against
 					if inv, err := em.funcs.SetFieldSub(&em.selectedData, kti.key, kti.ti.Value()); err != nil {
 						em.mode = quitting
 						return tea.Println(err, "\n", "no changes made")
