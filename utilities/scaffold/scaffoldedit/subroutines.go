@@ -1,66 +1,64 @@
 package scaffoldedit
 
-import "github.com/gravwell/gravwell/v3/client/types"
-
 // Pulls the specific, edit-able struct when skipping list/selecting mode.
-type SelectSubroutine = func(id uint64) (
-	item types.SearchMacro, err error,
+type SelectSubroutine[I id_t, S any] func(id I) (
+	item S, err error,
 )
 
 // Fetches all edit-able structs. Not used in script mode.
-type FetchAllSubroutine = func() (
-	items []types.SearchMacro, err error,
+type FetchAllSubroutine[S any] func() (
+	items []S, err error,
 )
 
 // Function to retrieve the struct value associated to the field key without reflection.
 // This is probably a switch statement that maps (key -> item.X).
 //
 // Sister to setFieldFunction.
-type GetFieldSubroutine = func(item types.SearchMacro, fieldKey string) (
+type GetFieldSubroutine[S any] func(item S, fieldKey string) (
 	value string, err error,
 )
 
 // Subroutine to fetch a title to be displayed for this item in the list.
 // This will be called in a loop when building the list.
-type GetTitleSubroutine = func(item types.SearchMacro) string
+type GetTitleSubroutine[S any] func(item S) string
 
 // Subroutine to fetch a description to be displayed under this item in the list.
 // This will be called in a loop when building the list.
-type GetDescriptionSubroutine = func(item types.SearchMacro) string
+type GetDescriptionSubroutine[S any] func(item S) string
 
 // Function to set the struct value associated to the field key without reflection.
 // This is probably a switch statement that maps (key -> item.X).
 // Returns invalid if the value is invalid for the keyed field and err on an unrecoverable error.
 //
 // Sister to getFieldFunction.
-type SetFieldSubroutine = func(item *types.SearchMacro, fieldKey, val string) (
+type SetFieldSubroutine[S any] func(item *S, fieldKey, val string) (
 	invalid string, err error,
 )
 
 // Performs the actual update of the data on the GW instance
-type UpdateStructSubroutine = func(data *types.SearchMacro) (
+type UpdateStructSubroutine[S any] func(data *S) (
 	identifier string, err error,
 )
 
 // Set of all subroutines required by an edit implementation.
 //
 // ! AddEditAction will panic if any subroutine is nil
-type SubroutineSet struct {
-	SelectSub SelectSubroutine // fetch a specific editable struct
+type SubroutineSet[I id_t, S any] struct {
+	SelectSub SelectSubroutine[I, S] // fetch a specific editable struct
 	// used in interactive mode to fetch all editable structs
-	FetchSub    FetchAllSubroutine
-	GetFieldSub GetFieldSubroutine // get a value within the struct
-	SetFieldSub SetFieldSubroutine // set a value within the struct
+	FetchSub    FetchAllSubroutine[S]
+	GetFieldSub GetFieldSubroutine[S] // get a value within the struct
+	SetFieldSub SetFieldSubroutine[S] // set a value within the struct
 	// special get function to retrieve a title for the list entry
-	GetTitleSub GetTitleSubroutine
+	GetTitleSub GetTitleSubroutine[S]
 	// special function to retrieve a description for the list entry
-	GetDescriptionSub GetDescriptionSubroutine
-	UpdateSub         UpdateStructSubroutine // submit the struct as updated
+	GetDescriptionSub GetDescriptionSubroutine[S]
+	UpdateSub         UpdateStructSubroutine[S] // submit the struct as updated
 }
 
 // Validates that all functions were set.
 // Panics if any are missing.
-func (funcs *SubroutineSet) guarantee() {
+func (funcs *SubroutineSet[I, S]) guarantee() {
 	if funcs.SelectSub == nil {
 		panic("select function is required")
 	}
