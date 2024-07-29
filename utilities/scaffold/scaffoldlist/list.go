@@ -51,6 +51,7 @@ import (
 	"gwcli/clilog"
 	"gwcli/connection"
 	"gwcli/stylesheet"
+	ft "gwcli/stylesheet/flagtext"
 	"gwcli/utilities/treeutils"
 	"os"
 	"reflect"
@@ -199,15 +200,15 @@ func NewListAction[Any any](short, long string, defaultColumns []string,
 // define the basic flags shared by all list actions
 func listStarterFlags() pflag.FlagSet {
 	fs := pflag.FlagSet{}
-	fs.Bool("csv", false, stylesheet.FlagCSVDesc)
-	fs.Bool("json", false, stylesheet.FlagJSONDesc)
+	fs.Bool(ft.Name.CSV, false, ft.Usage.CSV)
+	fs.Bool(ft.Name.JSON, false, ft.Usage.JSON)
 	fs.Bool("table", true, "display results in a human-readable table") // default
 	fs.StringSlice("columns", []string{},
 		"comma-seperated list of columns to include in the results."+
 			"Use --show-columns to see the full list of columns.")
 	fs.Bool("show-columns", false, "display the list of fully qualified column names and die.")
-	fs.StringP("output", "o", "", stylesheet.FlagOutputDesc)
-	fs.Bool("append", false, stylesheet.FlagAppendDesc)
+	fs.StringP(ft.Name.Output, "o", "", ft.Usage.Output)
+	fs.Bool(ft.Name.Append, false, ft.Usage.Append)
 	return fs
 }
 

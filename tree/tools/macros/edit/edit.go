@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"gwcli/action"
 	"gwcli/connection"
-	"gwcli/stylesheet"
 	ft "gwcli/stylesheet/flagtext"
 	"gwcli/utilities/scaffold/scaffoldedit"
 	"strings"
@@ -33,8 +32,8 @@ func NewMacroEditAction() action.Pair {
 		"expansion": &scaffoldedit.Field{
 			Required: true,
 			Title:    "Expansion",
-			Usage:    stylesheet.FlagUsageMacroExpansion,
-			FlagName: stylesheet.FlagNameMacroExpansion,
+			Usage:    ft.Usage.Expansion,
+			FlagName: ft.Name.Expansion,
 			Order:    60,
 		},
 	}

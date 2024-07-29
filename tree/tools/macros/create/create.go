@@ -3,7 +3,7 @@ package create
 import (
 	"gwcli/action"
 	"gwcli/connection"
-	"gwcli/stylesheet"
+	ft "gwcli/stylesheet/flagtext"
 	"gwcli/utilities/scaffold/scaffoldcreate"
 	"strings"
 
@@ -23,9 +23,9 @@ func NewMacroCreateAction() action.Pair {
 		"exp": scaffoldcreate.Field{
 			Required:      true,
 			Title:         "expansion",
-			Usage:         stylesheet.FlagUsageMacroExpansion,
+			Usage:         ft.Usage.Expansion,
 			Type:          scaffoldcreate.Text,
-			FlagName:      stylesheet.FlagNameMacroExpansion,
+			FlagName:      ft.Name.Expansion,
 			FlagShorthand: 'e',
 			DefaultValue:  "",
 			Order:         80,

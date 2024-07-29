@@ -1,11 +1,10 @@
 package list
 
 import (
-	"fmt"
 	"gwcli/action"
 	"gwcli/clilog"
 	"gwcli/connection"
-	"gwcli/stylesheet"
+	ft "gwcli/stylesheet/flagtext"
 	"gwcli/utilities/scaffold/scaffoldlist"
 
 	grav "github.com/gravwell/gravwell/v3/client"
@@ -28,15 +27,16 @@ func NewMacroListAction() action.Pair {
 
 func flags() pflag.FlagSet {
 	addtlFlags := pflag.FlagSet{}
-	addtlFlags.Bool("all", false, fmt.Sprintf(stylesheet.FlagListAllDescFormat+
-		"\nIgnored if you are not an admin.\nSupercedes --group.", "macros"))
+	addtlFlags.Bool(ft.Name.ListAll, false, ft.Usage.ListAll("macros")+"\n"+
+		"Ignored if you are not an admin.\n"+
+		"Supercedes --group.")
 	addtlFlags.Int32("group", 0, "Fetches all macros shared with the given group id.")
 	return addtlFlags
 }
 
 func listMacros(c *grav.Client, fs *pflag.FlagSet) ([]types.SearchMacro, error) {
-	if all, err := fs.GetBool("all"); err != nil {
-		clilog.LogFlagFailedGet("all", err)
+	if all, err := fs.GetBool(ft.Name.ListAll); err != nil {
+		clilog.LogFlagFailedGet(ft.Name.ListAll, err)
 	} else if all {
 		return c.GetAllMacros()
 	}

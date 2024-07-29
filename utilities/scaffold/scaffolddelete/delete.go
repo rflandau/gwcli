@@ -52,13 +52,13 @@ import (
 	"gwcli/action"
 	"gwcli/clilog"
 	"gwcli/mother"
+	ft "gwcli/stylesheet/flagtext"
 	"gwcli/utilities/keymaps"
 	"gwcli/utilities/scaffold"
 	"gwcli/utilities/treeutils"
 
 	"github.com/charmbracelet/bubbles/list"
 	tea "github.com/charmbracelet/bubbletea"
-	"github.com/charmbracelet/lipgloss"
 	"github.com/gravwell/gravwell/v3/client"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
@@ -153,8 +153,7 @@ func NewDeleteAction[I scaffold.Id_t](singular, plural string,
 // base flagset
 func flags() pflag.FlagSet {
 	fs := pflag.FlagSet{}
-	fs.Bool("dryrun", false, "feigns deletions, descibing actions that "+
-		lipgloss.NewStyle().Italic(true).Render("would")+" have been taken")
+	fs.Bool(ft.Name.Dryrun, false, ft.Usage.Dryrun)
 	fs.String("id", "", "ID of the item to be deleted")
 	return fs
 }

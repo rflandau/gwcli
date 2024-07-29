@@ -23,7 +23,7 @@ import (
 	"gwcli/clilog"
 	"gwcli/connection"
 	"gwcli/mother"
-	"gwcli/stylesheet"
+	ft "gwcli/stylesheet/flagtext"
 	"gwcli/tree/query/datascope"
 	"gwcli/utilities/treeutils"
 	"gwcli/utilities/uniques"
@@ -88,11 +88,12 @@ func initialLocalFlagSet() pflag.FlagSet {
 	fs := pflag.FlagSet{}
 
 	fs.DurationP("duration", "t", time.Hour*1,
-		stylesheet.FlagDurationDesc)
-	fs.StringP("output", "o", "", stylesheet.FlagOutputDesc)
-	fs.Bool("append", false, stylesheet.FlagAppendDesc)
-	fs.Bool("json", false, stylesheet.FlagJSONDesc)
-	fs.Bool("csv", false, stylesheet.FlagCSVDesc)
+		"the historical timeframe from now the query should pour over.\n"+
+			"Ex: '1h' = the past hour, '5s500ms'= the previous 5 and a half seconds")
+	fs.StringP(ft.Name.Output, "o", "", ft.Usage.Output)
+	fs.Bool(ft.Name.Append, false, ft.Name.Append)
+	fs.Bool(ft.Name.JSON, false, ft.Usage.JSON)
+	fs.Bool(ft.Name.CSV, false, ft.Usage.CSV)
 
 	// scheduled searches
 	fs.StringP("name", "n", "", "SCHEDULED. a title for the scheduled search")

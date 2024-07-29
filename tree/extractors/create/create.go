@@ -6,6 +6,7 @@ import (
 	"gwcli/clilog"
 	"gwcli/connection"
 	"gwcli/stylesheet"
+	ft "gwcli/stylesheet/flagtext"
 	"gwcli/utilities/scaffold/scaffoldcreate"
 	"strings"
 
@@ -147,7 +148,7 @@ func NewExtractorsCreateAction() action.Pair {
 	}
 
 	return scaffoldcreate.NewCreateAction("extractor", fields, create, func() (fs pflag.FlagSet) {
-		fs.Bool("dryrun", false, stylesheet.FlagDryrunDesc)
+		fs.Bool(ft.Name.Dryrun, false, ft.Usage.Dryrun)
 		return fs
 	})
 }
@@ -169,7 +170,7 @@ func create(_ scaffoldcreate.Config, vals scaffoldcreate.Values, fs *pflag.FlagS
 		dr  bool
 		err error
 	)
-	if dr, err = fs.GetBool(stylesheet.FlagNameDryrun); err != nil {
+	if dr, err = fs.GetBool(ft.Name.Dryrun); err != nil {
 		return 0, "", err
 	}
 
