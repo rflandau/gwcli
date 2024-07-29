@@ -153,7 +153,9 @@ func runNonInteractive[I id_t, S any](cmd *cobra.Command, cfg Config, funcs Subr
 
 	// get the item to edit
 	if itm, err = funcs.SelectSub(id); err != nil {
-		clilog.Tee(clilog.ERROR, cmd.ErrOrStderr(), err.Error()+"\n")
+		clilog.Tee(clilog.ERROR, cmd.ErrOrStderr(),
+			fmt.Sprintf("Failed to select %s (id: %v): %s\n",
+				singular, id, err.Error()))
 		return
 	}
 
