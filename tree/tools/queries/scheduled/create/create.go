@@ -4,6 +4,7 @@ import (
 	"gwcli/action"
 	"gwcli/connection"
 	"gwcli/stylesheet"
+	ft "gwcli/stylesheet/flagtext"
 	"gwcli/utilities/scaffold/scaffoldcreate"
 	"gwcli/utilities/uniques"
 	"time"
@@ -29,10 +30,10 @@ func NewQueriesScheduledCreateAction() action.Pair {
 		kfreq: scaffoldcreate.Field{ // manually build so we have more control
 			Required:      true,
 			Title:         "frequency",
-			Usage:         stylesheet.FlagDurationDesc,
+			Usage:         ft.Usage.Frequency,
 			Type:          scaffoldcreate.Text,
-			FlagName:      "cron-frequency", // custom flag name
-			FlagShorthand: 'c',
+			FlagName:      ft.Name.Frequency, // custom flag name
+			FlagShorthand: 'f',
 			DefaultValue:  "", // no default value
 			Order:         50,
 			CustomTIFuncInit: func() textinput.Model {

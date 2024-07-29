@@ -7,25 +7,27 @@ package ft
 
 // Common flag names used across a variety of actions
 var Name = struct {
-	Dryrun string
-	Name   string
-	Desc   string
-	ID     string
-	Query  string
+	Dryrun    string
+	Name      string
+	Desc      string
+	ID        string
+	Query     string
+	Frequency string
 }{
-	Dryrun: "dryrun",
-	Name:   "name",
-	Desc:   "description",
-	ID:     "id",
-	Query:  "query",
+	Dryrun:    "dryrun",
+	Name:      "name",
+	Desc:      "description",
+	ID:        "id",
+	Query:     "query",
+	Frequency: "frequency",
 }
 
 // Common flag usage description used across a variety of actions
 // The compiler should inline all of these functions so they are overhead-less.
 var Usage = struct {
-	Name     func(singular string) string
-	Desc     func(singular string) string
-	CronFreq string
+	Name      func(singular string) string
+	Desc      func(singular string) string
+	Frequency string
 }{
 	Name: func(singular string) string {
 		return "name of the " + singular
@@ -33,5 +35,5 @@ var Usage = struct {
 	Desc: func(singular string) string {
 		return "flavour description of the " + singular
 	},
-	CronFreq: "cron-style execution frequency",
+	Frequency: "cron-style execution frequency",
 }

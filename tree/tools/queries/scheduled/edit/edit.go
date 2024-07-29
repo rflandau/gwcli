@@ -45,7 +45,7 @@ func NewQueriesScheduledEditAction() action.Pair {
 		kschedule: &scaffoldedit.Field{
 			Required: true,
 			Title:    "Schedule",
-			Usage:    ft.Usage.CronFreq,
+			Usage:    ft.Usage.Frequency,
 			FlagName: "schedule",
 			Order:    40,
 		},
