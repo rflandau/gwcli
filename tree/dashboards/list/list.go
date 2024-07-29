@@ -16,12 +16,11 @@ import (
 var (
 	short          string   = "list dashboards"
 	long           string   = "list dashboards available to you and the system"
-	aliases        []string = []string{}
 	defaultColumns []string = []string{"ID", "Name", "Description"}
 )
 
 func NewDashboardsListAction() action.Pair {
-	return scaffoldlist.NewListAction(short, long, aliases, defaultColumns,
+	return scaffoldlist.NewListAction(short, long, defaultColumns,
 		types.Dashboard{}, list, flags)
 }
 

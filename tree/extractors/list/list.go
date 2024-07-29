@@ -14,12 +14,11 @@ import (
 var (
 	short          string   = "list extractors"
 	long           string   = "list autoextractions available to you and the system"
-	aliases        []string = []string{}
 	defaultColumns []string = []string{"UID", "UUID", "Name", "Desc"}
 )
 
 func NewExtractorsListAction() action.Pair {
-	return scaffoldlist.NewListAction(short, long, aliases, defaultColumns,
+	return scaffoldlist.NewListAction(short, long, defaultColumns,
 		types.AXDefinition{}, list, flags)
 }
 

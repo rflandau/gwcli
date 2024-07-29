@@ -18,12 +18,11 @@ var (
 	short string = "list your macros"
 	long  string = "lists all macros associated to your user, a group," +
 		"or the system itself"
-	aliases        []string = []string{}
 	defaultColumns []string = []string{"ID", "Name", "Description", "Expansion"}
 )
 
 func NewMacroListAction() action.Pair {
-	return scaffoldlist.NewListAction(short, long, aliases, defaultColumns,
+	return scaffoldlist.NewListAction(short, long, defaultColumns,
 		types.SearchMacro{}, listMacros, flags)
 }
 

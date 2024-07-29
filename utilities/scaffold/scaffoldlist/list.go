@@ -115,8 +115,7 @@ type addtlFlagFunction func() pflag.FlagSet
 // See tree/kits/list's ListKits() as an example.
 //
 // Go's Generics are a godsend.
-func NewListAction[Any any](short, long string,
-	aliases []string, defaultColumns []string,
+func NewListAction[Any any](short, long string, defaultColumns []string,
 	dataStruct Any, dataFn dataFunction[Any], addtlFlagsFunc addtlFlagFunction) action.Pair {
 	// assert developer provided a usable data struct
 	if reflect.TypeOf(dataStruct).Kind() != reflect.Struct {
@@ -177,7 +176,7 @@ func NewListAction[Any any](short, long string,
 	}
 
 	// generate the command
-	cmd := treeutils.NewActionCommand("list", short, long, aliases, runFunc)
+	cmd := treeutils.NewActionCommand("list", short, long, []string{}, runFunc)
 
 	// attach normal list flags and, if applicable, additional flags
 	startFS := listStarterFlags()

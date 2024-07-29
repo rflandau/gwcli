@@ -15,12 +15,11 @@ var (
 	short string = "list installed and staged kits"
 	long  string = "lists kits available to your user" +
 		"(or all kits on the system, via the --all flag if you are an admin)"
-	aliases        []string = []string{}
 	defaultColumns []string = []string{"UUID", "KitState.Name", "KitState.Description", "KitState.Version"}
 )
 
 func NewKitsListAction() action.Pair {
-	return scaffoldlist.NewListAction(short, long, aliases, defaultColumns,
+	return scaffoldlist.NewListAction(short, long, defaultColumns,
 		types.IdKitState{}, ListKits, flags)
 }
 

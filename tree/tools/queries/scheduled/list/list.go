@@ -17,12 +17,11 @@ import (
 var (
 	short          string   = "list scheduled queries"
 	long           string   = "prints out all scheduled queries."
-	aliases        []string = []string{}
 	defaultColumns []string = []string{"ID", "Name", "Description", "Duration", "Schedule"}
 )
 
 func NewScheduledQueriesListAction() action.Pair {
-	return scaffoldlist.NewListAction(short, long, aliases, defaultColumns,
+	return scaffoldlist.NewListAction(short, long, defaultColumns,
 		types.ScheduledSearch{}, listScheduledSearch, flags)
 }
 
