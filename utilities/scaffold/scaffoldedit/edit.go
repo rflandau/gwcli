@@ -49,6 +49,7 @@ import (
 	"gwcli/mother"
 	"gwcli/stylesheet"
 	"gwcli/stylesheet/colorizer"
+	ft "gwcli/stylesheet/flagtext"
 	"gwcli/utilities/keymaps"
 	"gwcli/utilities/scaffold"
 	"gwcli/utilities/treeutils"
@@ -71,7 +72,6 @@ const (
 	successStringF = "Successfully updated %v %v"
 )
 const ( // local flag values
-	flagIDName   = "id"
 	flagIDUsageF = "id of the %v to edit"
 )
 
@@ -151,7 +151,7 @@ func generateFlagSet(cfg Config, singular string) pflag.FlagSet {
 	}
 
 	// attach native flags
-	fs.StringP(flagIDName, "i", "", fmt.Sprintf(flagIDUsageF, singular))
+	fs.StringP(ft.Name.ID, "i", "", fmt.Sprintf(flagIDUsageF, singular))
 
 	return fs
 }
@@ -167,7 +167,7 @@ func runNonInteractive[I id_t, S any](cmd *cobra.Command, cfg Config, funcs Subr
 		zero I
 		itm  S
 	)
-	if strid, err := cmd.Flags().GetString(flagIDName); err != nil {
+	if strid, err := cmd.Flags().GetString(ft.Name.ID); err != nil {
 		clilog.Tee(clilog.ERROR, cmd.ErrOrStderr(), err.Error()+"\n")
 		return
 	} else {
@@ -310,9 +310,9 @@ func (em *editModel[I, S]) SetArgs(_ *pflag.FlagSet, tokens []string) (
 	}
 
 	// check for an explicit ID
-	if em.fs.Changed("id") {
+	if em.fs.Changed(ft.Name.ID) {
 		var id I
-		if strid, err := em.fs.GetString(flagIDName); err != nil {
+		if strid, err := em.fs.GetString(ft.Name.ID); err != nil {
 			return "", nil, err
 		} else {
 			id, err = scaffold.FromString[I](strid)

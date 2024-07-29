@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"gwcli/action"
 	"gwcli/clilog"
+	ft "gwcli/stylesheet/flagtext"
 	"gwcli/utilities/scaffold/scaffoldlist"
 	"strconv"
 
@@ -27,22 +28,22 @@ func NewScheduledQueriesListAction() action.Pair {
 
 func flags() pflag.FlagSet {
 	addtlFlags := pflag.FlagSet{}
-	addtlFlags.Bool("all", false, "(admin-only) Fetch all scheduled searches on the system."+
+	addtlFlags.Bool(ft.Name.ListAll, false, ft.Usage.ListAll("scheduled searches")+
 		" Supercedes --id. Returns your searches if you are not an admin.")
-	addtlFlags.String("id", "", "Fetches the scheduled search associated to the given id."+
+	addtlFlags.String(ft.Name.ID, "", "Fetches the scheduled search associated to the given id."+
 		"This id can be a standard, numeric ID or a uuid.")
 
 	return addtlFlags
 }
 
 func listScheduledSearch(c *grav.Client, fs *pflag.FlagSet) ([]types.ScheduledSearch, error) {
-	if all, err := fs.GetBool("all"); err != nil {
-		clilog.LogFlagFailedGet("all", err)
+	if all, err := fs.GetBool(ft.Name.ListAll); err != nil {
+		clilog.LogFlagFailedGet(ft.Name.ListAll, err)
 	} else if all {
 		return c.GetAllScheduledSearches()
 	}
-	if untypedID, err := fs.GetString("id"); err != nil {
-		clilog.LogFlagFailedGet("id", err)
+	if untypedID, err := fs.GetString(ft.Name.ListAll); err != nil {
+		clilog.LogFlagFailedGet(ft.Name.ListAll, err)
 	} else if untypedID != "" {
 		// attempt to parse as UUID first
 		if uuid, err := uuid.Parse(untypedID); err == nil {

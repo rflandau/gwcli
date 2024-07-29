@@ -79,8 +79,6 @@ func NewQueryAction() action.Pair {
 
 	cmd.Flags().AddFlagSet(&localFS)
 
-	//cmd.MarkFlagsRequiredTogether("name", "description", "schedule")
-
 	return treeutils.GenerateAction(cmd, Query)
 }
 
@@ -96,9 +94,9 @@ func initialLocalFlagSet() pflag.FlagSet {
 	fs.Bool(ft.Name.CSV, false, ft.Usage.CSV)
 
 	// scheduled searches
-	fs.StringP("name", "n", "", "SCHEDULED. a title for the scheduled search")
-	fs.StringP("description", "d", "", "SCHEDULED. a description of the search")
-	fs.StringP("schedule", "s", "", "SCHEDULED. 5-cron-time schedule for execution")
+	fs.StringP(ft.Name.Name, "n", "", "SCHEDULED."+ft.Usage.Name("scheduled search"))
+	fs.StringP(ft.Name.Desc, "d", "", "SCHEDULED."+ft.Usage.Desc("scheduled search"))
+	fs.StringP(ft.Name.Frequency, "f", "", "SCHEDULED."+ft.Usage.Frequency)
 
 	return fs
 }
@@ -152,16 +150,16 @@ func runNonInteractive(cmd *cobra.Command, flags queryflags, qry string) {
 		// warn about ignored flags
 		if clilog.Active(clilog.WARN) { // only warn if WARN level is enabled
 			if flags.outfn != "" {
-				fmt.Fprint(cmd.ErrOrStderr(), uniques.WarnFlagIgnore("output", "schedule")+"\n")
+				fmt.Fprint(cmd.ErrOrStderr(), uniques.WarnFlagIgnore("output", ft.Name.Frequency)+"\n")
 			}
 			if flags.append {
-				fmt.Fprint(cmd.ErrOrStderr(), uniques.WarnFlagIgnore("append", "schedule")+"\n")
+				fmt.Fprint(cmd.ErrOrStderr(), uniques.WarnFlagIgnore("append", ft.Name.Frequency)+"\n")
 			}
 			if flags.json {
-				fmt.Fprint(cmd.ErrOrStderr(), uniques.WarnFlagIgnore("json", "schedule")+"\n")
+				fmt.Fprint(cmd.ErrOrStderr(), uniques.WarnFlagIgnore("json", ft.Name.Frequency)+"\n")
 			}
 			if flags.csv {
-				fmt.Fprint(cmd.ErrOrStderr(), uniques.WarnFlagIgnore("csv", "schedule")+"\n")
+				fmt.Fprint(cmd.ErrOrStderr(), uniques.WarnFlagIgnore("csv", ft.Name.Frequency)+"\n")
 			}
 		}
 

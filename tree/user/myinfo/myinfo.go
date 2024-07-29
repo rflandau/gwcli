@@ -6,6 +6,7 @@ import (
 	"gwcli/clilog"
 	"gwcli/connection"
 	"gwcli/stylesheet"
+	ft "gwcli/stylesheet/flagtext"
 	"gwcli/utilities/scaffold"
 
 	tea "github.com/charmbracelet/bubbletea"
@@ -27,7 +28,7 @@ func NewUserMyInfoAction() action.Pair {
 
 	return scaffold.NewBasicAction(use, short, long, aliases,
 		func(_ *cobra.Command, fs *pflag.FlagSet) (string, tea.Cmd) {
-			if asCSV, err := fs.GetBool("csv"); err != nil {
+			if asCSV, err := fs.GetBool(ft.Name.CSV); err != nil {
 				s := fmt.Sprintf("Failed to fetch csv flag: %v", err)
 				clilog.Writer.Error(s)
 				return s, nil
@@ -61,6 +62,6 @@ func NewUserMyInfoAction() action.Pair {
 
 func flags() pflag.FlagSet {
 	fs := pflag.FlagSet{}
-	fs.Bool("csv", false, "display as CSV")
+	fs.Bool(ft.Name.CSV, false, "display results as CSV")
 	return fs
 }

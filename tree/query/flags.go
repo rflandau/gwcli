@@ -1,6 +1,7 @@
 package query
 
 import (
+	ft "gwcli/stylesheet/flagtext"
 	"strings"
 	"time"
 
@@ -32,37 +33,37 @@ func transmogrifyFlags(fs *pflag.FlagSet) (queryflags, error) {
 	if qf.duration, err = fs.GetDuration("duration"); err != nil {
 		return qf, err
 	}
-	if qf.script, err = fs.GetBool("script"); err != nil {
+	if qf.script, err = fs.GetBool(ft.Name.Script); err != nil {
 		// this will fail if mother is running, it is okay to swallow
 		qf.script = false
 	}
-	if qf.json, err = fs.GetBool("json"); err != nil {
+	if qf.json, err = fs.GetBool(ft.Name.JSON); err != nil {
 		return qf, err
 	}
-	if qf.csv, err = fs.GetBool("csv"); err != nil {
+	if qf.csv, err = fs.GetBool(ft.Name.CSV); err != nil {
 		return qf, err
 	}
 
-	if qf.outfn, err = fs.GetString("output"); err != nil {
+	if qf.outfn, err = fs.GetString(ft.Name.Output); err != nil {
 		return qf, err
 	} else {
 		qf.outfn = strings.TrimSpace(qf.outfn)
 	}
-	if qf.append, err = fs.GetBool("append"); err != nil {
+	if qf.append, err = fs.GetBool(ft.Name.Append); err != nil {
 		return qf, err
 	}
 
-	if qf.schedule.cronfreq, err = fs.GetString("schedule"); err != nil {
+	if qf.schedule.cronfreq, err = fs.GetString(ft.Name.Frequency); err != nil {
 		return qf, err
 	} else {
 		qf.schedule.cronfreq = strings.TrimSpace(qf.schedule.cronfreq)
 	}
-	if qf.schedule.name, err = fs.GetString("name"); err != nil {
+	if qf.schedule.name, err = fs.GetString(ft.Name.Name); err != nil {
 		return qf, err
 	} else {
 		qf.schedule.name = strings.TrimSpace(qf.schedule.name)
 	}
-	if qf.schedule.desc, err = fs.GetString("description"); err != nil {
+	if qf.schedule.desc, err = fs.GetString(ft.Name.Desc); err != nil {
 		return qf, err
 	} else {
 		qf.schedule.desc = strings.TrimSpace(qf.schedule.desc)

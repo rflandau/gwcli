@@ -154,13 +154,13 @@ func NewDeleteAction[I scaffold.Id_t](singular, plural string,
 func flags() pflag.FlagSet {
 	fs := pflag.FlagSet{}
 	fs.Bool(ft.Name.Dryrun, false, ft.Usage.Dryrun)
-	fs.String("id", "", "ID of the item to be deleted")
+	fs.String(ft.Name.ID, "", "ID of the item to be deleted")
 	return fs
 }
 
 // helper function for getting and casting flag values
 func fetchFlagValues[I scaffold.Id_t](fs *pflag.FlagSet) (id I, dryrun bool, _ error) {
-	if strid, err := fs.GetString("id"); err != nil {
+	if strid, err := fs.GetString(ft.Name.ID); err != nil {
 		return id, false, err
 	} else if strid != "" {
 		id, err = scaffold.FromString[I](strid)
@@ -168,7 +168,7 @@ func fetchFlagValues[I scaffold.Id_t](fs *pflag.FlagSet) (id I, dryrun bool, _ e
 			return id, dryrun, err
 		}
 	}
-	if dr, err := fs.GetBool("dryrun"); err != nil {
+	if dr, err := fs.GetBool(ft.Name.Dryrun); err != nil {
 		return id, dryrun, err
 	} else {
 		dryrun = dr

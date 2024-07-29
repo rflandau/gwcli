@@ -20,6 +20,7 @@ var Name = struct {
 	Frequency string
 	Expansion string // macro expansions
 	ListAll   string
+	Script    string
 
 	// output manipulation
 
@@ -36,10 +37,12 @@ var Name = struct {
 	Frequency: "frequency",
 	Expansion: "expansion",
 	ListAll:   "all",
+	Script:    "script",
 
 	// output manipulation
 
 	Output: "output",
+	Append: "append",
 	CSV:    "csv",
 	JSON:   "json",
 }
@@ -63,7 +66,7 @@ var Usage = struct {
 	CSV    string
 	JSON   string
 }{
-	Dryrun: "feigns, descibing actions that " +
+	Dryrun: "feigns, describing actions that " +
 		lipgloss.NewStyle().Italic(true).Render("would") +
 		" have been taken",
 	Name: func(singular string) string {

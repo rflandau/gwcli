@@ -215,14 +215,14 @@ func listStarterFlags() pflag.FlagSet {
 // Opens a file, per the given --output and --append flags in the flagset, and returns its handle.
 // Returns nil if the flags do not call for a file.
 func initOutFile(fs *pflag.FlagSet) (*os.File, error) {
-	outPath, err := fs.GetString("output")
+	outPath, err := fs.GetString(ft.Name.Output)
 	if err != nil {
 		return nil, err
 	} else if strings.TrimSpace(outPath) == "" {
 		return nil, nil
 	}
 	var flags int = os.O_CREATE | os.O_WRONLY
-	if append, err := fs.GetBool("append"); err != nil {
+	if append, err := fs.GetBool(ft.Name.Append); err != nil {
 		return nil, err
 	} else if append {
 		flags |= os.O_APPEND
@@ -238,12 +238,12 @@ func determineFormat(fs *pflag.FlagSet) outputFormat {
 		return unknown
 	}
 	var format outputFormat
-	if format_csv, err := fs.GetBool("csv"); err != nil {
+	if format_csv, err := fs.GetBool(ft.Name.CSV); err != nil {
 		panic(err)
 	} else if format_csv {
 		format = csv
 	} else {
-		if format_json, err := fs.GetBool("json"); err != nil {
+		if format_json, err := fs.GetBool(ft.Name.JSON); err != nil {
 			panic(err)
 		} else if format_json {
 			format = json
