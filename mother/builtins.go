@@ -10,6 +10,7 @@ import (
 	"strings"
 
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/charmbracelet/lipgloss"
 )
 
 // invocation string -> function to be invoked
@@ -30,8 +31,11 @@ func initBuiltins() {
 		"help": "Display context-sensitive help. Equivalent to pressing F1.\n" +
 			"Calling `help` bare provides currently available navigations.\n" +
 			"Help can also be passed a path to display help on remote directories or actions.\n" +
-			"Ex: `help .. kits list`",
-		"history": "List previous commands. Navigate history via ↑/↓",
+			"Ex: `" +
+			lipgloss.NewStyle().Foreground(stylesheet.AccentColor2).Render("help .. kits list") +
+			"`, `" +
+			lipgloss.NewStyle().Foreground(stylesheet.AccentColor2).Render("help delete") + "`",
+		"history": "List previous commands. Navigate history via " + stylesheet.UpDown,
 		"quit":    "Kill the application",
 		"exit":    "Kill the application",
 	}
