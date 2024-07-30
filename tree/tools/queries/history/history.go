@@ -18,8 +18,7 @@ const (
 )
 
 var (
-	aliases        []string = []string{"past"}
-	defaultColumns []string = []string{"ID", "UID", "Name", "Description"}
+	defaultColumns []string = []string{"UID", "GID", "EffectiveQuery"}
 )
 
 const defaultCount = 30
