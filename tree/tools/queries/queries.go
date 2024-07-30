@@ -6,6 +6,7 @@ package queries
 
 import (
 	"gwcli/action"
+	"gwcli/tree/tools/queries/history"
 	"gwcli/tree/tools/queries/scheduled"
 	"gwcli/utilities/treeutils"
 
@@ -24,5 +25,5 @@ var aliases []string = []string{"searches"}
 func NewQueriesNav() *cobra.Command {
 	return treeutils.GenerateNav(use, short, long, aliases,
 		[]*cobra.Command{scheduled.NewScheduledNav()},
-		[]action.Pair{})
+		[]action.Pair{history.NewQueriesHistoryListAction()})
 }
