@@ -127,13 +127,17 @@ func NewListAction[Any any](short, long string, defaultColumns []string,
 	runFunc := func(cmd *cobra.Command, _ []string) {
 		// check for --show-columns
 		if sc, err := cmd.Flags().GetBool("show-columns"); err != nil {
-			panic(err)
+			clilog.LogFlagFailedGet("show-columns", err)
+			fmt.Fprintln(cmd.OutOrStdout(), "An error has occurred.")
+			return
 		} else if sc {
 			cols, err := weave.StructFields(dataStruct, true)
 			if err != nil {
-				panic(err)
+				clilog.LogFlagFailedGet("show-columns", err)
+				fmt.Fprintln(cmd.OutOrStdout(), "An error has occurred.")
+				return
 			}
-			fmt.Println(strings.Join(cols, " "))
+			fmt.Fprintln(cmd.OutOrStdout(), strings.Join(cols, " "))
 			return
 		}
 
@@ -142,18 +146,17 @@ func NewListAction[Any any](short, long string, defaultColumns []string,
 			columns []string
 			err     error
 		)
-		columns, err = cmd.Flags().GetStringSlice("columns")
-		if err != nil {
-			panic(err)
-		}
-		if len(columns) == 0 {
+		if columns, err = cmd.Flags().GetStringSlice("columns"); err != nil {
+			clilog.LogFlagFailedGet("columns", err)
+			// will fall back to default columns
+		} else if len(columns) == 0 {
 			columns = defaultColumns
 		}
 
 		// check for --no-color
 		noColor, err := cmd.Flags().GetBool("no-color")
 		if err != nil {
-			panic(err)
+			clilog.LogFlagFailedGet("no-color", err)
 		}
 
 		// check for output file
@@ -250,16 +253,15 @@ func determineFormat(fs *pflag.FlagSet) outputFormat {
 	}
 	var format outputFormat
 	if format_csv, err := fs.GetBool(ft.Name.CSV); err != nil {
-		panic(err)
+		clilog.LogFlagFailedGet(ft.Name.CSV, err)
 	} else if format_csv {
 		format = csv
 	} else {
 		if format_json, err := fs.GetBool(ft.Name.JSON); err != nil {
-			panic(err)
+			clilog.LogFlagFailedGet(ft.Name.JSON, err)
 		} else if format_json {
 			format = json
 		} else {
-
 			format = table
 		}
 	}
