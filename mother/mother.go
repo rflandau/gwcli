@@ -19,6 +19,7 @@ import (
 	"gwcli/group"
 	"gwcli/stylesheet"
 	"gwcli/stylesheet/colorizer"
+	ft "gwcli/stylesheet/flagtext"
 	"gwcli/utilities/killer"
 	"strings"
 
@@ -133,14 +134,16 @@ func new(root *navCmd, cur *cobra.Command, trailingTokens []string, _ *lipgloss.
 	if c, _, err := root.Find([]string{"query"}); err != nil {
 		clilog.Writer.Warnf("failed to disable query scheduling flags: %v", err)
 	} else {
-		if err := c.Flags().MarkHidden("schedule"); err != nil {
-			clilog.Writer.Warnf("failed to hide query --schedule: %v", err)
+		if err := c.Flags().MarkHidden(ft.Name.Frequency); err != nil {
+			clilog.Writer.Warnf("failed to hide query --%v: %v", ft.Name.Frequency, err)
 		}
-		if err := c.Flags().MarkHidden("name"); err != nil {
-			clilog.Writer.Warnf("failed to hide query --name: %v", err)
+		if err := c.Flags().MarkHidden(ft.Name.Name); err != nil {
+			clilog.Writer.Warnf("failed to hide query --%v: %v", ft.Name.Name, err)
+
 		}
-		if err := c.Flags().MarkHidden("description"); err != nil {
-			clilog.Writer.Warnf("failed to hide query --description: %v", err)
+		if err := c.Flags().MarkHidden(ft.Name.Desc); err != nil {
+			clilog.Writer.Warnf("failed to hide query --%v: %v", ft.Name.Desc, err)
+
 		}
 	}
 
