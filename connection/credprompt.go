@@ -10,10 +10,20 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 )
 
+/*type mode uint8
+
+const (
+	u_p mode = iota
+	mfa mode = iota
+)*/
+
 // Run a tiny tea.Model that collects username and password.
 // Not intended to be run while Mother is running.
 func CredPrompt(user, pass string) (tea.Model, error) {
-	c := credModel{userSelected: true}
+	c := credModel{
+		//mode:         u_p,
+		userSelected: true,
+	}
 	c.UserTI = textinput.New()
 	c.UserTI.Prompt = stylesheet.TIPromptPrefix
 	c.UserTI.SetValue(user)
@@ -27,6 +37,8 @@ func CredPrompt(user, pass string) (tea.Model, error) {
 }
 
 type credModel struct {
+	//mode mode
+
 	UserTI       textinput.Model
 	PassTI       textinput.Model
 	userSelected bool
@@ -38,6 +50,8 @@ func (c credModel) Init() tea.Cmd {
 }
 
 func (c credModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+	//switch c.mode {
+	//case u_p:
 	if kill := killer.CheckKillKeys(msg); kill != killer.None {
 		c.killed = true
 		return c, tea.Quit
@@ -51,6 +65,7 @@ func (c credModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			if c.userSelected {
 				return c.swap(), textinput.Blink
 			}
+			//c.mode = mfa
 			return c, tea.Quit
 		}
 
@@ -63,12 +78,18 @@ func (c credModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	c.PassTI, passcmd = c.PassTI.Update(msg)
 
 	return c, tea.Batch(usercmd, passcmd)
+	// case mfa:
+	// }
 }
 
 func (c credModel) View() string {
+	//switch c.mode {
+	//case u_p:
 	return fmt.Sprintf("%v%v\n%v%v\n\n",
 		stylesheet.PromptStyle.Render("username"), c.UserTI.View(),
 		stylesheet.PromptStyle.Render("password"), c.PassTI.View())
+	// case mfa:
+	// }
 }
 
 // select the next TI
