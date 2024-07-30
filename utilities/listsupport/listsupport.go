@@ -6,6 +6,8 @@ identically no matter what action or scaffold is invoking it.
 package listsupport
 
 import (
+	"gwcli/stylesheet"
+
 	"github.com/charmbracelet/bubbles/key"
 	"github.com/charmbracelet/bubbles/list"
 	"github.com/charmbracelet/bubbles/spinner"
@@ -14,12 +16,10 @@ import (
 func NewList(items []list.Item, width, height int, singular, plural string) list.Model {
 	// update the styles on the default delegate to wrap properly
 	dlg := list.NewDefaultDelegate()
-	//	dlg.Styles.NormalDesc = dlg.Styles.NormalDesc.Width(width)
-	//	dlg.Styles.DimmedDesc = dlg.Styles.DimmedDesc.Width(width)
-	dlg.Styles.SelectedDesc = dlg.Styles.SelectedDesc.Width(width)
-	dlg.Styles.SelectedTitle = dlg.Styles.SelectedTitle.Width(width)
+	dlg.Styles.SelectedTitle = dlg.Styles.SelectedTitle.Foreground(stylesheet.PrimaryColor)
+	dlg.Styles.SelectedDesc = dlg.Styles.SelectedDesc.Foreground(stylesheet.SecondaryColor)
 
-	l := list.New(items, dlg, 200, height)
+	l := list.New(items, dlg, width, height)
 	l.KeyMap = keyMap()
 	l.SetSpinner(spinner.Moon)
 	l.SetStatusBarItemName(singular, plural)
