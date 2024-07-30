@@ -162,6 +162,7 @@ func NewListAction[Any any](short, long string, defaultColumns []string,
 			clilog.Tee(clilog.ERROR, cmd.ErrOrStderr(), err.Error())
 			return
 		}
+		defer outFile.Close()
 
 		s, err := listOutput(cmd.Flags(), columns, !noColor, dataFn)
 		if err != nil {
@@ -407,6 +408,9 @@ func (la *ListAction[T]) Reset() error {
 		la.fs.AddFlagSet(&afs)
 	}
 
+	if la.outFile != nil {
+		la.outFile.Close()
+	}
 	la.outFile = nil
 	return nil
 }
