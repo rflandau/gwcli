@@ -1,9 +1,8 @@
-/**
- * Root node of the command tree and the true "main".
- * Initializes itself and `Executes()`, triggering Cobra to assemble itself.
- * All invocations of the program operate via root, whether or not it hands off
- * control to Mother.
- */
+/*
+Root node of the command tree and the true "main".
+Initializes itself and `Executes()`, triggering Cobra to assemble itself.
+All invocations of the program operate via root, whether or not it hands off control to Mother.
+*/
 package tree
 
 import (
@@ -33,7 +32,7 @@ import (
 // global PersistenPreRunE.
 //
 // Ensures the logger is set up and the user has logged into the gravwell instance,
-// completeing these actions if either is false
+// completeing these actions if either is false.
 func ppre(cmd *cobra.Command, args []string) error {
 	// set up the logger, if it is not already initialized
 	if clilog.Writer == nil {
@@ -171,7 +170,7 @@ func Execute(args []string) int {
 	rootCmd.SilenceUsage = true
 	rootCmd.PersistentPreRunE = ppre
 	rootCmd.PersistentPostRunE = ppost
-	rootCmd.Version = "prototype"
+	rootCmd.Version = "alpha 1"
 
 	// associate flags
 	GenerateFlags(rootCmd)
