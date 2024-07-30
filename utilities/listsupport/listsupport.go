@@ -86,6 +86,7 @@ func NewList(items []list.Item, width, height int, singular, plural string) list
 	return l
 }
 
+// Interface that items must fit prior to casting to list.Item for NewList()
 type Item interface {
 	Title() string
 	Description() string
