@@ -539,6 +539,13 @@ func TeaCmdContextHelp(c *cobra.Command) tea.Cmd {
 	if action.Is(c) {
 		s.WriteString(c.UsageString())
 	} else {
+		specialStyle := lipgloss.NewStyle().Foreground(stylesheet.AccentColor1)
+		// write .. and /
+		s.WriteString(fmt.Sprintf("%s%s - %s\n",
+			stylesheet.Indent, specialStyle.Render(".."), "step up"))
+		s.WriteString(fmt.Sprintf("%s%s - %s\n",
+			stylesheet.Indent, specialStyle.Render("~"), "return to root"))
+
 		children := c.Commands()
 		for _, child := range children {
 			// handle special commands
