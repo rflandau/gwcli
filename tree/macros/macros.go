@@ -2,10 +2,10 @@ package macros
 
 import (
 	"gwcli/action"
-	"gwcli/tree/tools/macros/create"
-	"gwcli/tree/tools/macros/delete"
-	"gwcli/tree/tools/macros/edit"
-	"gwcli/tree/tools/macros/list"
+	"gwcli/tree/macros/create"
+	"gwcli/tree/macros/delete"
+	"gwcli/tree/macros/edit"
+	"gwcli/tree/macros/list"
 	"gwcli/utilities/treeutils"
 
 	"github.com/spf13/cobra"
@@ -13,11 +13,11 @@ import (
 
 const (
 	use   string = "macros"
-	short string = "Macro management submenu"
-	long  string = "Create, delete, and manage macros"
+	short string = "create, edit, delete, and view macros"
+	long  string = "Macros are search keywords that expand to preset phrases on use within a query."
 )
 
-var aliases []string = []string{"macro"}
+var aliases []string = []string{"macro", "m"}
 
 func NewMacrosNav() *cobra.Command {
 	return treeutils.GenerateNav(use, short, long, aliases, []*cobra.Command{},

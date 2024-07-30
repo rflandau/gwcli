@@ -2,10 +2,10 @@ package scheduled
 
 import (
 	"gwcli/action"
-	"gwcli/tree/tools/queries/scheduled/create"
-	"gwcli/tree/tools/queries/scheduled/delete"
-	"gwcli/tree/tools/queries/scheduled/edit"
-	"gwcli/tree/tools/queries/scheduled/list"
+	"gwcli/tree/queries/scheduled/create"
+	"gwcli/tree/queries/scheduled/delete"
+	"gwcli/tree/queries/scheduled/edit"
+	"gwcli/tree/queries/scheduled/list"
 
 	"gwcli/utilities/treeutils"
 

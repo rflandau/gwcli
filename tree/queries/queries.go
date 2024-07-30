@@ -6,8 +6,8 @@ package queries
 
 import (
 	"gwcli/action"
-	"gwcli/tree/tools/queries/history"
-	"gwcli/tree/tools/queries/scheduled"
+	"gwcli/tree/queries/history"
+	"gwcli/tree/queries/scheduled"
 	"gwcli/utilities/treeutils"
 
 	"github.com/spf13/cobra"

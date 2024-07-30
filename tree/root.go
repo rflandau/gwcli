@@ -15,9 +15,10 @@ import (
 	"gwcli/tree/dashboards"
 	"gwcli/tree/extractors"
 	"gwcli/tree/kits"
+	"gwcli/tree/macros"
+	"gwcli/tree/queries"
 	"gwcli/tree/query"
 	"gwcli/tree/resources"
-	"gwcli/tree/tools"
 	"gwcli/tree/tree"
 	"gwcli/tree/user"
 	"gwcli/utilities/cfgdir"
@@ -155,7 +156,8 @@ const ( // mousetrap
 func Execute(args []string) int {
 	rootCmd := treeutils.GenerateNav(use, short, long, []string{},
 		[]*cobra.Command{
-			tools.NewToolsNav(),
+			macros.NewMacrosNav(),
+			queries.NewQueriesNav(),
 			kits.NewKitsNav(),
 			user.NewUserNav(),
 			extractors.NewExtractorsNav(),
