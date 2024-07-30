@@ -32,9 +32,9 @@ func initBuiltins() {
 			"Calling `help` bare provides currently available navigations.\n" +
 			"Help can also be passed a path to display help on remote directories or actions.\n" +
 			"Ex: `" +
-			lipgloss.NewStyle().Foreground(stylesheet.AccentColor2).Render("help .. kits list") +
+			lipgloss.NewStyle().Foreground(stylesheet.AccentColor2).Render("help ~ kits list") +
 			"`, `" +
-			lipgloss.NewStyle().Foreground(stylesheet.AccentColor2).Render("help delete") + "`",
+			lipgloss.NewStyle().Foreground(stylesheet.AccentColor2).Render("help query") + "`",
 		"history": "List previous commands. Navigate history via " + stylesheet.UpDown,
 		"quit":    "Kill the application",
 		"exit":    "Kill the application",
