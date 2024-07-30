@@ -466,8 +466,6 @@ func (m *Mother) updateSuggestions() {
 		}
 	}
 
-	clilog.Writer.Debugf("%v: generated suggestions: %v", m.pwd.Name(), suggest)
-
 	m.ti.SetSuggestions(suggest)
 }
 
