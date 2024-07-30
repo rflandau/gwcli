@@ -157,21 +157,30 @@ func NewListAction[Any any](short, long string, defaultColumns []string,
 		}
 
 		// check for output file
-		f, err := initOutFile(cmd.Flags())
+		outFile, err := initOutFile(cmd.Flags())
 		if err != nil {
 			clilog.Tee(clilog.ERROR, cmd.ErrOrStderr(), err.Error())
 			return
 		}
 
-		output, err := listOutput(cmd.Flags(), columns, !noColor, dataFn)
+		s, err := listOutput(cmd.Flags(), columns, !noColor, dataFn)
 		if err != nil {
 			clilog.Tee(clilog.ERROR, cmd.ErrOrStderr(), err.Error())
+			return
 		}
 
-		if f != nil {
-			fmt.Fprintln(f, output)
+		// if we received no data, do nothing if outfile, note the result to stdout otherwise
+		if s == "" {
+			if outFile == nil {
+				fmt.Fprintln(cmd.OutOrStdout(), "no data found")
+			}
+			return
+		}
+
+		if outFile != nil {
+			fmt.Fprintln(outFile, s)
 		} else {
-			fmt.Fprintln(cmd.OutOrStdout(), output)
+			fmt.Fprintln(cmd.OutOrStdout(), s)
 		}
 
 	}
@@ -262,6 +271,8 @@ func listOutput[Any any](fs *pflag.FlagSet, columns []string, color bool,
 	data, err := dataFn(connection.Client, fs)
 	if err != nil {
 		return "", err
+	} else if len(data) < 1 {
+		return "", nil
 	}
 
 	// NOTE format flags are marked mutually exclusive on creation
@@ -336,23 +347,36 @@ func (la *ListAction[T]) Update(msg tea.Msg) tea.Cmd {
 		return nil
 	}
 
+	// list only ever acts once; immediately mark it as done
+	la.done = true
+
 	// check for --show-columns
 	if la.showColumns {
 		cols, err := weave.StructFields(la.dataStruct, true)
 		if err != nil {
-			panic(err)
+			tea.Println("An error has occurred: ", err)
+			return textinput.Blink
 		}
-		la.done = true
 		return tea.Println(strings.Join(cols, " "))
 	}
 
+	// fetch the list data
 	s, err := listOutput(&la.fs, la.columns, la.color, la.dataFunc)
 	if err != nil {
-		panic(err)
+		// log and print the error
+		clilog.Writer.Error(err.Error())
+		return tea.Println("An error has occurred: ", err)
 	}
 
-	la.done = true
+	// if we received no data, do nothing if outfile, note the result otherwise
+	if s == "" {
+		if la.outFile != nil {
+			return textinput.Blink
+		}
+		return tea.Println("no data found")
+	}
 
+	// output the results to a file, if given
 	if la.outFile != nil {
 		fmt.Fprint(la.outFile, s)
 		return textinput.Blink
