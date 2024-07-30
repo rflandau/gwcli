@@ -42,7 +42,7 @@ Root begins generation as it is just a Nav. Take a look at `Execute()` in root.g
 
 ### Creating a New Nav
 
-To create a new Nav, just create a `.New*Nav` command and add it to the list of nav for the parent nav you want this nav to be accessible under.
+To create a new Nav, just create a `.New*Nav` command and add it to the list of navs for the parent nav you want this nav to be accessible under.
 
 The package structure of gwcli reflects the command tree, but there is no real reason this has to be the case.
 
@@ -129,7 +129,7 @@ Actions must satisfy the `action.Model` interface to be able to supplant Mother 
 
 `Reset() error` is called by Mother *after* `Done()` returns true. It resets the child to a clean state so it can be called again later.
 
-`SetArgs(*pflag.FlagSet, []string) (string, []tea.Cmd, error)` sets fields in the child that manipulate its next run. It is called when Mother *first enters handoff mode* for a child. It provides the flagset this action inherited from its ancestors as well as all tokens remaining *after* the action invocation. The former is likely to be unused (but provided just in case) and the former is pre-split by shlex (shell-splitting rules).
+`SetArgs(*pflag.FlagSet, []string) (string, []tea.Cmd, error)` sets fields in the child that manipulate its next run. It is called when Mother *first enters handoff mode* for a child. It provides the flagset this action inherited from its ancestors as well as all tokens remaining *after* the action invocation. The former is likely to be unused (but provided just in case) and the latter is pre-split by shlex (shell-splitting rules).
 It returns, respectively: the reason this argument set is invalid (or ""), tea.Cmds the child needs run on startup (eg: right now), errors outside of the users control. The startup Cmd somewhat takes the place of tea.Model.Init().
 
 ```mermaid
@@ -150,7 +150,7 @@ Where possible, use the functionality in the [scaffold](/utilities/scaffold/) pa
 
 There are a number of flags that are useful and functionally identically across a number of actions (output, append, CSV/JSON, ...). Therefore, we could make them persistent. However, they do not make sense for some actions, particularly basic actions.
 
-As such, I am not including these common flags as persistent's at root level, lest it require every action to support tangential flags. Instead, common elements of these flags are stored in the stylesheet, to at least provide some degree of consistency across flags that are technically unrelated.
+As such, I am not including these common flags as persistent's at root level, lest it require every action to support tangential flags. Instead, common elements of these flags are stored in the flagtext package, to at least provide some degree of consistency across flags that are technically unrelated.
 
 Other flags, such as --script, must be supported by all actions anyways, so they are persistent at a root level. 
 
