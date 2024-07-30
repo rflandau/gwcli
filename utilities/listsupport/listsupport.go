@@ -1,7 +1,7 @@
 /*
-This package supplies the item delegate used for list bubble implementations (primarily in the
-scaffolds) within gwcli. By sharing a single definition, we can ensure lists look and function
-identically no matter what action or scaffold is invoking it.
+This package supplies a standadized format for use with implementations of the list bubble.
+By sharing a single definition, we can ensure lists look and function similarly no matter what
+action or scaffold is invoking it.
 */
 package listsupport
 
