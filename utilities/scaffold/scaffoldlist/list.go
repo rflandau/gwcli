@@ -25,15 +25,15 @@ Example implementation:
 
 	func flags() pflag.FlagSet {
 		addtlFlags := pflag.FlagSet{}
-		addtlFlags.Bool("all", false, "(admin-only) Fetch all [Y] on the system."+
+		addtlFlags.Bool(ft.Name.ListAll, false, ft.Usage.ListAll("[plural]")+
 			" Supercedes --group. Ignored if you are not an admin.")
 		addtlFlags.Int32("group", 0, "Fetches all [Y] shared with the given group id.")
 		return addtlFlags
 	}
 
 	func list(c *grav.Client, fs *pflag.FlagSet) ([]types.[X], error) {
-		if all, err := fs.GetBool("all"); err != nil {
-			clilog.LogFlagFailedGet("all", err)
+		if all, err := fs.GetBool(ft.Name.ListAll); err != nil {
+			clilog.LogFlagFailedGet(ft.Name.ListAll, err)
 		} else if all {
 			return c.GetAll[Y]()
 		}
