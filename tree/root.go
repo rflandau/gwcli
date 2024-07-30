@@ -16,6 +16,7 @@ import (
 	"gwcli/tree/extractors"
 	"gwcli/tree/kits"
 	"gwcli/tree/query"
+	"gwcli/tree/resources"
 	"gwcli/tree/tools"
 	"gwcli/tree/tree"
 	"gwcli/tree/user"
@@ -159,6 +160,7 @@ func Execute(args []string) int {
 			user.NewUserNav(),
 			extractors.NewExtractorsNav(),
 			dashboards.NewExtractorsNav(),
+			resources.NewResourcesNav(),
 		},
 		[]action.Pair{
 			query.NewQueryAction(),
