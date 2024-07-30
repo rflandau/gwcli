@@ -18,8 +18,8 @@ import (
 
 const (
 	use   string = "myinfo"
-	short string = "Information about the current user and session"
-	long  string = "Displays your accounts information and capabilities"
+	short string = "information about the current user and session"
+	long  string = "Displays your account's information and capabilities."
 )
 
 var aliases []string = []string{}

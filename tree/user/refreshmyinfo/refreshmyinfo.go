@@ -15,7 +15,7 @@ import (
 
 const (
 	use   string = "refresh"
-	short string = "Forcefully ensure your user info is up to date."
+	short string = "forcefully ensure your user info is up to date."
 	long  string = "Refresh re-caches your user info, pulling any remote changes." +
 		"Only useful if your account has had remote changes since the beginning of this session."
 )

@@ -10,11 +10,14 @@ import (
 
 const (
 	use   string = "resources"
-	short string = "system resources submenu"
-	long  string = "Create, list, edit (NYI), and delete resources."
+	short string = "manage persistent search data"
+	long  string = "Resources store persistent data for use in searches." +
+		" Resources can be manually uploaded by a user or automatically created by search modules." +
+		" Resources are used by a number of modules for things such as storing lookup tables," +
+		" scripts, and more. A resource is simply a stream of bytes."
 )
 
-var aliases []string = []string{"resources"}
+var aliases []string = []string{}
 
 func NewResourcesNav() *cobra.Command {
 	return treeutils.GenerateNav(use, short, long, aliases,

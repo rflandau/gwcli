@@ -11,8 +11,9 @@ import (
 
 const (
 	use   string = "dashboards"
-	short string = "list and manipulate dashboards"
-	long  string = "list, edit (NYI), and delete dashboards."
+	short string = "manage your dashboards"
+	long  string = "Manage and view your available web dashboards." +
+		"Dashboards are not usable from the CLI, but can be altered."
 )
 
 var aliases []string = []string{"dashboard", "dash"}

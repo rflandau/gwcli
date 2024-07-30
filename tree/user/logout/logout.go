@@ -13,8 +13,9 @@ import (
 
 const (
 	use   string = "logout"
-	short string = "Logout and end the session"
-	long  string = "Ends your current session and invalids your login token."
+	short string = "logout and end the session"
+	long  string = "Ends your current session and invalids your login token, forcing the next" +
+		" login to request credentials."
 )
 
 var aliases []string = []string{}

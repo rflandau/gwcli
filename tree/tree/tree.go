@@ -21,7 +21,7 @@ const (
 	use   string = "tree"
 	short string = "display all commands as a tree"
 	long  string = "Displays a directory-tree showing the full structure of gwcli and all" +
-		"available actions"
+		"available actions."
 )
 
 var aliases []string = []string{}

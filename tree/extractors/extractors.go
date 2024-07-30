@@ -12,8 +12,8 @@ import (
 
 const (
 	use   string = "extractors"
-	short string = "List and manipulate extractors"
-	long  string = "Create, list, edit (NYI), and delete extractors."
+	short string = "manage your tag autoextractors"
+	long  string = "Autoextractors describe how to extract fields from tagged, unstructured data."
 )
 
 var aliases []string = []string{"extractor", "ex", "ax", "autoextractor", "autoextractors"}

@@ -13,8 +13,8 @@ import (
 
 const (
 	use   string = "macros"
-	short string = "create, edit, delete, and view macros"
-	long  string = "Macros are search keywords that expand to preset phrases on use within a query."
+	short string = "manage search macros"
+	long  string = "Macros are search keywords that expand to set phrases on use within a query."
 )
 
 var aliases []string = []string{"macro", "m"}

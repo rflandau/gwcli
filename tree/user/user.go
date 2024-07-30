@@ -13,7 +13,7 @@ import (
 
 const (
 	use   string = "user"
-	short string = "Manage your user and profile"
+	short string = "manage your user and profile"
 	long  string = "View and edit properties of your current, logged in user."
 )
 

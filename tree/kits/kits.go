@@ -10,8 +10,9 @@ import (
 
 const (
 	use   string = "kits"
-	short string = "List and manipulate kits"
-	long  string = "..."
+	short string = "view kits associated to this instance"
+	long  string = "Kits bundle up of related items (dashboards, queries, scheduled searches," +
+		" autoextractors) for easy installation."
 )
 
 var aliases []string = []string{"kit"}

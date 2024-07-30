@@ -7,6 +7,7 @@ import (
 	"gwcli/clilog"
 	"gwcli/group"
 	"gwcli/mother"
+	"strings"
 
 	"github.com/spf13/cobra"
 )
@@ -15,8 +16,8 @@ import (
 func GenerateNav(use, short, long string, aliases []string,
 	navCmds []*cobra.Command, actionCmds []action.Pair) *cobra.Command {
 	cmd := &cobra.Command{
-		Use:     use,
-		Short:   short,
+		Use:     strings.ToLower(use),
+		Short:   strings.ToLower(short),
 		Long:    long,
 		Aliases: aliases,
 		GroupID: group.NavID,

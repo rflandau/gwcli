@@ -14,8 +14,8 @@ import (
 
 const (
 	use   string = "admin"
-	short string = "Prints your admin status"
-	long  string = "Displays whether or not your current user has admin permissions"
+	short string = "prints your admin status"
+	long  string = "Displays whether or not your current user has admin permissions."
 )
 
 var aliases []string = []string{}

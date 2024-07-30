@@ -15,7 +15,7 @@ import (
 
 const (
 	use   string = "queries"
-	short string = "List, delete, and manage existing and past queries"
+	short string = "manage existing and past queries"
 	long  string = "Queries contians utilities for managing auxillary query actions." +
 		"Query creation is handled by the top-level `query` action."
 )
