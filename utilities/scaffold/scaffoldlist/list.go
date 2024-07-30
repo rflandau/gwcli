@@ -8,9 +8,12 @@ List actions have the --output, --append, --json, --table, --CSV, and --show-col
 
 Example implementation:
 
-	var (
+	const (
 		short string = ""
 		long  string = ""
+	)
+
+	var (
 		aliases        []string = []string{}
 		defaultColumns []string = []string{"ID", "UID", "Name", "Description"}
 	)
