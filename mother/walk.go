@@ -88,7 +88,7 @@ func walk(dir *cobra.Command, tokens []string) walkResult {
 
 		if c.Name() == curToken { // check name
 			invocation = c
-			clilog.Writer.Debugf("Match, invoking %s", invocation.Name())
+			clilog.Writer.Debugf("Direct match, invoking %s", invocation.Name())
 		} else { // check aliases
 			for _, alias := range c.Aliases {
 				if alias == curToken {
