@@ -161,8 +161,9 @@ func NewListAction[Any any](short, long string, defaultColumns []string,
 		if err != nil {
 			clilog.Tee(clilog.ERROR, cmd.ErrOrStderr(), err.Error())
 			return
+		} else if outFile != nil {
+			defer outFile.Close()
 		}
-		defer outFile.Close()
 
 		s, err := listOutput(cmd.Flags(), columns, !noColor, dataFn)
 		if err != nil {
