@@ -21,6 +21,7 @@ import (
 	"gwcli/stylesheet/colorizer"
 	ft "gwcli/stylesheet/flagtext"
 	"gwcli/utilities/killer"
+	"gwcli/utilities/uniques"
 	"strings"
 
 	tea "github.com/charmbracelet/bubbletea"
@@ -94,7 +95,7 @@ func new(root *navCmd, cur *cobra.Command, trailingTokens []string, _ *lipgloss.
 	ti.Placeholder = "help"
 	ti.Prompt = stylesheet.TIPromptPrefix
 	ti.Focus()
-	ti.Width = stylesheet.TIWidth
+	ti.Width = stylesheet.TIWidth // replaced on first WindowSizeMsg, proc'd by Init()
 	// add ctrl+left/right to the word traversal keys
 	ti.KeyMap.WordForward.SetKeys("ctrl+right", "alt+right", "alt+f")
 	ti.KeyMap.WordBackward.SetKeys("ctrl+left", "alt+left", "alt+b")
@@ -155,7 +156,7 @@ func new(root *navCmd, cur *cobra.Command, trailingTokens []string, _ *lipgloss.
 var _ tea.Model = Mother{}
 
 func (m Mother) Init() tea.Cmd {
-	return textinput.Blink
+	return uniques.FetchWindowSize
 }
 
 // Mother's Update is always the entrypoint for BubbleTea to drive.
@@ -201,6 +202,11 @@ func (m Mother) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	// normal handling
 	switch msg := msg.(type) {
+	case tea.WindowSizeMsg:
+		// consume the width to update mother's prompt width
+		m.ti.Width = msg.Width -
+			lipgloss.Width(m.pwd.CommandPath()) - // reserve space for prompt head
+			3 // include a padding
 	case tea.KeyMsg:
 		// NOTE kill keys are handled above
 		if msg.Type == tea.KeyF1 { // help
