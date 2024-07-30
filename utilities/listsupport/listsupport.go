@@ -13,6 +13,9 @@ import (
 	"github.com/charmbracelet/bubbles/spinner"
 )
 
+// Creates and returns a new list.Model with customized defaults.
+// items must fit the listsupport.Item interface in order to be used with the delegate. However,
+// because Go cannot interface arrays, you must pass in your items as []list.Item.
 func NewList(items []list.Item, width, height int, singular, plural string) list.Model {
 	// update the styles on the default delegate to wrap properly
 	dlg := list.NewDefaultDelegate()
@@ -20,34 +23,8 @@ func NewList(items []list.Item, width, height int, singular, plural string) list
 	dlg.Styles.SelectedDesc = dlg.Styles.SelectedDesc.Foreground(stylesheet.SecondaryColor)
 
 	l := list.New(items, dlg, width, height)
-	l.KeyMap = keyMap()
-	l.SetSpinner(spinner.Moon)
-	l.SetStatusBarItemName(singular, plural)
-	l.SetShowTitle(false)
-	return l
-}
-
-// An entry is an actual item in the list. When an item is retrieved from a list.Model, it should b
-// cast to an Entry.
-type Entry struct {
-	title       string // the unique name of this item
-	description string // the second (and potentially more) line of this item
-}
-
-func NewEntry(title, description string) Entry {
-	return Entry{title: title, description: description}
-}
-
-func (e Entry) Title() string       { return e.title }
-func (e Entry) Description() string { return e.description }
-func (e Entry) FilterValue() string { return e.title }
-
-// #region KeyMap
-
-// Very similar to list.DefaultKeyMap, but has the quits removed and conflicting filter keys
-// reassigned.
-func keyMap() list.KeyMap {
-	return list.KeyMap{
+	// list.DefaultKeyMap, but has the quits removed and conflicting filter keys reassigned.
+	l.KeyMap = list.KeyMap{
 		// Browsing.
 		CursorUp: key.NewBinding(
 			key.WithKeys("up", "k"),
@@ -102,6 +79,15 @@ func keyMap() list.KeyMap {
 			key.WithHelp("?", "close help"),
 		),
 	}
+	l.SetSpinner(spinner.Moon)
+	l.SetStatusBarItemName(singular, plural)
+	l.SetShowTitle(false)
+
+	return l
 }
 
-//#endregion
+type Item interface {
+	Title() string
+	Description() string
+	FilterValue() string
+}

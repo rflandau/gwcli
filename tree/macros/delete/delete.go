@@ -23,13 +23,12 @@ func NewMacroDeleteAction() action.Pair {
 				return strings.Compare(m1.Name, m2.Name)
 			})
 			var items = make([]scaffolddelete.Item[uint64], len(ms))
-			for i := range ms {
-				items[i] = macroItem{
-					id:          ms[i].ID,
-					name:        ms[i].Name,
-					description: ms[i].Description,
-					expansion:   ms[i].Expansion,
-				}
+			for i, m := range ms {
+				items[i] = scaffolddelete.NewItem(
+					m.Name,
+					fmt.Sprintf("Expansion: '%v'\n%v",
+						stylesheet.Header2Style.Render(m.Expansion), m.Description),
+					m.ID)
 			}
 			return items, nil
 		})
@@ -41,21 +40,4 @@ func del(dryrun bool, id uint64) error {
 		return err
 	}
 	return connection.Client.DeleteMacro(id)
-}
-
-type macroItem struct {
-	id          uint64
-	name        string
-	description string
-	expansion   string
-}
-
-var _ scaffolddelete.Item[uint64] = macroItem{}
-
-func (mi macroItem) ID() uint64          { return mi.id }
-func (mi macroItem) FilterValue() string { return mi.name }
-func (mi macroItem) Title() string       { return mi.name }
-func (mi macroItem) Details() string {
-	return fmt.Sprintf("Expansion: '%v'\n%v",
-		stylesheet.Header2Style.Render(mi.expansion), mi.description)
 }

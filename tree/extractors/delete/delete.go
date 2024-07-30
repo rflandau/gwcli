@@ -49,30 +49,13 @@ func fetch() ([]scaffolddelete.Item[uuid.UUID], error) {
 	})
 	var items = make([]scaffolddelete.Item[uuid.UUID], len(axs))
 	for i, ax := range axs {
-		items[i] = axItem{
-			id:   ax.UUID,
-			name: ax.Name,
-			details: fmt.Sprintf("module: %v\ntags: %v\n%v",
+		items[i] = scaffolddelete.NewItem[uuid.UUID](ax.Name,
+			fmt.Sprintf("module: %v\ntags: %v\n%v",
 				stylesheet.Header2Style.Render(ax.Module),
 				stylesheet.Header2Style.Render(strings.Join(ax.Tags, " ")),
 				ax.Desc),
-		}
+			ax.UUID)
 	}
 
 	return items, nil
-}
-
-type axItem struct {
-	id      uuid.UUID
-	name    string
-	details string
-}
-
-var _ scaffolddelete.Item[uuid.UUID] = axItem{}
-
-func (ai axItem) ID() uuid.UUID       { return ai.id }
-func (ai axItem) FilterValue() string { return ai.name }
-func (ai axItem) Title() string       { return ai.name }
-func (ai axItem) Details() string {
-	return ai.details
 }

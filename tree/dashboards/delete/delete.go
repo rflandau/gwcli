@@ -28,27 +28,12 @@ func fch() ([]scaffolddelete.Item[uint64], error) {
 	}
 	// not too important to sort this one
 	var items = make([]scaffolddelete.Item[uint64], len(ud))
-	for i := range items {
-		items[i] = dashItem{
-			id:    ud[i].ID,
-			title: ud[i].Name,
-			details: fmt.Sprintf("Updated: %v\n%s",
+	for i, u := range ud {
+		items[i] = scaffolddelete.NewItem(u.Name,
+			fmt.Sprintf("Updated: %v\n%s",
 				ud[i].Updated.Format(time.RFC822), ud[i].Description),
-		}
+			u.ID)
 	}
 
 	return items, nil
 }
-
-type dashItem struct {
-	id      uint64
-	title   string
-	details string
-}
-
-var _ scaffolddelete.Item[uint64] = dashItem{}
-
-func (di dashItem) ID() uint64          { return di.id }
-func (di dashItem) FilterValue() string { return di.title }
-func (di dashItem) Title() string       { return di.title }
-func (di dashItem) Details() string     { return di.details }

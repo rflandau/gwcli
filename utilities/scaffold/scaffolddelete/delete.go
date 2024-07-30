@@ -20,7 +20,9 @@ Implementations will probably look a lot like:
 				})
 				var items = make([]scaffold.Item[[integer]], len(couldDelete))
 				for i := range couldDelete {
-					items[i] = [pkg]Item{id: couldDelete[i].ID, name: couldDelete[i].Name}
+					items[i] = scaffolddelete.New(couldDelete[i].Name,
+						couldDelete[i].Description,
+						couldDelete[i].ID)
 				}
 				return items, nil
 			})
@@ -33,17 +35,6 @@ Implementations will probably look a lot like:
 		}
 		return connection.Client.Delete[X](id)
 	}
-
-	type [pkg]Item struct {
-		id   [integer]
-		name string
-	}
-
-var _ scaffold.Item[[integer]] = [pkg]Item{}
-
-func (pi [pkg]Item) ID() [integer]       { return pi.id }
-func (pi [pkg]Item) FilterValue() string { return pi.name }
-func (pi [pkg]Item) String() string      { return pi.name }
 */
 package scaffolddelete
 
@@ -238,16 +229,16 @@ func (d *deleteModel[I]) Update(msg tea.Msg) tea.Cmd {
 			d.mode = quitting
 
 			// attempt to delete the item
-			if err := d.df(d.dryrun, itm.ID()); err != nil {
+			if err := d.df(d.dryrun, itm.id); err != nil {
 				return tea.Printf(errorNoDeleteText+"\n", err)
 			}
 			if d.dryrun {
 				return tea.Printf(dryrunSuccessText,
-					d.itemSingular, itm.ID())
+					d.itemSingular, itm.id)
 			} else {
 				go d.list.RemoveItem(d.list.Index())
 				return tea.Printf(deleteSuccessText,
-					d.itemSingular, itm.ID())
+					d.itemSingular, itm.id)
 			}
 		}
 	}
@@ -271,7 +262,7 @@ func (d *deleteModel[I]) View() string {
 			clilog.Writer.Warnf("Failed to type assert selected %v", itm)
 			return "An error has occurred. Exitting..."
 		} else {
-			return fmt.Sprintf("Deleting %v...\n", searchitm.Details())
+			return fmt.Sprintf("Deleting %v...\n", searchitm.Description())
 		}
 	case selecting:
 		return "\n" + d.list.View()
@@ -310,12 +301,6 @@ func (d *deleteModel[I]) SetArgs(_ *pflag.FlagSet, tokens []string) (invalid str
 
 	// create list from the generated delegate
 	d.list = listsupport.NewList(simpleitems, 80, 40, d.itemSingular, d.itemPlural)
-	d.list.Title = "Select a " + d.itemSingular + " to delete"
-	d.list.SetFilteringEnabled(true)
-
-	// disable quit keys; they clash with mother
-	d.list.KeyMap.ForceQuit.SetEnabled(false)
-	d.list.KeyMap.Quit.SetEnabled(false)
 
 	// flags and flagset
 	if err := d.flagset.Parse(tokens); err != nil {

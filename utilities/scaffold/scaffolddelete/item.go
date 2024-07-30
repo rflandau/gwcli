@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"gwcli/stylesheet"
 	"gwcli/stylesheet/colorizer"
+	"gwcli/utilities/listsupport"
 	"gwcli/utilities/scaffold"
 	"io"
 
@@ -11,13 +12,40 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 )
 
+//#region Item implementation
+
 // the base functions a delete action must provide on the type it wants deleted
-type Item[I scaffold.Id_t] interface {
-	ID() I               // value passed to the delete function
-	FilterValue() string // value to compare against for filtration
-	Title() string       // one-line representation of the item
-	Details() string     // displayed beneath item # and title for additional details
+type Item[I scaffold.Id_t] struct {
+	title       string
+	description string
+	id          I // value passed to the delete function
+
 }
+
+var _ listsupport.Item = Item[uint64]{}
+
+func NewItem[I scaffold.Id_t](title, description string, ID I) Item[I] {
+	return Item[I]{title: title, description: description, id: ID}
+}
+
+// value to compare against for filtration
+func (i Item[I]) FilterValue() string {
+	return i.title
+}
+
+// one-line representation of the item
+func (i Item[I]) Title() string {
+	return i.title
+
+}
+
+// displayed beneath item # and title for additional details
+func (i Item[I]) Description() string {
+	return i.description
+
+}
+
+//#endregion
 
 const (
 	defaultItemHeight  = 2
@@ -49,7 +77,7 @@ func defaultRender[I scaffold.Id_t](w io.Writer, m list.Model, index int, listIt
 		colorizer.Pip(uint(index), uint(m.Index())),
 		colorizer.Index(index+1),
 		stylesheet.Header1Style.Render(i.Title()),
-		i.Details())
+		i.Description())
 	fmt.Fprint(w, str)
 }
 
