@@ -2,6 +2,8 @@
 
 A redesigned Gravwell client for the terminal, supporting both TUI-served interactivity and non-interactive script calls. 
 
+![demo](demo.gif)
+
 # Features
 
 - interactive *and* scriptable
