@@ -394,16 +394,17 @@ func processActionHandoff(m *Mother, actionCmd *cobra.Command, remString string)
 	)
 	if invalid, cmd, err = m.active.model.SetArgs(
 		m.active.command.InheritedFlags(), args,
-	); err != nil { // undo and return
+	); err != nil || invalid != "" { // undo and return
 		m.unsetAction()
 
-		errString := fmt.Sprintf("Failed to set args %v: %v", remString, err)
-		clilog.Writer.Errorf("%v\nactive model %v\nactive command%v",
-			errString, m.active.model, remString)
-
-		return tea.Println(errString)
-	} else if invalid != "" {
-		return tea.Println("invalid arguments. See help for invocation requirements")
+		if err != nil {
+			errString := fmt.Sprintf("Failed to set args %v: %v", remString, err)
+			clilog.Writer.Errorf("%v\nactive model %v\nactive command%v",
+				errString, m.active.model, remString)
+			return tea.Println(errString)
+		}
+		return tea.Println("invalid arguments: " + invalid + "\n" +
+			"See " + stylesheet.ExampleStyle.Render("help") + " (or append -h) for assistance.")
 	}
 	clilog.Writer.Debugf("Handing off control to %s", m.active.command.Name())
 	if cmd != nil {
@@ -584,7 +585,7 @@ func TeaCmdContextHelp(c *cobra.Command) tea.Cmd {
 	}
 
 	// write help footer
-	s.WriteString("\nTry " + lipgloss.NewStyle().Italic(true).Render("help help") +
+	s.WriteString("\nTry " + stylesheet.ExampleStyle.Render("help help") +
 		" for information on using the help command.")
 
 	// chomp last newline and return
