@@ -1,8 +1,8 @@
 # Overview
 
-In essence, gwcli is a [Cobra](http://cobra.dev) tree that can be crawled around via our [Bubble Tea](https://github.com/charmbracelet/bubbletea) instance. As such, you should understand the [Elm Architecture](https://guide.elm-lang.org/architecture/) before continuing. Don't worry, it is really simple.
+In essence, gwcli is a [Cobra](http://cobra.dev) command tree that can be crawled around via our [Bubble Tea](https://github.com/charmbracelet/bubbletea) instance. As such, you should understand the [Elm Architecture](https://guide.elm-lang.org/architecture/) before continuing. Don't worry, it is really simple.
 
-gwcli is built to allow more functionality to be easily plugged in. As such, it follows design principles closer to that of a toolbox or framework. For instance, [list scaffolding](utilities/scaffold/scaffoldlist) provides complete functionality for listing any kind of data in a unified way while requiring minimal new code. The goal is to genericize as much as possible, so future developers can simply call these genericized subroutines.
+gwcli is built to allow more functionality to be easily plugged in; it follows design principles closer to that of a toolbox or framework. For instance, [list scaffolding](utilities/scaffold/scaffoldlist/list.go) provides complete functionality for listing any kind of data in a unified way while requiring minimal new code. The goal is to genericize as much as possible, so future developers can simply call these genericized subroutines.
 
 # Terminology
 
@@ -34,7 +34,7 @@ Tree nodes (commands that require further input/are submenus), such as `user`, a
 
 # Changing the Command Tree
 
-This section details how to alter and add to the command tree. These are the basic, most common changes.
+This section details how to alter and add to the command tree. These are the basic, most common changes. 
 
 ## Adding a New Nav (Submenu)
 
@@ -44,7 +44,7 @@ Navs are self-building and thus only need to know about their immediate descenda
 
 Navs generally get their own package so the package tree equates to the command tree, but there is no hard requirement for this.
 
-Add your new nav to the []*cobra.Command of whatever nav you want to be its parent.
+Add your new nav to the `[]*cobra.Command` of whatever nav you want to be its parent.
 
 Adding navs to the root of the tree is similarly easy; root is nothing more than a nav with some extra fluff on it.
 
@@ -74,7 +74,7 @@ The Basic scaffold is a highly simplistic implementation of an action. For a muc
 
 # Packages
 
-Every effort has been made to document each package/file internally. Here is a short list of the most important packages.
+Every effort has been made to document each package/file internally. There is, quite possibly, too much documentation. Here is a short list of the most important packages.
 
 ## Clilog
 
@@ -88,10 +88,9 @@ Stylistically speaking, callees log relevant data only they have access to, but 
 
 Connection manages, well, the connection. It is the gateway to the Gravwell Client library. All Gravwell interactions should be made via its exported `Client` singleton.
 
-
 ## Mother
 
-The true workhorse of gwcli, Mother manages *all* interactivity. See [her section below](#mother) for more information.
+The true workhorse of gwcli, Mother manages *all* interactivity. See [her section below](#mother-the-beating-heart-of-gwcli) for more information.
 
 ## Stylesheet
 
@@ -100,7 +99,10 @@ The intention is for this to eventually be supplant-able for custom styling.
 
 ## Tree
 
+The one containing `root.go`, not the one beneath that that contains `tree.go`. Yes, a lot of packages share names. `¯\_(ツ)_/¯`
+
 The actual command tree. This package is organized to be a replica of how the navs and actions are situated inside of gwcli's shell.
+
 
 ## Utilities/Scaffold
 
@@ -120,7 +122,7 @@ The command tree is self-building: each nav builds itself and its immediate chil
 
 Root begins generation as it is just a Nav. Take a look at `Execute()` in root.go; you can see that root is given a series of `.New*Nav` and `.New*Action`. Diving into one of the `.New*Nav` subroutines shows that it is built in the same way as root: given a series of self-building Navs and a list of actions that can be invoked at that level.
 
-# Mother
+# Mother: The Beating Heart of Gwcli
 
 Cobra does not natively support interactivity, so we need an adapter of some kind: Mother.
 Mother performs a variety of key tasks: traversing the command tree; associating `cobra.Commands` with their interactive elements (`action.Model`s); handing off to, and reasserting control from, children when they are invoked; printing and managing the historical record of commands, and parsing user input on the prompt.
