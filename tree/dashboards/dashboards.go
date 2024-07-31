@@ -18,7 +18,7 @@ const (
 
 var aliases []string = []string{"dashboard", "dash"}
 
-func NewExtractorsNav() *cobra.Command {
+func NewDashboardNav() *cobra.Command {
 	return treeutils.GenerateNav(use, short, long, aliases,
 		[]*cobra.Command{},
 		[]action.Pair{

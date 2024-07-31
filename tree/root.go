@@ -160,7 +160,7 @@ func Execute(args []string) int {
 			kits.NewKitsNav(),
 			user.NewUserNav(),
 			extractors.NewExtractorsNav(),
-			dashboards.NewExtractorsNav(),
+			dashboards.NewDashboardNav(),
 			resources.NewResourcesNav(),
 		},
 		[]action.Pair{
