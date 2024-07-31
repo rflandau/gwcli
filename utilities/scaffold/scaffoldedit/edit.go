@@ -306,7 +306,7 @@ func (em *editModel[I, S]) SetArgs(_ *pflag.FlagSet, tokens []string) (
 ) {
 	// parse the flags, save them for later, when TIs are created
 	if err := em.fs.Parse(tokens); err != nil {
-		return "", nil, err
+		return err.Error(), nil, nil
 	}
 
 	// check for an explicit ID

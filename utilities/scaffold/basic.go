@@ -109,7 +109,7 @@ func (ba *BasicAction) SetArgs(_ *pflag.FlagSet, tokens []string) (_ string, _ t
 		// we must parse manually each interactive call, as we restore fs from base each invocation
 		err = ba.fs.Parse(tokens)
 		if err != nil {
-			return "", nil, err
+			return err.Error(), nil, nil
 		}
 	}
 

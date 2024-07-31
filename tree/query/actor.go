@@ -272,7 +272,7 @@ func (q *query) Reset() error {
 func (q *query) SetArgs(_ *pflag.FlagSet, tokens []string) (string, tea.Cmd, error) {
 	// parse the tokens agains the local flagset
 	if err := localFS.Parse(tokens); err != nil {
-		return "", nil, err
+		return err.Error(), nil, nil
 	}
 
 	flags, err := transmogrifyFlags(&localFS)

@@ -430,7 +430,7 @@ func (la *ListAction[T]) SetArgs(
 
 	err = la.fs.Parse(tokens)
 	if err != nil {
-		return "", nil, err
+		return err.Error(), nil, nil
 	}
 	fs := la.fs
 

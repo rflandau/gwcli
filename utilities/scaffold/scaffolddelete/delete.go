@@ -304,7 +304,7 @@ func (d *deleteModel[I]) SetArgs(_ *pflag.FlagSet, tokens []string) (invalid str
 
 	// flags and flagset
 	if err := d.flagset.Parse(tokens); err != nil {
-		return "", nil, err
+		return err.Error(), nil, nil
 	}
 	id, dryrun, err := fetchFlagValues[I](&d.flagset)
 	if err != nil {

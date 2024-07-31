@@ -446,7 +446,7 @@ func (c *createModel) SetArgs(_ *pflag.FlagSet, tokens []string) (
 	invalid string, onStart tea.Cmd, err error,
 ) {
 	if err := c.fs.Parse(tokens); err != nil {
-		return "", nil, err
+		return err.Error(), nil, nil
 	}
 
 	// we do not need to check missing requires when run from mother
