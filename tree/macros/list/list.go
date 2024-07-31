@@ -29,7 +29,7 @@ func flags() pflag.FlagSet {
 	addtlFlags := pflag.FlagSet{}
 	addtlFlags.Bool(ft.Name.ListAll, false, ft.Usage.ListAll("macros")+"\n"+
 		"Ignored if you are not an admin.\n"+
-		"Supercedes --group.")
+		"Supersedes --group.")
 	addtlFlags.Int32("group", 0, "Fetches all macros shared with the given group id.")
 	return addtlFlags
 }
