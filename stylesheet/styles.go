@@ -28,5 +28,6 @@ var (
 	// Mother's prompt (text prefixed to user input)
 	PromptStyle = lipgloss.NewStyle().Foreground(lipgloss.Color(PrimaryColor))
 	// used for displaying indices
-	IndexStyle = lipgloss.NewStyle().Foreground(AccentColor1)
+	IndexStyle   = lipgloss.NewStyle().Foreground(AccentColor1)
+	ExampleStyle = lipgloss.NewStyle().Foreground(AccentColor2)
 )
