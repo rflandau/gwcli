@@ -78,14 +78,6 @@ const (
 	createdSuccessfully     = "Successfully created %v (ID: %v)."
 )
 
-// #region local styles
-var (
-	tiFieldRequiredSty = stylesheet.Header1Style
-	tiFieldOptionalSty = stylesheet.Header2Style
-)
-
-//#endregion
-
 // keys -> Field; used as (ReadOnly) configuration for this creation instance
 type Config = map[string]Field
 
@@ -215,8 +207,9 @@ type createModel struct {
 
 	fields Config // RO configuration provided by the caller
 
-	orderedTIs []keyedTI // Ordered array of map keys, based on Config.TI.Order
-	selected   uint      // currently focused ti (in key order index)
+	orderedTIs         []keyedTI // Ordered array of map keys, based on Config.TI.Order
+	selected           uint      // currently focused ti (in key order index)
+	longestFieldLength int       // the longest field name of the TIs
 
 	inputErr  string // the reason inputs are invalid
 	createErr string // the reason the last create failed (not for invalid parameters)
@@ -261,6 +254,12 @@ func newCreateModel(fields Config, singular string, cf CreateFunc, addtlFlagFunc
 		}
 
 		c.orderedTIs = append(c.orderedTIs, kti)
+
+		// note the longest Title for later formatting
+		if w := lipgloss.Width(f.Title); c.longestFieldLength < w {
+			c.longestFieldLength = w
+		}
+
 	}
 	// sort keys from highest order to lowest order
 	slices.SortFunc(c.orderedTIs, func(a, b keyedTI) int {
@@ -363,30 +362,44 @@ func (c *createModel) extractValuesFromTIs() (
 
 // Iterates through the keymap, drawing each ti and title in key key order
 func (c *createModel) View() string {
-	var sb strings.Builder
+	fieldWidth := c.longestFieldLength + 3 // 1 spaces for ":", 1 for pip, 1 for padding
+
+	var ( // styles
+		tiFieldRequiredSty                = stylesheet.Header1Style
+		tiFieldOptionalSty                = stylesheet.Header2Style
+		leftAlignerSty     lipgloss.Style = lipgloss.NewStyle().
+					Width(fieldWidth).
+					AlignHorizontal(lipgloss.Right).
+					PaddingRight(1)
+	)
+
+	var fields []string
+	var TIs []string
 
 	for i, kti := range c.orderedTIs {
 		var title string
 		// color the title appropriately
 		if c.fields[kti.key].Required {
-			title = tiFieldRequiredSty.Render(c.fields[kti.key].Title + ": ")
+			title = tiFieldRequiredSty.Render(c.fields[kti.key].Title + ":")
 		} else {
-			title = tiFieldOptionalSty.Render(c.fields[kti.key].Title + ": ")
+			title = tiFieldOptionalSty.Render(c.fields[kti.key].Title + ":")
 		}
-		sb.WriteString(title)
 
-		// if window width is too small, bump TI to next line
-		if c.width <= (lipgloss.Width(title) + c.orderedTIs[i].ti.Width) { // include equals for a 1 cell buffer
-			sb.WriteString("\n")
-		}
-		sb.WriteString(c.orderedTIs[i].ti.View() + "\n")
+		fields = append(fields, leftAlignerSty.Render(colorizer.Pip(c.selected, uint(i))+title))
+
+		TIs = append(TIs, c.orderedTIs[i].ti.View())
 	}
 
-	// display errors, if they exist
-	// note: result will always be an error string, as we exit on success
-	sb.WriteString(colorizer.SubmitString("alt+enter", c.inputErr, c.createErr, c.width))
+	// compose all fields
+	f := lipgloss.JoinVertical(lipgloss.Right, fields...)
 
-	return sb.String()
+	// compose all TIs
+	t := lipgloss.JoinVertical(lipgloss.Left, TIs...)
+
+	// conjoin fields and TIs
+	composed := lipgloss.JoinHorizontal(lipgloss.Center, f, t)
+
+	return composed + "\n" + colorizer.SubmitString("alt+enter", c.inputErr, c.createErr, c.width)
 }
 
 func (c *createModel) Done() bool {
