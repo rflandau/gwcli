@@ -306,6 +306,8 @@ func (c *createModel) Update(msg tea.Msg) tea.Cmd {
 				// done, die
 				c.mode = quitting
 				return tea.Println(fmt.Sprintf(createdSuccessfully, c.singular, id))
+			} else {
+				c.focusNext()
 			}
 		}
 	} else if sizeMsg, ok := msg.(tea.WindowSizeMsg); ok {
