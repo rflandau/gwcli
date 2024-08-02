@@ -1,3 +1,5 @@
+# This is being merged into the Gravwell monorepo; use that instead: https://github.com/rflandau/gravwell/tree/dev/gwcli (PR#[1142](https://github.com/gravwell/gravwell/pull/1142))
+
 # gwcli
 
 A redesigned Gravwell client for the terminal, supporting both TUI-served interactivity and non-interactive script calls. 
