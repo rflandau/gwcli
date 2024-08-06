@@ -1,4 +1,4 @@
-# This is being merged into the Gravwell monorepo; use that instead: https://github.com/rflandau/gravwell/tree/dev/gwcli (PR#[1142](https://github.com/gravwell/gravwell/pull/1142))
+# This has been merged into the Gravwell monorepo; use that instead. (PR#[1142](https://github.com/gravwell/gravwell/pull/1142))
 
 # gwcli
 
